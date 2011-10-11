@@ -10,7 +10,9 @@ end
 local filua = ffi.load('freeimage')
 ffi.cdef[[
 	const char* __stdcall FreeImage_GetVersion();
-	const char* __stdcall FreeImage_GetCopyrightMessage();
+	
+	typedef struct { uint8_t r, g, b, a; } RGBA;
+	typedef struct { uint8_t r, g, b; } RGB;
 	
 	void* __stdcall FreeImage_Load(int, const char*, int);
 	int __stdcall FreeImage_Save(int, void*, const char*, int);
@@ -26,10 +28,10 @@ ffi.cdef[[
 	void __stdcall FreeImage_SetDotsPerMeterX(void*, unsigned);
 	void __stdcall FreeImage_SetDotsPerMeterY(void*, unsigned);
 	const char* __stdcall FreeImage_GetFormatFromFIF(int);
-	const char* __stdcall FreeImage_GetFIFDescription(int);
-	const char* __stdcall FreeImage_GetFIFMimeType(int);
 	int __stdcall FreeImage_GetFIFFromFilename(const char*);
 	
+	void* __stdcall FreeImage_ConvertTo4Bits(void*);
+	void* __stdcall FreeImage_ConvertTo8Bits(void*);
 	void* __stdcall FreeImage_ConvertToGreyscale(void*);
 	void* __stdcall FreeImage_ConvertTo24Bits(void*);
 	void* __stdcall FreeImage_ConvertTo32Bits(void*);
@@ -47,11 +49,12 @@ ffi.cdef[[
 	int __stdcall FreeImage_JPEGCrop(const char *, const char*, int, int, int, int);
 	
 	void* __stdcall FreeImage_Copy(void*, int, int, int, int);
-	int __stdcall FreeImage_Paste(void*, void*, int, int, int);
+	int  __stdcall FreeImage_Paste(void*, void*, int, int, int);
+	void* __stdcall FreeImage_Composite(void*, int, RGBA*, void*);
 ]]
 
---local function
-local function getFIFFromFileName(name)
+-- Local Function
+function getFIFFromFileName(name)
 	return filua.FreeImage_GetFIFFromFilename(name)
 end
 
@@ -60,18 +63,14 @@ function getVersion()
 	return ffi.string(filua.FreeImage_GetVersion())
 end
 
-function getCopyrightMessage()
-	return ffi.string(filua.FreeImage_GetCopyrightMessage())
-end
-
 -- Image IO
 function loadImage(name)
-	fmt = getFIFFromFileName(name)
+	local fmt = getFIFFromFileName(name)
 	return filua.FreeImage_Load(fmt, name, 0)
 end
 
 function saveImage(name, image_ptr, flag)
-	fmt = getFIFFromFileName(name)
+	local fmt = getFIFFromFileName(name)
 	return filua.FreeImage_Save(fmt, image_ptr, name, flag)
 end
 
@@ -101,8 +100,8 @@ function getHeight(image_ptr)
 end
 
 function getResolution(image_ptr)
-	x = filua.FreeImage_GetDotsPerMeterX(image_ptr)
-	y = filua.FreeImage_GetDotsPerMeterY(image_ptr)
+	local x = filua.FreeImage_GetDotsPerMeterX(image_ptr)
+	local y = filua.FreeImage_GetDotsPerMeterY(image_ptr)
 	return math.floor(x*0.0254+0.5), math.floor(y*0.0254+0.5)
 end
 
@@ -112,21 +111,19 @@ function setResolution(image_ptr, x, y)
 end
 
 function getFormat(name)
-	fmt = getFIFFromFileName(name)
+	local fmt = getFIFFromFileName(name)
 	return ffi.string(filua.FreeImage_GetFormatFromFIF(fmt))
 end
 
-function getFormatSummary(name)
-	fmt = getFIFFromFileName(name)
-	return ffi.string(filua.FreeImage_GetFIFDescription(fmt))
-end
-
-function getMimeType(name)
-	fmt = getFIFFromFileName(name)
-	return ffi.string(filua.FreeImage_GetFIFMimeType(fmt))
-end
-
 -- Convert
+function convert(src, dst, flag)
+	local cache = loadImage(src)
+	saveImage(dst, cache, flag)
+end
+
+function imgdec(src)
+	convert(src, src..'.bmp', 0)
+end
 
 -- Process
 function rotate(image_ptr, degree)
@@ -142,9 +139,25 @@ function paste(dst_ptr, src_ptr, left, top, alpha)
 	return filua.FreeImage_Paste(dst_ptr, src_ptr, left, top, alpha)
 end
 
-function combine(back, front, out, left, top)
-	pic1 = loadImage(back)
-	pic2 = loadImage(front)
+function composite(front_ptr, usebg, rgba, back_ptr)
+	return filua.FreeImage_Composite(front_ptr, usebg, rgba, back_ptr)
+end
+
+function combine(back, front, out, left, top, flag)
+	local pic1 = loadImage(back)
+	local pic2 = loadImage(front)
 	paste(pic1, pic2, left, top, 255)
-	saveImage(out, pic1, 0)
+	saveImage(out, pic1, flag)
+	unloadImage(pic1)
+	unloadImage(pic2)
+end
+
+function combinealpha(back, front, out, flag)
+	local pic1 = loadImage(back)
+	local pic2 = loadImage(front)
+	local pic3 = composite(pic2, 0, nil, pic1)
+	saveImage(out, pic3, flag)
+	unloadImage(pic1)
+	unloadImage(pic2)
+	unloadImage(pic3)
 end
