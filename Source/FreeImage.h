@@ -364,16 +364,17 @@ FI_STRUCT (FIICCPROFILE) {
 */
 FI_ENUM(FREE_IMAGE_FORMAT) {
 	FIF_UNKNOWN = -1,
-	FIF_BMP			= 0,
-	FIF_ICO			= 1,
-	FIF_JPEG		= 2,
-	FIF_PNG			= 3,
+	FIF_JPEG		= 0,
+	FIF_PNG			= 1,
+	FIF_BMP			= 2,
+	FIF_GIF			= 3,
 	FIF_TARGA		= 4,
 	FIF_TIFF		= 5,
-	FIF_GIF			= 6,
+	FIF_WEBP		= 6,
 	FIF_JXR			= 7,
-	FIF_WEBP		= 8,
-	FIF_PSD			= 9,
+	FIF_PSD			= 8,
+	FIF_ICO			= 9,
+	FIF_HDR			= 10
 };
 
 /** Image type used in FreeImage.

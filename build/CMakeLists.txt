@@ -175,8 +175,8 @@ INSTALL(FILES
 
 IF(MSVC)
 # Susie Plugin
-	SET(TEST_FILES ${PROJECT_DIR}/susie.cc)
-	ADD_EXECUTABLE(susie ${TEST_FILES})
-	ADD_DEPENDENCIES(susie freeimage)
-	TARGET_LINK_LIBRARIES(susie freeimage)
+	SET(SUSIE_FILES ${PROJECT_DIR}/susie.cc)
+	ADD_LIBRARY(iffi SHARED ${SUSIE_FILES})
+	ADD_DEPENDENCIES(iffi freeimage)
+	TARGET_LINK_LIBRARIES(iffi freeimage)
 ENDIF()

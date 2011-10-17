@@ -1,0 +1,8 @@
+﻿;;LIBRARY "susiespi"
+
+EXPORTS
+	GetPluginInfo
+	IsSupported
+	GetPictureInfo
+	GetPicture
+	GetPreview
