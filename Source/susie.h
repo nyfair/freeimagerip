@@ -5,6 +5,8 @@
 extern "C" {
 #endif 
 
+#pragma pack(push)
+#pragma pack(1)
 typedef struct PictureInfo {
 	long left, top;			/* 画像を展開する位置 */
 	long width;					/* 画像の幅(pixel) */
@@ -14,6 +16,7 @@ typedef struct PictureInfo {
 	short colorDepth;		/* 画素当たりのbit数 */
 	HLOCAL hInfo;				/* 画像内のテキスト情報[呼び出し側が解放] */
 } PictureInfo;
+#pragma pack(pop)
 
 /*-------------------------------------------------------------------------*/
 /* エラーコード */
