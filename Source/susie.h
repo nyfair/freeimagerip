@@ -1,4 +1,4 @@
-#ifndef SPI_FI_H
+﻿#ifndef SPI_FI_H
 #define SPI_FI_H
 
 #ifdef __cplusplus
@@ -6,30 +6,30 @@ extern "C" {
 #endif 
 
 typedef struct PictureInfo {
-	long left, top;			/* �����չ�_����λ�� */
-	long width;					/* ����η�(pixel) */
-	long height;				/* ����θߤ�(pixel) */
-	WORD x_density;			/* ���ؤ�ˮƽ�����ܶ� */
-	WORD y_density;			/* ���ؤδ�ֱ�����ܶ� */
-	short colorDepth;		/* ���ص������bit�� */
-	HLOCAL hInfo;				/* �����ڤΥƥ��������[���ӳ����Ȥ����] */
+	long left, top;			/* 画像を展開する位置 */
+	long width;					/* 画像の幅(pixel) */
+	long height;				/* 画像の高さ(pixel) */
+	WORD x_density;			/* 画素の水平方向密度 */
+	WORD y_density;			/* 画素の垂直方向密度 */
+	short colorDepth;		/* 画素当たりのbit数 */
+	HLOCAL hInfo;				/* 画像内のテキスト情報[呼び出し側が解放] */
 } PictureInfo;
 
 /*-------------------------------------------------------------------------*/
-/* ����`���`�� */
+/* エラーコード */
 /*-------------------------------------------------------------------------*/
-#define SPI_NO_FUNCTION				-1	/* ���ΙC�ܤϥ���ץ���Ȥ���Ƥ��ʤ� */
-#define SPI_ALL_RIGHT					0	/* �����K�� */
-#define SPI_ABORT							1	/* ���`��Хå��v������0�򷵤����Τ�չ�_����ֹ���� */
-#define SPI_NOT_SUPPORT				2	/* δ֪�Υե��`�ޥå� */
-#define SPI_OUT_OF_ORDER			3	/* �ǩ`��������Ƥ��� */
-#define SPI_NO_MEMORY					4	/* ����`���_�������ʤ� */
-#define SPI_MEMORY_ERROR			5	/* ����`����` */
-#define SPI_FILE_READ_ERROR		6	/* �ե������`�ɥ���` */
-#define	SPI_WINDOW_ERROR			7	/* �����_���ʤ� (�ǹ��_�Υ���`���`��) */
-#define SPI_OTHER_ERROR				8	/* �ڲ�����` */
-#define	SPI_FILE_WRITE_ERROR	9	/* �����z�ߥ���` (�ǹ��_�Υ���`���`��) */
-#define	SPI_END_OF_FILE				10/* �ե�����K�� (�ǹ��_�Υ���`���`��) */
+#define SPI_NO_FUNCTION				-1/* その機能はインプリメントされていない */
+#define SPI_ALL_RIGHT					0	/* 正常終了 */
+#define SPI_ABORT							1	/* コールバック関数が非0を返したので展開を中止した */
+#define SPI_NOT_SUPPORT				2	/* 未知のフォーマット */
+#define SPI_OUT_OF_ORDER			3	/* データが壊れている */
+#define SPI_NO_MEMORY					4	/* メモリーが確保出来ない */
+#define SPI_MEMORY_ERROR			5	/* メモリーエラー */
+#define SPI_FILE_READ_ERROR		6	/* ファイルリードエラー */
+#define	SPI_WINDOW_ERROR			7	/* 窓が開けない (非公開のエラーコード) */
+#define SPI_OTHER_ERROR				8	/* 内部エラー */
+#define	SPI_FILE_WRITE_ERROR	9	/* 書き込みエラー (非公開のエラーコード) */
+#define	SPI_END_OF_FILE				10/* ファイル終端 (非公開のエラーコード) */
 
 static const char *pluginfo[] = {
 	"00IN",
@@ -46,7 +46,7 @@ typedef int (CALLBACK *SPI_PROGRESS)(int, int, long);
 int DLL_API WINAPI GetPluginInfo(int infono, LPSTR buf, int buflen);
 int DLL_API WINAPI IsSupported(LPSTR filename, DWORD dw);
 
-/* '00IN'���v�� */
+/* '00IN'の関数 */
 int DLL_API WINAPI GetPictureInfo(LPSTR buf, long len, 
 																	unsigned int flag, PictureInfo *lpInfo);
 int DLL_API WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
