@@ -1,20 +1,16 @@
 #include <windows.h>
-#include <math.h>
 #include "FreeImage.h"
 #include "susie.h"
 
-FREE_IMAGE_FORMAT fmt;
-FIBITMAP* dib;
-
 int WINAPI GetPluginInfo(int infono, LPSTR buf, int buflen) {
-	if(infono < 0 || infono >= (sizeof(pluginfo) / sizeof(char *))) 
+	if(infono < 0 || infono >= (sizeof(pluginfo) / sizeof(char *)))
 		return FALSE;
 	lstrcpyn(buf, pluginfo[infono], buflen);
 	return lstrlen(buf);
 }
 
 int WINAPI IsSupported(LPSTR filename, DWORD dw) {
-	fmt = FreeImage_GetFIFFromFilename(filename);
+	FREE_IMAGE_FORMAT fmt = FreeImage_GetFIFFromFilename(filename);
 	if(fmt != FIF_UNKNOWN) return TRUE;
 
 	FIMEMORY mem = FIMEMORY();
@@ -24,16 +20,17 @@ int WINAPI IsSupported(LPSTR filename, DWORD dw) {
 	return fmt != FIF_UNKNOWN;
 }
 
-int DLL_API WINAPI GetPictureInfo(LPSTR buf, long len, 
+int DLL_API WINAPI GetPictureInfo(LPSTR buf, long len,
 																	unsigned int flag, PictureInfo *lpInfo) {
+	/**
 	int ret = SPI_ALL_RIGHT;
+	FIBITMAP* dib;
+	FREE_IMAGE_FORMAT fmt;
 	
 	if((flag & 7) == 0) {
-	/* buf is filename */
 		fmt = FreeImage_GetFIFFromFilename(buf);
 		dib = FreeImage_Load(fmt, buf);
 	} else {
-	/* buf is memory */
 		FIMEMORY mem = FIMEMORY();
 		mem.data = &buf;
 		fmt = FreeImage_GetFileTypeFromMemory(&mem);
@@ -51,6 +48,8 @@ int DLL_API WINAPI GetPictureInfo(LPSTR buf, long len,
 	lpInfo->hInfo	= NULL;
 	FreeImage_Unload(dib);
 	return ret;
+	*/
+	return SPI_ALL_RIGHT;
 }
 
 int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
@@ -60,6 +59,8 @@ int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 		if(lpPrgressCallback(0, 1, lData))
 			return SPI_ABORT;
 	int ret = SPI_ALL_RIGHT;
+	FIBITMAP* dib;
+	FREE_IMAGE_FORMAT fmt;
 
 	if((flag & 7) == 0) {
 	/* buf is filename */
@@ -76,9 +77,16 @@ int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 
 	int width = FreeImage_GetWidth(dib);
 	int height = FreeImage_GetHeight(dib);
-	int bpp = FreeImage_GetBPP(dib) >> 3;
-	unsigned int bitmap_size = bpp * width * height;
-	*pHBInfo = LocalAlloc(LMEM_MOVEABLE, infosize);
+	int bpp = FreeImage_GetBPP(dib);
+	unsigned int line_size = (((bpp>>3)*width)+3)&~3;
+	unsigned int remain = line_size - (bpp>>3)*width;
+	unsigned int bitmap_size = line_size * height;
+
+	if(bpp <= 8) {
+		*pHBInfo = LocalAlloc(LMEM_MOVEABLE, infosize + (sizeof(RGBQUAD) << bpp));
+	} else {
+		*pHBInfo = LocalAlloc(LMEM_MOVEABLE, infosize);
+	}
 	*pHBm = LocalAlloc(LMEM_MOVEABLE, bitmap_size);
 	BITMAPINFO *pinfo = (BITMAPINFO *)LocalLock(*pHBInfo);
 	BYTE *bitmap = (BYTE *)LocalLock(*pHBm);
@@ -89,20 +97,14 @@ int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 		return SPI_NO_MEMORY;
 	}
 
-	pinfo->bmiHeader.biSize = infosize;
-	pinfo->bmiHeader.biWidth	 = width;
-	pinfo->bmiHeader.biHeight = height;
-	pinfo->bmiHeader.biPlanes = 1;
-	pinfo->bmiHeader.biBitCount = bpp << 3;
-	pinfo->bmiHeader.biCompression	 = BI_RGB;
-	pinfo->bmiHeader.biSizeImage	 = 0;
-	pinfo->bmiHeader.biXPelsPerMeter = FreeImage_GetDotsPerMeterX(dib);
-	pinfo->bmiHeader.biYPelsPerMeter	 = FreeImage_GetDotsPerMeterY(dib);
-	pinfo->bmiHeader.biClrUsed	 = 0;
-	pinfo->bmiHeader.biClrImportant = 0;
+	BITMAPINFO *info = FreeImage_GetInfo(dib);
+	pinfo->bmiHeader = info->bmiHeader;
+	if(bpp <= 8) {
+		memcpy(pinfo->bmiColors, info->bmiColors, sizeof(RGBQUAD) << bpp);
+	}
 
 	switch(bpp) {
-		case 3:
+		case 24:
 			RGBTRIPLE *rgb;
 			for(int y = height-1; y; y--) {
 				rgb = (RGBTRIPLE *) FreeImage_GetScanLine(dib, height-1-y);
@@ -112,9 +114,10 @@ int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 					((BYTE *)bitmap)[2] = rgb[x].rgbtRed;
 					bitmap = (BYTE *)bitmap + 3;
 				}
+				bitmap = (BYTE *)bitmap + remain;
 			}
 			break;
-		case 4:
+		case 32:
 			RGBQUAD *rgba;
 			for(int y = height-1; y; y--) {
 				rgba = (RGBQUAD *) FreeImage_GetScanLine(dib, height-1-y);
@@ -126,11 +129,12 @@ int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 					bitmap = (BYTE *)bitmap + 4;
 				}
 			}
-		case 1:
+			break;
+		case 8:
 			for(int y = height-1; y; y--) {
 				BYTE *line = FreeImage_GetScanLine(dib, height-1-y);
 				memcpy(bitmap, line, width);
-				bitmap = (BYTE *)bitmap + width;
+				bitmap = (BYTE *)bitmap + line_size;
 			}
 			break;
 		default:

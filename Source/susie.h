@@ -3,7 +3,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif 
+#endif
 
 #pragma pack(push)
 #pragma pack(1)
@@ -37,8 +37,8 @@ typedef struct PictureInfo {
 static const char *pluginfo[] = {
 	"00IN",
 	"FreeImage Susie Plugin by nyfair <nyfair2012@gmail.com>",
-	"*.jpg;*.png;*.bmp;*.gif;*.jpeg;*.tga;*.tiff;*.webp;*.wdp;\
-	*.psd;*.ico;*.hdr;*.jxr;*.tif;*.hdp",
+	"*.jpg;*.png;*.jpeg;*.tga;*.tiff;*.webp;*.wdp;\
+	*.psd;*.hdr;*.jxr;*.tif;*.hdp",
 	"View image with freeimage.dll",
 };
 
@@ -50,7 +50,7 @@ int DLL_API WINAPI GetPluginInfo(int infono, LPSTR buf, int buflen);
 int DLL_API WINAPI IsSupported(LPSTR filename, DWORD dw);
 
 /* '00IN'の関数 */
-int DLL_API WINAPI GetPictureInfo(LPSTR buf, long len, 
+int DLL_API WINAPI GetPictureInfo(LPSTR buf, long len,
 																	unsigned int flag, PictureInfo *lpInfo);
 int DLL_API WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 															HANDLE *pHBInfo, HANDLE *pHBm,
@@ -61,6 +61,6 @@ int DLL_API WINAPI GetPreview(LPSTR buf, long len, unsigned int flag,
 
 #ifdef __cplusplus
 }
-#endif 
+#endif
 
 #endif	/* SPI_FI_H */
