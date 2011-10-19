@@ -75,9 +75,10 @@ int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 		FreeImage_CloseMemory(&mem);
 	}
 
-	int width = FreeImage_GetWidth(dib);
-	int height = FreeImage_GetHeight(dib);
-	int bpp = FreeImage_GetBPP(dib);
+	unsigned int width = FreeImage_GetWidth(dib);
+	unsigned int height = FreeImage_GetHeight(dib);
+	unsigned int bpp_real = FreeImage_GetBPP(dib);
+	unsigned int bpp = bpp_real>32 ? (bpp_real%48 ? 32 : 24) : bpp_real;
 	unsigned int line_size = (((bpp>>3)*width)+3)&~3;
 	unsigned int remain = line_size - (bpp>>3)*width;
 	unsigned int bitmap_size = line_size * height;
@@ -103,7 +104,7 @@ int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 		memcpy(pinfo->bmiColors, info->bmiColors, sizeof(RGBQUAD) << bpp);
 	}
 
-	switch(bpp) {
+	switch(bpp_real) {
 		case 24:
 			RGBTRIPLE *rgb;
 			for(int y = height-1; y; y--) {
@@ -135,6 +136,62 @@ int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 				BYTE *line = FreeImage_GetScanLine(dib, height-1-y);
 				memcpy(bitmap, line, width);
 				bitmap = (BYTE *)bitmap + line_size;
+			}
+			break;
+		case 48:
+			pinfo->bmiHeader.biBitCount = 24;
+			FIRGB16 *rgb16;
+			for(int y = height-1; y; y--) {
+				rgb16 = (FIRGB16 *) FreeImage_GetScanLine(dib, height-1-y);
+				for(int x = 0; x < width; x++) {
+					((BYTE *)bitmap)[0] = (BYTE)(rgb16[x].blue >> 8);
+					((BYTE *)bitmap)[1] = (BYTE)(rgb16[x].green >> 8);
+					((BYTE *)bitmap)[2] = (BYTE)(rgb16[x].red >> 8);
+					bitmap = (BYTE *)bitmap + 3;
+				}
+				bitmap = (BYTE *)bitmap + remain;
+			}
+			break;
+		case 64:
+			pinfo->bmiHeader.biBitCount = 32;
+			FIRGBA16 *rgba16;
+			for(int y = height-1; y; y--) {
+				rgba16 = (FIRGBA16 *) FreeImage_GetScanLine(dib, height-1-y);
+				for(int x = 0; x < width; x++) {
+					((BYTE *)bitmap)[0] = (BYTE)(rgba16[x].blue >> 8);
+					((BYTE *)bitmap)[1] = (BYTE)(rgba16[x].green >> 8);
+					((BYTE *)bitmap)[2] = (BYTE)(rgba16[x].red >> 8);
+					((BYTE *)bitmap)[3] = (BYTE)(rgba16[x].alpha >> 8);
+					bitmap = (BYTE *)bitmap + 4;
+				}
+			}
+			break;
+		case 96:
+			pinfo->bmiHeader.biBitCount = 24;
+			FIRGBF *rgbf;
+			for(int y = height-1; y; y--) {
+				rgbf = (FIRGBF *) FreeImage_GetScanLine(dib, height-1-y);
+				for(int x = 0; x < width; x++) {
+					((BYTE *)bitmap)[0] = (BYTE)(rgbf[x].blue * 256);
+					((BYTE *)bitmap)[1] = (BYTE)(rgbf[x].green * 256);
+					((BYTE *)bitmap)[2] = (BYTE)(rgbf[x].red * 256);
+					bitmap = (BYTE *)bitmap + 3;
+				}
+				bitmap = (BYTE *)bitmap + remain;
+			}
+			break;
+		case 128:
+			pinfo->bmiHeader.biBitCount = 32;
+			FIRGBAF *rgbaf;
+			for(int y = height-1; y; y--) {
+				rgbf = (FIRGBF *) FreeImage_GetScanLine(dib, height-1-y);
+				for(int x = 0; x < width; x++) {
+					((BYTE *)bitmap)[0] = (BYTE)(rgbaf[x].blue * 256);
+					((BYTE *)bitmap)[1] = (BYTE)(rgbaf[x].green * 256);
+					((BYTE *)bitmap)[2] = (BYTE)(rgbaf[x].red * 256);
+					((BYTE *)bitmap)[3] = (BYTE)(rgbaf[x].alpha * 256);
+					bitmap = (BYTE *)bitmap + 4;
+				}
 			}
 			break;
 		default:

@@ -38,7 +38,7 @@ static const char *pluginfo[] = {
 	"00IN",
 	"FreeImage Susie Plugin by nyfair <nyfair2012@gmail.com>",
 	"*.jpg;*.png;*.jpeg;*.tga;*.tiff;*.webp;*.wdp;\
-	*.psd;*.hdr;*.jxr;*.tif;*.hdp",
+	*.psd;*.hdr;*.jxr;*.tif;*.hdp;*.gif;*.ico",
 	"View image with freeimage.dll",
 };
 
