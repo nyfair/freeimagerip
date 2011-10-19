@@ -1,4 +1,3 @@
-
 #include <windows.h>
 #include "FreeImage.h"
 #include "susie.h"
