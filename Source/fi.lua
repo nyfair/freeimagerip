@@ -28,7 +28,12 @@ ffi.cdef[[
 	void __stdcall FreeImage_SetDotsPerMeterX(void*, unsigned);
 	void __stdcall FreeImage_SetDotsPerMeterY(void*, unsigned);
 	const char* __stdcall FreeImage_GetFormatFromFIF(int);
+	const char* __stdcall FreeImage_GetFIFExtensionList(int);
+	const char* __stdcall FreeImage_GetFIFDescription(int);
+	const char* __stdcall FreeImage_GetFIFRegExpr(int);
+	const char* __stdcall FreeImage_GetFIFMimeType(int);
 	int __stdcall FreeImage_GetFIFFromFilename(const char*);
+	int __stdcall FreeImage_GetFIFCount();
 	
 	void* __stdcall FreeImage_ConvertTo4Bits(void*);
 	void* __stdcall FreeImage_ConvertTo8Bits(void*);
@@ -53,14 +58,39 @@ ffi.cdef[[
 	void* __stdcall FreeImage_Composite(void*, int, RGBA*, void*);
 ]]
 
--- Local Function
+-- Common Info
 function getFIFFromFileName(name)
 	return filua.FreeImage_GetFIFFromFilename(name)
 end
 
--- Library Info
-function getVersion()
-	return ffi.string(filua.FreeImage_GetVersion())
+function GetFIFCount()
+	return filua.FreeImage_GetFIFCount()
+end
+
+function getFormatFromFIF(fif)
+	return filua.FreeImage_GetFormatFromFIF(fif)
+end
+
+function getFIFExtensionList(fif)
+	return filua.FreeImage_GetFIFExtensionList(fif)
+end
+
+function getFIFDescription(fif)
+	return filua.FreeImage_GetFIFDescription(fif)
+end
+
+function getFIFMimeType(fif)
+	return filua.FreeImage_GetFIFMimeType(fif)
+end
+
+function showSupportFormat()
+	count = GetFIFCount()
+	for i = 0, count-1 do
+		print(ffi.string(getFormatFromFIF(i))..'\t'..
+					ffi.string(getFIFExtensionList(i))..'\t'..
+					ffi.string(getFIFDescription(i))..'\t'..
+					ffi.string(getFIFMimeType(i)))
+	end
 end
 
 -- Image IO
