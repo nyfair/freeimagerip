@@ -48,6 +48,8 @@ typedef int (CALLBACK *SPI_PROGRESS)(int, int, long);
 int DLL_API WINAPI GetPluginInfo(int infono, LPSTR buf, int buflen);
 int DLL_API WINAPI IsSupported(LPSTR filename, DWORD dw);
 
+int DLL_API WINAPI IsSupportedW(LPWSTR filename, DWORD dw);
+
 /* '00IN'の関数 */
 int DLL_API WINAPI GetPictureInfo(LPSTR buf, long len,
 																	unsigned int flag, PictureInfo *lpInfo);
@@ -57,6 +59,20 @@ int DLL_API WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 int DLL_API WINAPI GetPreview(LPSTR buf, long len, unsigned int flag,
 															HANDLE *pHBInfo, HANDLE *pHBm,
 															SPI_PROGRESS lpPrgressCallback, long lData);
+
+int DLL_API WINAPI GetPictureInfoW(LPSTR buf, long len,
+																	unsigned int flag, PictureInfo *lpInfo);
+int DLL_API WINAPI GetPictureW(LPSTR buf, long len, unsigned int flag,
+															HANDLE *pHBInfo, HANDLE *pHBm,
+															SPI_PROGRESS lpPrgressCallback, long lData);
+int DLL_API WINAPI GetPreviewW(LPSTR buf,long len, unsigned int flag,
+															HANDLE *pHBInfo, HANDLE *pHBm,
+															SPI_PROGRESS lpPrgressCallback, long lData);
+
+int IsSupportedEx(FREE_IMAGE_FORMAT fmt, DWORD dw);
+int GetPictureEx(FIBITMAP* dib, FREE_IMAGE_FORMAT fmt,
+								HANDLE *pHBInfo, HANDLE *pHBm,
+								SPI_PROGRESS lpPrgressCallback, long lData);
 
 #ifdef __cplusplus
 }

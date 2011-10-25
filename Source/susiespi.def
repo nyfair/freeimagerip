@@ -6,3 +6,8 @@ EXPORTS
 	GetPictureInfo
 	GetPicture
 	GetPreview
+
+	IsSupportedW
+	GetPictureInfoW
+	GetPictureW
+	GetPreviewW

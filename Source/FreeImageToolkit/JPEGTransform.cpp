@@ -345,3 +345,67 @@ FreeImage_JPEGCrop(const char *src_file, const char *dst_file, int left, int top
 		return FALSE;
 	}
 }
+
+BOOL DLL_CALLCONV 
+FreeImage_JPEGTransformU(const wchar_t *src_file, const wchar_t *dst_file, FREE_IMAGE_JPEG_OPERATION operation, BOOL perfect) {
+#ifdef _WIN32
+	try {
+		// check the src file format
+		if(FreeImage_GetFileTypeU(src_file) != FIF_JPEG) {
+			throw FI_MSG_ERROR_MAGIC_NUMBER;
+		}
+
+		// setup IO
+		FilenameIO filenameIO;
+		memset(&filenameIO, 0, sizeof(FilenameIO));
+		filenameIO.wsrc_file = src_file;
+		filenameIO.wdst_file = dst_file;
+
+		// perform the transformation
+		return LosslessTransform(&filenameIO, operation, NULL, perfect);
+
+	} catch(const char *text) {
+		FreeImage_OutputMessageProc(FIF_JPEG, text);
+	}
+#endif /// _WIN32
+	return FALSE;
+}
+
+BOOL DLL_CALLCONV 
+FreeImage_JPEGCropU(const wchar_t *src_file, const wchar_t *dst_file, int left, int top, int right, int bottom) {
+#ifdef _WIN32
+	char crop[64];
+
+	try {
+		// check the src file format
+		if(FreeImage_GetFileTypeU(src_file) != FIF_JPEG) {
+			throw FI_MSG_ERROR_MAGIC_NUMBER;
+		}
+		
+		// normalize the rectangle
+		if(right < left) {
+			INPLACESWAP(left, right);
+		}
+		if(bottom < top) {
+			INPLACESWAP(top, bottom);
+		}
+
+		// build the crop option
+		sprintf(crop, "%dx%d+%d+%d", right - left, bottom - top, left, top);
+
+		// setup IO
+		FilenameIO filenameIO;
+		memset(&filenameIO, 0, sizeof(FilenameIO));
+		filenameIO.wsrc_file = src_file;
+		filenameIO.wdst_file = dst_file;
+
+		// perform the transformation
+		return LosslessTransform(&filenameIO, FIJPEG_OP_NONE, crop, FALSE);
+
+	} catch(const char *text) {
+		FreeImage_OutputMessageProc(FIF_JPEG, text);
+	}
+#endif // _WIN32
+	return FALSE;
+}
+
