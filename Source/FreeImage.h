@@ -5,6 +5,8 @@
 // - Floris van den Berg (flvdberg@wxs.nl)
 // - Hervé Drolon (drolon@infonie.fr)
 //
+// Modified by nyfair (nyfair2012@gmail.com)
+//
 // Contributors:
 // - see changes log named 'Whatsnew.txt', see header of each .h and .cpp file
 //

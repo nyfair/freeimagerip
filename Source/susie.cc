@@ -120,9 +120,9 @@ int GetPictureEx(FIBITMAP* dib, FREE_IMAGE_FORMAT fmt,
 	switch(bpp_real) {
 		case 24:
 			RGBTRIPLE *rgb;
-			for(int y = height-1; y; y--) {
+			for(unsigned int y = height-1; y; y--) {
 				rgb = (RGBTRIPLE *) FreeImage_GetScanLine(dib, height-1-y);
-				for(int x = 0; x < width; x++) {
+				for(unsigned int x = 0; x < width; x++) {
 					((BYTE *)bitmap)[0] = rgb[x].rgbtBlue;
 					((BYTE *)bitmap)[1] = rgb[x].rgbtGreen;
 					((BYTE *)bitmap)[2] = rgb[x].rgbtRed;
@@ -133,9 +133,9 @@ int GetPictureEx(FIBITMAP* dib, FREE_IMAGE_FORMAT fmt,
 			break;
 		case 32:
 			RGBQUAD *rgba;
-			for(int y = height-1; y; y--) {
+			for(unsigned int y = height-1; y; y--) {
 				rgba = (RGBQUAD *) FreeImage_GetScanLine(dib, height-1-y);
-				for(int x = 0; x < width; x++) {
+				for(unsigned int x = 0; x < width; x++) {
 					((BYTE *)bitmap)[0] = rgba[x].rgbBlue;
 					((BYTE *)bitmap)[1] = rgba[x].rgbGreen;
 					((BYTE *)bitmap)[2] = rgba[x].rgbRed;
@@ -145,7 +145,7 @@ int GetPictureEx(FIBITMAP* dib, FREE_IMAGE_FORMAT fmt,
 			}
 			break;
 		case 8:
-			for(int y = height-1; y; y--) {
+			for(unsigned int y = height-1; y; y--) {
 				BYTE *line = FreeImage_GetScanLine(dib, height-1-y);
 				memcpy(bitmap, line, width);
 				bitmap = (BYTE *)bitmap + line_size;
@@ -154,9 +154,9 @@ int GetPictureEx(FIBITMAP* dib, FREE_IMAGE_FORMAT fmt,
 		case 48:
 			pinfo->bmiHeader.biBitCount = 24;
 			FIRGB16 *rgb16;
-			for(int y = height-1; y; y--) {
+			for(unsigned int y = height-1; y; y--) {
 				rgb16 = (FIRGB16 *) FreeImage_GetScanLine(dib, height-1-y);
-				for(int x = 0; x < width; x++) {
+				for(unsigned int x = 0; x < width; x++) {
 					((BYTE *)bitmap)[0] = (BYTE)(rgb16[x].blue >> 8);
 					((BYTE *)bitmap)[1] = (BYTE)(rgb16[x].green >> 8);
 					((BYTE *)bitmap)[2] = (BYTE)(rgb16[x].red >> 8);
@@ -168,9 +168,9 @@ int GetPictureEx(FIBITMAP* dib, FREE_IMAGE_FORMAT fmt,
 		case 64:
 			pinfo->bmiHeader.biBitCount = 32;
 			FIRGBA16 *rgba16;
-			for(int y = height-1; y; y--) {
+			for(unsigned int y = height-1; y; y--) {
 				rgba16 = (FIRGBA16 *) FreeImage_GetScanLine(dib, height-1-y);
-				for(int x = 0; x < width; x++) {
+				for(unsigned int x = 0; x < width; x++) {
 					((BYTE *)bitmap)[0] = (BYTE)(rgba16[x].blue >> 8);
 					((BYTE *)bitmap)[1] = (BYTE)(rgba16[x].green >> 8);
 					((BYTE *)bitmap)[2] = (BYTE)(rgba16[x].red >> 8);
@@ -182,9 +182,9 @@ int GetPictureEx(FIBITMAP* dib, FREE_IMAGE_FORMAT fmt,
 		case 96:
 			pinfo->bmiHeader.biBitCount = 24;
 			FIRGBF *rgbf;
-			for(int y = height-1; y; y--) {
+			for(unsigned int y = height-1; y; y--) {
 				rgbf = (FIRGBF *) FreeImage_GetScanLine(dib, height-1-y);
-				for(int x = 0; x < width; x++) {
+				for(unsigned int x = 0; x < width; x++) {
 					((BYTE *)bitmap)[0] = (BYTE)(rgbf[x].blue * 256);
 					((BYTE *)bitmap)[1] = (BYTE)(rgbf[x].green * 256);
 					((BYTE *)bitmap)[2] = (BYTE)(rgbf[x].red * 256);
@@ -196,9 +196,9 @@ int GetPictureEx(FIBITMAP* dib, FREE_IMAGE_FORMAT fmt,
 		case 128:
 			pinfo->bmiHeader.biBitCount = 32;
 			FIRGBAF *rgbaf;
-			for(int y = height-1; y; y--) {
-				rgbf = (FIRGBF *) FreeImage_GetScanLine(dib, height-1-y);
-				for(int x = 0; x < width; x++) {
+			for(unsigned int y = height-1; y; y--) {
+				rgbaf = (FIRGBAF *) FreeImage_GetScanLine(dib, height-1-y);
+				for(unsigned int x = 0; x < width; x++) {
 					((BYTE *)bitmap)[0] = (BYTE)(rgbaf[x].blue * 256);
 					((BYTE *)bitmap)[1] = (BYTE)(rgbaf[x].green * 256);
 					((BYTE *)bitmap)[2] = (BYTE)(rgbaf[x].red * 256);
