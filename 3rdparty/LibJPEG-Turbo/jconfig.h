@@ -1,9 +1,9 @@
 /* jconfig.vc --- jconfig.h for Microsoft Visual C++ on Windows 95 or NT. */
 /* see jconfig.txt for explanations */
 
-#define JPEG_LIB_VERSION 80
-/* #undef C_ARITH_CODING_SUPPORTED */
-/* #undef D_ARITH_CODING_SUPPORTED */
+#define JPEG_LIB_VERSION 62
+#define C_ARITH_CODING_SUPPORTED
+#define D_ARITH_CODING_SUPPORTED
 
 #define HAVE_PROTOTYPES
 #define HAVE_UNSIGNED_CHAR
@@ -30,9 +30,17 @@ typedef unsigned char boolean;
 typedef short INT16;
 typedef signed int INT32;
 #endif
-#define XMD_H		/* prevent jmorecfg.h from redefining it */
+#define XMD_H                   /* prevent jmorecfg.h from redefining it */
 
-#define inline __inline
+#ifndef INLINE
+#if defined(__GNUC__)
+#define INLINE __attribute__((always_inline))
+#elif defined(_MSC_VER)
+#define INLINE __forceinline
+#else
+#define INLINE
+#endif
+#endif
 
 #ifdef JPEG_INTERNALS
 
