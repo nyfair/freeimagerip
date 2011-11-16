@@ -343,7 +343,7 @@ FreeImage_LoadFromHandle(FREE_IMAGE_FORMAT fif, FreeImageIO *io, fi_handle handl
 					
 					void *data = FreeImage_Open(node, io, handle, TRUE);
 					
-					bitmap = node->m_plugin->load_proc(io, handle, -1, flags, data);
+					bitmap = node->m_plugin->load_proc(io, handle, flags, data);
 					
 					FreeImage_Close(node, io, handle, data);
 					
@@ -414,7 +414,7 @@ FreeImage_SaveToHandle(FREE_IMAGE_FORMAT fif, FIBITMAP *dib, FreeImageIO *io, fi
 
 					void *data = FreeImage_Open(node, io, handle, FALSE);
 					
-					result = node->m_plugin->save_proc(io, dib, handle, -1, flags, data);
+					result = node->m_plugin->save_proc(io, dib, handle, flags, data);
 					
 					FreeImage_Close(node, io, handle, data);
 					

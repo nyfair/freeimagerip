@@ -661,13 +661,8 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 		FIBITMAP *icon_dib = NULL;
 
 		// load all icons
-		for(k = 0; k < icon_header->idCount; k++) {
-			icon_dib = Load(io, handle, k, flags, data);
-			if(!icon_dib) {
-				throw FI_MSG_ERROR_DIB_MEMORY;
-			}
-			vPages.push_back(icon_dib);
-		}
+		icon_dib = Load(io, handle, flags, data);
+		vPages.push_back(icon_dib);
 
 		// add the page
 		icon_dib = FreeImage_Clone(dib);
