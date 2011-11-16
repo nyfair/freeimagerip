@@ -92,7 +92,7 @@ SupportsNoPixels() {
 // ----------------------------------------------------------
 
 static FIBITMAP * DLL_CALLCONV
-Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
+Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 	if(handle) {
 		psdParser parser;
 		
@@ -118,8 +118,6 @@ InitPSD(Plugin *plugin, int format_id) {
 	plugin->regexpr_proc = NULL;
 	plugin->open_proc = NULL;
 	plugin->close_proc = NULL;
-	plugin->pagecount_proc = NULL;
-	plugin->pagecapability_proc = NULL;
 	plugin->load_proc = Load;
 	plugin->save_proc = NULL;
 	plugin->validate_proc = Validate;

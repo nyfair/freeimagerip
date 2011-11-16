@@ -53,14 +53,6 @@ struct GIFinfo {
 	}
 };
 
-struct PageInfo {
-	PageInfo(int d, int l, int t, int w, int h) { 
-		disposal_method = d; left = (WORD)l; top = (WORD)t; width = (WORD)w; height = (WORD)h; 
-	}
-	int disposal_method;
-	WORD left, top, width, height;
-};
-
 //GIF defines a max of 12 bits per code
 #define MAX_LZW_CODE			4096
 
@@ -604,29 +596,13 @@ Close(FreeImageIO *io, fi_handle handle, void *data) {
 	delete info;
 }
 
-static int DLL_CALLCONV
-PageCount(FreeImageIO *io, fi_handle handle, void *data) {
-	if( data == NULL ) {
-		return 0;
-	}
-	GIFinfo *info = (GIFinfo *)data;
-
-	return (int) info->image_descriptor_offsets.size();
-}
-
 static FIBITMAP * DLL_CALLCONV 
-Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
+Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 	if( data == NULL ) {
 		return NULL;
 	}
 	GIFinfo *info = (GIFinfo *)data;
-
-	if( page == -1 ) {
-		page = 0;
-	}
-	if( page < 0 || page >= (int)info->image_descriptor_offsets.size() ) {
-		return NULL;
-	}
+	int page = 0;
 
 	FIBITMAP *dib = NULL;
 	try {
@@ -635,145 +611,6 @@ Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
 		WORD left, top, width, height;
 		BYTE packed, b;
 		WORD w;
-
-		//playback pages to generate what the user would see for this frame
-		if( (flags & GIF_PLAYBACK) == GIF_PLAYBACK ) {
-			//Logical Screen Descriptor
-			io->seek_proc(handle, 6, SEEK_SET);
-			WORD logicalwidth, logicalheight;
-			io->read_proc(&logicalwidth, 2, 1, handle);
-			io->read_proc(&logicalheight, 2, 1, handle);
-#ifdef FREEIMAGE_BIGENDIAN
-			SwapShort(&logicalwidth);
-			SwapShort(&logicalheight);
-#endif
-			//set the background color with 0 alpha
-			RGBQUAD background;
-			if( info->global_color_table_offset != 0 && info->background_color < info->global_color_table_size ) {
-				io->seek_proc(handle, (long)(info->global_color_table_offset + (info->background_color * 3)), SEEK_SET);
-				io->read_proc(&background.rgbRed, 1, 1, handle);
-				io->read_proc(&background.rgbGreen, 1, 1, handle);
-				io->read_proc(&background.rgbBlue, 1, 1, handle);
-			} else {
-				background.rgbRed = 0;
-				background.rgbGreen = 0;
-				background.rgbBlue = 0;
-			}
-			background.rgbReserved = 0;
-
-			//allocate entire logical area
-			dib = FreeImage_Allocate(logicalwidth, logicalheight, 32);
-			if( dib == NULL ) {
-				throw FI_MSG_ERROR_DIB_MEMORY;
-			}
-
-			//fill with background color to start
-			int x, y;
-			RGBQUAD *scanline;
-			for( y = 0; y < logicalheight; y++ ) {
-				scanline = (RGBQUAD *)FreeImage_GetScanLine(dib, y);
-				for( x = 0; x < logicalwidth; x++ ) {
-					*scanline++ = background;
-				}
-			}
-
-			//cache some info about each of the pages so we can avoid decoding as many of them as possible
-			std::vector<PageInfo> pageinfo;
-			int start = page, end = page;
-			while( start >= 0 ) {
-				//Graphic Control Extension
-				io->seek_proc(handle, (long)(info->graphic_control_extension_offsets[start] + 1), SEEK_SET);
-				io->read_proc(&packed, 1, 1, handle);
-				have_transparent = (packed & GIF_PACKED_GCE_HAVETRANS) ? true : false;
-				disposal_method = (packed & GIF_PACKED_GCE_DISPOSAL) >> 2;
-				//Image Descriptor
-				io->seek_proc(handle, (long)(info->image_descriptor_offsets[start]), SEEK_SET);
-				io->read_proc(&left, 2, 1, handle);
-				io->read_proc(&top, 2, 1, handle);
-				io->read_proc(&width, 2, 1, handle);
-				io->read_proc(&height, 2, 1, handle);
-#ifdef FREEIMAGE_BIGENDIAN
-				SwapShort(&left);
-				SwapShort(&top);
-				SwapShort(&width);
-				SwapShort(&height);
-#endif
-
-				pageinfo.push_back(PageInfo(disposal_method, left, top, width, height));
-
-				if( start != end ) {
-					if( left == 0 && top == 0 && width == logicalwidth && height == logicalheight ) {
-						if( disposal_method == GIF_DISPOSAL_BACKGROUND ) {
-							pageinfo.pop_back();
-							start++;
-							break;
-						} else if( disposal_method != GIF_DISPOSAL_PREVIOUS ) {
-							if( !have_transparent ) {
-								break;
-							}
-						}
-					}
-				}
-				start--;
-			}
-			if( start < 0 ) {
-				start = 0;
-			}
-
-			//draw each page into the logical area
-			delay_time = 0;
-			for( page = start; page <= end; page++ ) {
-				PageInfo &info = pageinfo[end - page];
-				//things we can skip having to decode
-				if( page != end ) {
-					if( info.disposal_method == GIF_DISPOSAL_PREVIOUS ) {
-						continue;
-					}
-					if( info.disposal_method == GIF_DISPOSAL_BACKGROUND ) {
-						for( y = 0; y < info.height; y++ ) {
-							scanline = (RGBQUAD *)FreeImage_GetScanLine(dib, logicalheight - (y + info.top) - 1) + info.left;
-							for( x = 0; x < info.width; x++ ) {
-								*scanline++ = background;
-							}
-						}
-						continue;
-					}
-				}
-
-				//decode page
-				FIBITMAP *pagedib = Load(io, handle, page, GIF_LOAD256, data);
-				if( pagedib != NULL ) {
-					RGBQUAD *pal = FreeImage_GetPalette(pagedib);
-					have_transparent = false;
-					if( FreeImage_IsTransparent(pagedib) ) {
-						int count = FreeImage_GetTransparencyCount(pagedib);
-						BYTE *table = FreeImage_GetTransparencyTable(pagedib);
-						for( int i = 0; i < count; i++ ) {
-							if( table[i] == 0 ) {
-								have_transparent = true;
-								transparent_color = i;
-								break;
-							}
-						}
-					}
-					//copy page data into logical buffer, with full alpha opaqueness
-					for( y = 0; y < info.height; y++ ) {
-						scanline = (RGBQUAD *)FreeImage_GetScanLine(dib, logicalheight - (y + info.top) - 1) + info.left;
-						BYTE *pageline = FreeImage_GetScanLine(pagedib, info.height - y - 1);
-						for( x = 0; x < info.width; x++ ) {
-							if( !have_transparent || *pageline != transparent_color ) {
-								*scanline = pal[*pageline];
-								scanline->rgbReserved = 255;
-							}
-							scanline++;
-							pageline++;
-						}
-					}
-					FreeImage_Unload(pagedib);
-				}
-			}
-			return dib;
-		}
 
 		//get the actual frame image data for a single frame
 
@@ -997,15 +834,13 @@ Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
 }
 
 static BOOL DLL_CALLCONV 
-Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int page, int flags, void *data) {
+Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 	if( data == NULL ) {
 		return FALSE;
 	}
 	//GIFinfo *info = (GIFinfo *)data;
 
-	if( page == -1 ) {
-		page = 0;
-	}
+	int page = 0;
 
 	try {
 		BYTE packed, b;
@@ -1252,8 +1087,6 @@ InitGIF(Plugin *plugin, int format_id) {
 	plugin->regexpr_proc = RegExpr;
 	plugin->open_proc = Open;
 	plugin->close_proc = Close;
-	plugin->pagecount_proc = PageCount;
-	plugin->pagecapability_proc = NULL;
 	plugin->load_proc = Load;
 	plugin->save_proc = Save;
 	plugin->validate_proc = Validate;

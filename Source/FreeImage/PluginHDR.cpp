@@ -587,7 +587,7 @@ SupportsNoPixels() {
 // --------------------------------------------------------------------------
 
 static FIBITMAP * DLL_CALLCONV
-Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
+Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 	FIBITMAP *dib = NULL;
 
 	if(!handle) {
@@ -639,7 +639,7 @@ Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
 }
 
 static BOOL DLL_CALLCONV
-Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int page, int flags, void *data) {
+Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 	if(!dib) return FALSE;
 
 	if(FreeImage_GetImageType(dib) != FIT_RGBF) {
@@ -683,8 +683,6 @@ InitHDR(Plugin *plugin, int format_id) {
 	plugin->regexpr_proc = RegExpr;
 	plugin->open_proc = NULL;
 	plugin->close_proc = NULL;
-	plugin->pagecount_proc = NULL;
-	plugin->pagecapability_proc = NULL;
 	plugin->load_proc = Load;
 	plugin->save_proc = Save;
 	plugin->validate_proc = Validate;

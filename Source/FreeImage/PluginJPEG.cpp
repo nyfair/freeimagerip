@@ -771,14 +771,6 @@ write_markers(j_compress_ptr cinfo, FIBITMAP *dib) {
 static void 
 store_size_info(FIBITMAP *dib, JDIMENSION width, JDIMENSION height) {}
 
-// ------------------------------------------------------------
-//   Rotate a dib according to Exif info
-// ------------------------------------------------------------
-
-static void 
-rotate_exif(FIBITMAP **dib) {}
-
-
 // ==========================================================
 // Plugin Implementation
 // ==========================================================
@@ -844,7 +836,7 @@ SupportsNoPixels() {
 // ----------------------------------------------------------
 
 static FIBITMAP * DLL_CALLCONV
-Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
+Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 	if (handle) {
 		FIBITMAP *dib = NULL;
 
@@ -1022,11 +1014,6 @@ Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
 
 			jpeg_destroy_decompress(&cinfo);
 
-			// check for automatic Exif rotation
-			if(!header_only && ((flags & JPEG_EXIFROTATE) == JPEG_EXIFROTATE)) {
-				rotate_exif(&dib);
-			}
-
 			// everything went well. return the loaded dib
 
 			return dib;
@@ -1043,7 +1030,7 @@ Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
 // ----------------------------------------------------------
 
 static BOOL DLL_CALLCONV
-Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int page, int flags, void *data) {
+Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 	if ((dib) && (handle)) {
 		try {
 			// Check dib format
@@ -1332,8 +1319,6 @@ InitJPEG(Plugin *plugin, int format_id) {
 	plugin->regexpr_proc = RegExpr;
 	plugin->open_proc = NULL;
 	plugin->close_proc = NULL;
-	plugin->pagecount_proc = NULL;
-	plugin->pagecapability_proc = NULL;
 	plugin->load_proc = Load;
 	plugin->save_proc = Save;
 	plugin->validate_proc = Validate;

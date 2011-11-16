@@ -53,7 +53,6 @@ SET(3RDPARTY_DIR ${PROJECT_DIR}/../3rdparty/)
 ADD_SUBDIRECTORY(HDPhoto)
 ADD_SUBDIRECTORY(LibJPEG-Turbo)
 ADD_SUBDIRECTORY(LibPNG)
-ADD_SUBDIRECTORY(LibTIFF)
 ADD_SUBDIRECTORY(LibWebP)
 ADD_SUBDIRECTORY(Zlib)
 
@@ -89,10 +88,8 @@ SET(SOURCE_FILES
 	${PROJECT_DIR}/FreeImage/PluginPNG.cpp
 	${PROJECT_DIR}/FreeImage/PluginPSD.cpp
 	${PROJECT_DIR}/FreeImage/PluginTARGA.cpp
-	${PROJECT_DIR}/FreeImage/PluginTIFF.cpp
 	${PROJECT_DIR}/FreeImage/PluginWEBP.cpp
 	${PROJECT_DIR}/FreeImage/PSDParser.cpp
-	${PROJECT_DIR}/FreeImage/TIFFLogLuv.cpp
 	${PROJECT_DIR}/FreeImage/tmoColorConvert.cpp
 	${PROJECT_DIR}/FreeImage/tmoDrago03.cpp
 	${PROJECT_DIR}/FreeImage/tmoFattal02.cpp
@@ -123,7 +120,6 @@ INCLUDE_DIRECTORIES(
 	${3RDPARTY_DIR}/HDPhoto/systems/tools/wmpmetalib/
 	${3RDPARTY_DIR}/LibJPEG-Turbo/
 	${3RDPARTY_DIR}/LibPNG/
-	${3RDPARTY_DIR}/LibTIFF/
 	${3RDPARTY_DIR}/LibWebP/src/
 	${3RDPARTY_DIR}/Zlib/
 )
@@ -148,7 +144,6 @@ ADD_DEPENDENCIES(freeimage
 	HDPhoto
 	LibJPEG
 	LibPNG
-	LibTIFF
 	LibWebP
 	Zlib
 )
@@ -157,7 +152,6 @@ TARGET_LINK_LIBRARIES(freeimage
 	HDPhoto
 	LibJPEG
 	LibPNG
-	LibTIFF
 	LibWebP
 	Zlib
 )

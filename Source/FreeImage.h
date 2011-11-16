@@ -108,7 +108,6 @@
 // Bitmap types -------------------------------------------------------------
 
 FI_STRUCT (FIBITMAP) { void *data; };
-FI_STRUCT (FIMULTIBITMAP) { void *data; };
 
 // Types used in the library (directly copied from Windows) -----------------
 
@@ -371,12 +370,11 @@ FI_ENUM(FREE_IMAGE_FORMAT) {
 	FIF_BMP			= 2,
 	FIF_GIF			= 3,
 	FIF_TARGA		= 4,
-	FIF_TIFF		= 5,
-	FIF_WEBP		= 6,
-	FIF_JXR			= 7,
-	FIF_PSD			= 8,
-	FIF_ICO			= 9,
-	FIF_HDR			= 10
+	FIF_WEBP		= 5,
+	FIF_JXR			= 6,
+	FIF_PSD			= 7,
+	FIF_ICO			= 8,
+	FIF_HDR			= 9
 };
 
 /** Image type used in FreeImage.
@@ -551,10 +549,8 @@ typedef const char *(DLL_CALLCONV *FI_ExtensionListProc)(void);
 typedef const char *(DLL_CALLCONV *FI_RegExprProc)(void);
 typedef void *(DLL_CALLCONV *FI_OpenProc)(FreeImageIO *io, fi_handle handle, BOOL read);
 typedef void (DLL_CALLCONV *FI_CloseProc)(FreeImageIO *io, fi_handle handle, void *data);
-typedef int (DLL_CALLCONV *FI_PageCountProc)(FreeImageIO *io, fi_handle handle, void *data);
-typedef int (DLL_CALLCONV *FI_PageCapabilityProc)(FreeImageIO *io, fi_handle handle, void *data);
-typedef FIBITMAP *(DLL_CALLCONV *FI_LoadProc)(FreeImageIO *io, fi_handle handle, int page, int flags, void *data);
-typedef BOOL (DLL_CALLCONV *FI_SaveProc)(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int page, int flags, void *data);
+typedef FIBITMAP *(DLL_CALLCONV *FI_LoadProc)(FreeImageIO *io, fi_handle handle, int flags, void *data);
+typedef BOOL (DLL_CALLCONV *FI_SaveProc)(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data);
 typedef BOOL (DLL_CALLCONV *FI_ValidateProc)(FreeImageIO *io, fi_handle handle);
 typedef const char *(DLL_CALLCONV *FI_MimeProc)(void);
 typedef BOOL (DLL_CALLCONV *FI_SupportsExportBPPProc)(int bpp);
@@ -569,8 +565,6 @@ FI_STRUCT (Plugin) {
 	FI_RegExprProc regexpr_proc;
 	FI_OpenProc open_proc;
 	FI_CloseProc close_proc;
-	FI_PageCountProc pagecount_proc;
-	FI_PageCapabilityProc pagecapability_proc;
 	FI_LoadProc load_proc;
 	FI_SaveProc save_proc;
 	FI_ValidateProc validate_proc;
@@ -594,7 +588,6 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define BMP_SAVE_RLE		1
 #define GIF_DEFAULT			0
 #define GIF_LOAD256			1			// Load the image as a 256 color image with ununsed palette entries, if it's 16 or 2 color
-#define GIF_PLAYBACK		2			// 'Play' the GIF to generate each frame (as 32bpp) instead of returning raw frame data when loading
 #define HDR_DEFAULT			0
 #define ICO_DEFAULT		 	0
 #define ICO_MAKEALPHA		1			// convert to 32bpp and create an alpha channel from the AND-mask when loading
@@ -602,7 +595,6 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define JPEG_FAST			0x0001	// load the file as fast as possible, sacrificing some quality
 #define JPEG_ACCURATE	0x0002	// load the file with the best quality, sacrificing some speed
 #define JPEG_CMYK			0x0004	// load separated CMYK "as is" (use | to combine with other load flags)
-#define JPEG_EXIFROTATE		0x0008		// load and rotate according to Exif 'Orientation' tag if available
 #define JPEG_QUALITYSUPERB	0x0080	// save with superb quality (100:1)
 #define JPEG_QUALITYGOOD	0x0100		// save with good quality (95:1)
 #define JPEG_QUALITYNORMAL	0x0200	// save with normal quality (75:1)
@@ -628,17 +620,6 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define TARGA_DEFAULT		0
 #define TARGA_LOAD_RGB888 1		// If set the loader converts RGB555 and ARGB8888 -> RGB888.
 #define TARGA_SAVE_RLE		2		// If set, the writer saves with RLE compression
-#define TIFF_DEFAULT				0
-#define TIFF_CMYK						0x0001	// reads/stores tags for separated CMYK (use | to combine with compression flags)
-#define TIFF_PACKBITS				0x0100	// save using PACKBITS compression
-#define TIFF_DEFLATE				0x0200	// save using DEFLATE compression (a.k.a. ZLIB compression)
-#define TIFF_ADOBE_DEFLATE	0x0400	// save using ADOBE DEFLATE compression
-#define TIFF_NONE			 			0x0800	// save without any compression
-#define TIFF_CCITTFAX3			0x1000	// save using CCITT Group 3 fax encoding
-#define TIFF_CCITTFAX4			0x2000	// save using CCITT Group 4 fax encoding
-#define TIFF_LZW						0x4000	// save using LZW compression
-#define TIFF_JPEG						0x8000	// save using JPEG compression
-#define TIFF_LOGLUV					0x10000	// save using LogLuv compression
 #define JXR_DEFAULT			10		// save with quality 10
 #define JXR_SUBSAMPLING_420 0x100	// save with medium 2x2 medium chroma subsampling (4:2:0)
 #define JXR_SUBSAMPLING_422 0x200	// save with low 2x1 chroma subsampling (4:2:2) 
@@ -713,9 +694,6 @@ DLL_API BOOL DLL_CALLCONV FreeImage_SeekMemory(FIMEMORY *stream, long offset, in
 DLL_API BOOL DLL_CALLCONV FreeImage_AcquireMemory(FIMEMORY *stream, BYTE **data, DWORD *size_in_bytes);
 DLL_API unsigned DLL_CALLCONV FreeImage_ReadMemory(void *buffer, unsigned size, unsigned count, FIMEMORY *stream);
 DLL_API unsigned DLL_CALLCONV FreeImage_WriteMemory(const void *buffer, unsigned size, unsigned count, FIMEMORY *stream);
-
-DLL_API FIMULTIBITMAP *DLL_CALLCONV FreeImage_LoadMultiBitmapFromMemory(FREE_IMAGE_FORMAT fif, FIMEMORY *stream, int flags FI_DEFAULT(0));
-DLL_API BOOL DLL_CALLCONV FreeImage_SaveMultiBitmapToMemory(FREE_IMAGE_FORMAT fif, FIMULTIBITMAP *bitmap, FIMEMORY *stream, int flags);
 
 // Plugin Interface ---------------------------------------------------------
 
