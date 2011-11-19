@@ -1,12 +1,7 @@
 -- The file is in public domain
 -- nyfair (nyfair2012@gmail.com)
 
-local os = require('os')
 local ffi = require('ffi')
-
-if string.find(os.getenv('os'),'Win') then
-	win32 = true
-end
 local filua = ffi.load('freeimage')
 ffi.cdef[[
 	const char* __stdcall FreeImage_GetVersion();
@@ -63,7 +58,7 @@ function getFIFFromFileName(name)
 	return filua.FreeImage_GetFIFFromFilename(name)
 end
 
-function GetFIFCount()
+function getFIFCount()
 	return filua.FreeImage_GetFIFCount()
 end
 
@@ -84,7 +79,7 @@ function getFIFMimeType(fif)
 end
 
 function showSupportFormat()
-	count = GetFIFCount()
+	count = getFIFCount()
 	for i = 0, count-1 do
 		print(ffi.string(getFormatFromFIF(i))..'\t'..
 					ffi.string(getFIFExtensionList(i))..'\t'..
