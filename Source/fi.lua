@@ -1,7 +1,7 @@
 -- The file is in public domain
 -- nyfair (nyfair2012@gmail.com)
 
-local ffi = require('ffi')
+local ffi = require 'ffi'
 local filua = ffi.load('freeimage')
 ffi.cdef[[
 	const char* __stdcall FreeImage_GetVersion();
@@ -142,12 +142,22 @@ end
 
 -- Convert
 function convert(src, dst, flag)
-	local cache = loadImage(src)
-	saveImage(dst, cache, flag)
+	local pic = loadImage(src)
+	saveImage(dst, pic, flag)
+	unloadImage(pic)
 end
 
 function imgdec(src)
-	convert(src, src..'.bmp', 0)
+	convert(src, stripext(src)..'.bmp', 0)
+end
+
+function topng(src)
+	convert(src, stripext(src)..'.png', 9)
+end
+
+function tojpg(src)
+	-- 95quality+8192progressive
+	convert(src, stripext(src)..'.jpg', 8287)
 end
 
 -- Process
@@ -185,4 +195,14 @@ function combinealpha(back, front, out, flag)
 	unloadImage(pic1)
 	unloadImage(pic2)
 	unloadImage(pic3)
+end
+
+-- Helper
+function stripext(fn)
+	local idx = fn:match('.+()%.%w+$')
+	if(idx) then
+		return fn:sub(1, idx-1)
+	else
+		return fn
+	end
 end
