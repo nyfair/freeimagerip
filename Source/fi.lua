@@ -4,8 +4,6 @@
 local ffi = require 'ffi'
 local filua = ffi.load('freeimage')
 ffi.cdef[[
-	const char* __stdcall FreeImage_GetVersion();
-	
 	typedef struct { uint8_t r, g, b, a; } RGBA;
 	typedef struct { uint8_t r, g, b; } RGB;
 	
@@ -44,7 +42,6 @@ ffi.cdef[[
 	int __stdcall FreeImage_FlipHorizontal(void*);
 	int __stdcall FreeImage_FlipVertical(void*);
 	void*	__stdcall FreeImage_Rescale(void*, int, int, int);
-	void* __stdcall FreeImage_Copy(void*, int, int, int, int);
 	int __stdcall FreeImage_JPEGTransform(const char*, const char*, int, int);
 	int __stdcall FreeImage_JPEGCrop(const char *, const char*, int, int, int, int);
 	
@@ -107,8 +104,8 @@ function unloadImage(image_ptr)
 	filua.FreeImage_Unload(image_ptr)
 end
 
-function createImage(width, height)
-	filua.FreeImage_Allocate(width, height, 8, 0, 0, 0)
+function createImage(width, height, bpp)
+	filua.FreeImage_Allocate(width, height, bpp, 0, 0, 0)
 end
 
 -- Common Info
@@ -160,9 +157,50 @@ function tojpg(src)
 	convert(src, stripext(src)..'.jpg', 8287)
 end
 
+function convert8(src)
+	local pic = loadImage(src)
+	out = FreeImage_ConvertTo8Bits(pic)
+	unloadImage(pic)
+	return out
+end
+
+function convert24(src)
+	local pic = loadImage(src)
+	out = FreeImage_ConvertTo24Bits(pic)
+	unloadImage(pic)
+	return out
+end
+
+function convert32(src)
+	local pic = loadImage(src)
+	out = FreeImage_ConvertTo32Bits(pic)
+	unloadImage(pic)
+	return out
+end
+
 -- Process
 function rotate(image_ptr, degree)
 	return filua.FreeImage_Rotate(image_ptr, degree, nil)
+end
+
+function fliphorizontal(image_ptr)
+	return filua.FreeImage_FlipHorizontal(image_ptr)
+end
+
+function flipvertical(image_ptr)
+	return filua.FreeImage_FlipVertical(image_ptr)
+end
+
+function rescale(image_ptr, width, height)
+	return filua.FreeImage_Rescale(image_ptr, width, height, 5)
+end
+
+function jpgtransform(src, dst, op)
+	filua.FreeImage_JPEGTransform(src, dst, op, 0)
+end
+
+function jpgcrop(src, dst, left, top, right, bottom)
+	filua.FreeImage_JPEGCrop(src, dst, left, top, right, bottom)
 end
 
 -- Composite

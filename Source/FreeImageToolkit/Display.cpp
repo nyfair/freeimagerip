@@ -45,6 +45,7 @@ FreeImage_Composite(FIBITMAP *fg, BOOL useFileBkg, RGBQUAD *appBkColor, FIBITMAP
 	int width  = FreeImage_GetWidth(fg);
 	int height = FreeImage_GetHeight(fg);
 	int bpp    = FreeImage_GetBPP(fg);
+	int bg_bpp = 24;
 
 	if((bpp != 8) && (bpp != 32))
 		return NULL;
@@ -52,13 +53,13 @@ FreeImage_Composite(FIBITMAP *fg, BOOL useFileBkg, RGBQUAD *appBkColor, FIBITMAP
 	if(bg) {
 		int bg_width  = FreeImage_GetWidth(bg);
 		int bg_height = FreeImage_GetHeight(bg);
-		int bg_bpp    = FreeImage_GetBPP(bg);
-		if((bg_width != width) || (bg_height != height) || (bg_bpp != 24))
+		bg_bpp = FreeImage_GetBPP(bg);
+		if((bg_width != width) || (bg_height != height) || (bg_bpp < 24))
 			return NULL;
 	}
 
 	int bytespp = (bpp == 8) ? 1 : 4;
-
+	int backbytespp = bg_bpp >> 3;
 	
 	int x, y, c;
 	BYTE alpha = 0, not_alpha;
@@ -70,7 +71,7 @@ FreeImage_Composite(FIBITMAP *fg, BOOL useFileBkg, RGBQUAD *appBkColor, FIBITMAP
 	memset(&bkc, 0, sizeof(RGBQUAD));
 
 	// allocate the composite image
-	FIBITMAP *composite = FreeImage_Allocate(width, height, 24, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK);
+	FIBITMAP *composite = FreeImage_Allocate(width, height, bg_bpp, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK);
 	if(!composite) return NULL;
 
 	// get the palette
@@ -139,6 +140,7 @@ FreeImage_Composite(FIBITMAP *fg, BOOL useFileBkg, RGBQUAD *appBkColor, FIBITMAP
 					bkc.rgbBlue  = bg_bits[FI_RGBA_BLUE];
 					bkc.rgbGreen = bg_bits[FI_RGBA_GREEN];
 					bkc.rgbRed   = bg_bits[FI_RGBA_RED];
+					if(bg_bpp == 32) bkc.rgbReserved = bg_bits[FI_RGBA_ALPHA];
 				}
 				else {
 					// use a checkerboard pattern
@@ -171,10 +173,11 @@ FreeImage_Composite(FIBITMAP *fg, BOOL useFileBkg, RGBQUAD *appBkColor, FIBITMAP
 				cp_bits[FI_RGBA_GREEN] = (BYTE)((alpha * (WORD)fgc.rgbGreen + not_alpha * (WORD)bkc.rgbGreen) >> 8);
 				cp_bits[FI_RGBA_RED] = (BYTE)((alpha * (WORD)fgc.rgbRed   + not_alpha * (WORD)bkc.rgbRed) >> 8);
 			}
+			if(bg_bpp == 32) cp_bits[FI_RGBA_ALPHA] = bkc.rgbReserved;
 
 			fg_bits += bytespp;
-			bg_bits += 3;
-			cp_bits += 3;
+			bg_bits += backbytespp;
+			cp_bits += backbytespp;
 		}
 	}
 
