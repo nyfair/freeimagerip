@@ -105,7 +105,7 @@ function unloadImage(image_ptr)
 end
 
 function createImage(width, height, bpp)
-	filua.FreeImage_Allocate(width, height, bpp, 0, 0, 0)
+	return filua.FreeImage_Allocate(width, height, bpp, 0, 0, 0)
 end
 
 -- Common Info
@@ -159,21 +159,21 @@ end
 
 function convert8(src)
 	local pic = loadImage(src)
-	out = FreeImage_ConvertTo8Bits(pic)
+	out = filua.FreeImage_ConvertTo8Bits(pic)
 	unloadImage(pic)
 	return out
 end
 
 function convert24(src)
 	local pic = loadImage(src)
-	out = FreeImage_ConvertTo24Bits(pic)
+	out = filua.FreeImage_ConvertTo24Bits(pic)
 	unloadImage(pic)
 	return out
 end
 
 function convert32(src)
 	local pic = loadImage(src)
-	out = FreeImage_ConvertTo32Bits(pic)
+	out = filua.FreeImage_ConvertTo32Bits(pic)
 	unloadImage(pic)
 	return out
 end
@@ -208,8 +208,8 @@ function copy(image_ptr, left, top, right, bottom)
 	return filua.FreeImage_Copy(image_ptr, left, top, right, bottom)
 end
 
-function paste(dst_ptr, src_ptr, left, top, alpha)
-	return filua.FreeImage_Paste(dst_ptr, src_ptr, left, top, alpha)
+function paste(dst_ptr, src_ptr, left, top)
+	return filua.FreeImage_Paste(dst_ptr, src_ptr, left, top, 255)
 end
 
 function composite(front_ptr, usebg, rgba, back_ptr)
@@ -219,7 +219,7 @@ end
 function combine(back, front, out, left, top, flag)
 	local pic1 = loadImage(back)
 	local pic2 = loadImage(front)
-	paste(pic1, pic2, left, top, 255)
+	paste(pic1, pic2, left, top)
 	saveImage(out, pic1, flag)
 	unloadImage(pic1)
 	unloadImage(pic2)
@@ -233,6 +233,42 @@ function combinealpha(back, front, out, flag)
 	unloadImage(pic1)
 	unloadImage(pic2)
 	unloadImage(pic3)
+end
+
+function jointx(imgarray, out, flag)
+	local w = 0
+	local dibarray = {}
+	for i,v in ipairs(imgarray) do
+		dibarray[i] = loadImage(v)
+		w = w + getWidth(dibarray[i])
+	end
+	pic = createImage(w, getHeight(dibarray[0]), getBPP(dibarray[0]))
+	w = 0;
+	for i,v in ipairs(dibarray) do
+		paste(pic, v, w, 0)
+		w = w + getWidth(v)
+		unloadImage(v)
+	end
+	saveImage(out, pic, flag)
+	unloadImage(pic)
+end
+
+function jointy(imgarray, out, flag)
+	local h = 0
+	local dibarray = {}
+	for i,v in ipairs(imgarray) do
+		dibarray[i] = loadImage(v)
+		h = h + getHeight(dibarray[i])
+	end
+	pic = createImage(getWidth(dibarray[1]), h, getBPP(dibarray[1]))
+	h = 0;
+	for i,v in ipairs(dibarray) do
+		paste(pic, v, 0, h)
+		h = h + getHeight(v)
+		unloadImage(v)
+	end
+	saveImage(out, pic, flag)
+	unloadImage(pic)
 end
 
 -- Helper
