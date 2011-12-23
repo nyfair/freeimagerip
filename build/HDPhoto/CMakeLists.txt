@@ -19,10 +19,10 @@ SET(SOURCE_FILES
 	${SRC}/image/sys/strcodec.c
 	${SRC}/image/sys/strPredQuant.c
 	${SRC}/image/sys/strTransform.c
-	${SRC}/systems/tools/wmpgluelib/WMPGlue.c
-	${SRC}/systems/tools/wmpgluelib/WMPGluePFC.c
-	${SRC}/systems/tools/wmpgluelib/WMPGlueWmp.c
-	${SRC}/systems/tools/wmpmetalib/WMPMeta.c
+	${SRC}/Systems/tools/WMPGlueLib/WMPGlue.c
+	${SRC}/Systems/tools/WMPGlueLib/WMPGluePFC.c
+	${SRC}/Systems/tools/WMPGlueLib/WMPGlueWmp.c
+	${SRC}/Systems/tools/WMPMetaLib/WMPMeta.c
 )
 
 IF(NOT MSVC)

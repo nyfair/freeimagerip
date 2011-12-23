@@ -591,24 +591,23 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define HDR_DEFAULT			0
 #define ICO_DEFAULT		 	0
 #define ICO_MAKEALPHA		1			// convert to 32bpp and create an alpha channel from the AND-mask when loading
-#define JPEG_DEFAULT		0			// loading (see JPEG_FAST); saving (see JPEG_QUALITYGOOD|JPEG_SUBSAMPLING_420)
-#define JPEG_FAST			0x0001	// load the file as fast as possible, sacrificing some quality
-#define JPEG_ACCURATE	0x0002	// load the file with the best quality, sacrificing some speed
-#define JPEG_CMYK			0x0004	// load separated CMYK "as is" (use | to combine with other load flags)
-#define JPEG_QUALITYSUPERB	0x0080	// save with superb quality (100:1)
-#define JPEG_QUALITYGOOD	0x0100		// save with good quality (95:1)
-#define JPEG_QUALITYNORMAL	0x0200	// save with normal quality (75:1)
-#define JPEG_QUALITYAVERAGE 0x0400	// save with average quality (50:1)
-#define JPEG_QUALITYBAD	 0x0800			// save with bad quality (10:1)
-#define JPEG_PROGRESSIVE	0x2000		// save as a progressive-JPEG (use | to combine with other save flags)
-#define JPEG_SUBSAMPLING_411 0x1000		// save with high 4x1 chroma subsampling (4:1:1) 
-#define JPEG_SUBSAMPLING_420 0x4000		// save with medium 2x2 medium chroma subsampling (4:2:0) - default value
-#define JPEG_SUBSAMPLING_422 0x8000		// save with low 2x1 chroma subsampling (4:2:2) 
-#define JPEG_SUBSAMPLING_444 0x10000	// save with no chroma subsampling (4:4:4)
-#define JPEG_OPTIMIZE		0x20000		// on saving, compute optimal Huffman coding tables (can reduce a few percent of file size)
-#define JPEG_BASELINE		0x40000		// save basic JPEG, without metadata or any markers
-#define PNG_DEFAULT		0
-#define PNG_IGNOREGAMMA		1		// loading: avoid gamma correction
+#define JPEG_DEFAULT		0			// loading (see JPEG_FAST); saving (see JPEG_QUALITYGOOD|JPEG_SUBSAMPLING_420|JPEG_PROGRESSIVE)
+#define JPEG_FAST			0x0001		// load the file as fast as possible, sacrificing some quality
+#define JPEG_ACCURATE		0x0002		// load the file with the best quality, sacrificing some speed
+#define JPEG_CMYK			0x0004		// load separated CMYK "as is" (use | to combine with other load flags)
+#define JPEG_QUALITYSUPERB	0x8000		// save with superb quality (100:1)
+#define JPEG_QUALITYGOOD	0x10000		// save with good quality (95:1)
+#define JPEG_QUALITYNORMAL	0x20000		// save with normal quality (75:1)
+#define JPEG_QUALITYAVERAGE 0x40000		// save with average quality (50:1)
+#define JPEG_QUALITYBAD	 	0x80000		// save with bad quality (10:1)
+#define JPEG_PROGRESSIVE	0x1000		// save as a progressive-JPEG (use | to combine with other save flags)
+#define JPEG_SUBSAMPLING_411 0x800		// save with high 4x1 chroma subsampling (4:1:1) 
+#define JPEG_SUBSAMPLING_420 0x100		// save with medium 2x2 medium chroma subsampling (4:2:0) - default value
+#define JPEG_SUBSAMPLING_422 0x200		// save with low 2x1 chroma subsampling (4:2:2) 
+#define JPEG_SUBSAMPLING_444 0x400		// save with no chroma subsampling (4:4:4)
+#define JPEG_OPTIMIZE		0x2000		// on saving, compute optimal Huffman coding tables (can reduce a few percent of file size)
+#define PNG_DEFAULT			0			// same as PNG_Z_BEST_COMPRESSION
+#define PNG_IGNOREGAMMA		1			// loading: avoid gamma correction
 #define PNG_Z_BEST_SPEED			0x0001	// save using ZLib level 1 compression flag (default value is 6)
 #define PNG_Z_DEFAULT_COMPRESSION	0x0006	// save using ZLib level 6 compression flag (default recommended value)
 #define PNG_Z_BEST_COMPRESSION		0x0009	// save using ZLib level 9 compression flag (default value is 6)
@@ -618,13 +617,15 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define PSD_CMYK			1		// reads tags for separated CMYK (default is conversion to RGB)
 #define PSD_LAB				2		// reads tags for CIELab (default is conversion to RGB)
 #define TARGA_DEFAULT		0
-#define TARGA_LOAD_RGB888 1		// If set the loader converts RGB555 and ARGB8888 -> RGB888.
+#define TARGA_LOAD_RGB888 	1		// If set the loader converts RGB555 and ARGB8888 -> RGB888.
 #define TARGA_SAVE_RLE		2		// If set, the writer saves with RLE compression
-#define JXR_DEFAULT			10		// save with quality 10
+// for hd photo usage, bit 1-2 was for RGB quality and bit 4-5 was for alpha quality
+#define JXR_DEFAULT			0		// save with quality 10 and 4:4:4
 #define JXR_SUBSAMPLING_420 0x100	// save with medium 2x2 medium chroma subsampling (4:2:0)
 #define JXR_SUBSAMPLING_422 0x200	// save with low 2x1 chroma subsampling (4:2:2) 
 #define JXR_SUBSAMPLING_444 0x400	// save with no chroma subsampling (4:4:4) - default value
-#define WEBP_DEFAULT		95		// save with quality 95
+#define JXR_LOSSLESS		0x800	// save lossless hd photo
+#define WEBP_DEFAULT		0		// save with quality 90
 //#define WEBP_SUBSAMPLING_420 0x100	// save with medium 2x2 medium chroma subsampling (4:2:0) - default value
 //#define WEBP_SUBSAMPLING_422 0x200	// save with low 2x1 chroma subsampling (4:2:2) 
 //#define WEBP_SUBSAMPLING_444 0x400	// save with no chroma subsampling (4:4:4)
