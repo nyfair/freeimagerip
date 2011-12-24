@@ -291,6 +291,8 @@ static ERR GetIIDInfo(const char* szExt, const PKIIDInfo** ppInfo)
 
     static PKIIDInfo iidInfo[] = {
         {".wdp", &IID_PKImageWmpEncode, &IID_PKImageWmpDecode},
+        {".hdp", &IID_PKImageWmpEncode, &IID_PKImageWmpDecode},
+        {".jxr", &IID_PKImageWmpEncode, &IID_PKImageWmpDecode},
     };
     size_t i = 0;
 

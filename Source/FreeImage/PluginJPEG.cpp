@@ -697,7 +697,7 @@ jpeg_write_jfxx(j_compress_ptr cinfo, FIBITMAP *dib) {
 	// return the memory block only if its size is within JFXX marker size limit!
 	FIMEMORY *stream = FreeImage_OpenMemory();
 	
-	if(FreeImage_SaveToMemory(FIF_JPEG, thumbnail, stream, JPEG_BASELINE)) {
+	if(FreeImage_SaveToMemory(FIF_JPEG, thumbnail, stream)) {
 		// check that the memory block size is within JFXX marker size limit
 		FreeImage_SeekMemory(stream, 0, SEEK_END);
 		const long eof = FreeImage_TellMemory(stream);
@@ -1033,6 +1033,7 @@ static BOOL DLL_CALLCONV
 Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 	if ((dib) && (handle)) {
 		try {
+			if(flags == 0) flags = JPEG_QUALITYGOOD | JPEG_SUBSAMPLING_420 | JPEG_PROGRESSIVE;
 			// Check dib format
 
 			const char *sError = "only 24-bit highcolor or 8-bit greyscale/palette bitmaps can be saved as JPEG";
@@ -1113,10 +1114,10 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 			}
 
 			// baseline JPEG support
-			if ((flags & JPEG_BASELINE) ==  JPEG_BASELINE) {
-				cinfo.write_JFIF_header = 0;	// No marker for non-JFIF colorspaces
-				cinfo.write_Adobe_marker = 0;	// write no Adobe marker by default				
-			}
+			//if ((flags & JPEG_BASELINE) ==  JPEG_BASELINE) {
+			//	cinfo.write_JFIF_header = 0;	// No marker for non-JFIF colorspaces
+			//	cinfo.write_Adobe_marker = 0;	// write no Adobe marker by default				
+			//}
 
 			// set subsampling options if required
 
@@ -1180,11 +1181,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 			} else 	if ((flags & JPEG_QUALITYSUPERB) == JPEG_QUALITYSUPERB) {
 				quality = 100;
 			} else {
-				if ((flags & 0x7F) == 0) {
-					quality = 95;
-				} else {
-					quality = flags & 0x7F;
-				}
+				quality = flags & 0x7F;
 			}
 
 			jpeg_set_quality(&cinfo, quality, TRUE); /* limit to baseline-JPEG values */
@@ -1195,9 +1192,9 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 
 			// Step 6: Write special markers
 			
-			if ((flags & JPEG_BASELINE) !=  JPEG_BASELINE) {
-				write_markers(&cinfo, dib);
-			}
+			//if ((flags & JPEG_BASELINE) !=  JPEG_BASELINE) {
+			//	write_markers(&cinfo, dib);
+			//}
 
 			// Step 7: while (scan lines remain to be written) 
 

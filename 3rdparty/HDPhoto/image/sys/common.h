@@ -116,4 +116,10 @@ Void AdaptDiscriminant (CAdaptiveHuffman *pAdHuff);
 #pragma warning(disable:4068)
 #endif
 
+#ifdef __GNUC__
+  #ifndef __forceinline
+    #define __forceinline __attribute__((__always_inline__)) inline
+  #endif
+#endif
+
 #endif  // WMI_COMMON_H

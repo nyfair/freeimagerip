@@ -180,8 +180,12 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 			picture.width = width;
 			picture.height = height;
 			config.method = 6;
-			config.quality = flags & 0xFF;
-			if(config.quality > 100) config.quality = 100;
+			if((flags & 0x7F) == 0) {
+				config.quality = 90;
+			} else {
+				config.quality = flags & 0x7F;
+				if(config.quality > 100) config.quality = 100;
+			}
 			BYTE *bitmap, *bitmap_ptr, *encode_cache;
 
 			//if((flags & WEBP_SUBSAMPLING_444) == WEBP_SUBSAMPLING_444) {

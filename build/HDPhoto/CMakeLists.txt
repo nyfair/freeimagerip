@@ -19,10 +19,10 @@ SET(SOURCE_FILES
 	${SRC}/image/sys/strcodec.c
 	${SRC}/image/sys/strPredQuant.c
 	${SRC}/image/sys/strTransform.c
-	${SRC}/systems/tools/wmpgluelib/WMPGlue.c
-	${SRC}/systems/tools/wmpgluelib/WMPGluePFC.c
-	${SRC}/systems/tools/wmpgluelib/WMPGlueWmp.c
-	${SRC}/systems/tools/wmpmetalib/WMPMeta.c
+	${SRC}/Systems/tools/WMPGlueLib/WMPGlue.c
+	${SRC}/Systems/tools/WMPGlueLib/WMPGluePFC.c
+	${SRC}/Systems/tools/WMPGlueLib/WMPGlueWmp.c
+	${SRC}/Systems/tools/WMPMetaLib/WMPMeta.c
 )
 
 IF(NOT MSVC)
@@ -35,8 +35,8 @@ INCLUDE_DIRECTORIES(
 	${SRC}/common/include/
 	${SRC}/image/sys/
 	${SRC}/image/x86/
-	${SRC}/systems/tools/wmpgluelib/
-	${SRC}/systems/tools/wmpmetalib/
+	${SRC}/Systems/tools/WMPGlueLib/
+	${SRC}/Systems/tools/WMPMetaLib/
 )
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})

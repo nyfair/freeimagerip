@@ -250,6 +250,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 	PKImageEncode *pEncoder = NULL;
 
 	if((dib != NULL) && (handle != NULL)) {
+		if(flags == 0) flags = 10;
 		try {
 			int width	= FreeImage_GetWidth(dib);
 			int height = FreeImage_GetHeight(dib);
@@ -397,10 +398,13 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 		
 		pEncoder->WMP.wmiSCP.bdBitDepth = BD_LONG;
 		pEncoder->WMP.wmiSCP.olOverlap = OL_ONE;
+		
 		pEncoder->WMP.wmiSCP.uiDefaultQPIndex = flags & 0xFF;
 		if(hasAlpha) {
 			pEncoder->WMP.wmiSCP.uAlphaMode = 2;
-			pEncoder->WMP.wmiSCP_Alpha.uiDefaultQPIndex = flags;
+			int alphaq = ((flags & 0xFF000) >> 12);
+			if(alphaq == 0) alphaq = pEncoder->WMP.wmiSCP.uiDefaultQPIndex;
+			pEncoder->WMP.wmiSCP_Alpha.uiDefaultQPIndex = alphaq;
 		}
 
 		pixelInfo.pGUIDPixFmt = &format;

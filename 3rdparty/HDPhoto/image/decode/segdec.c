@@ -18,7 +18,6 @@
 extern const int dctIndex[3][16];
 extern const int blkOffset[16];
 extern const int blkOffsetUV[4];
-Int DecodeSignificantAbsLevel (struct CAdaptiveHuffman *pAHexpt, BitIOInfo* pIO);
 
 //#undef X86OPT_INLINE
 
@@ -27,6 +26,14 @@ Int DecodeSignificantAbsLevel (struct CAdaptiveHuffman *pAHexpt, BitIOInfo* pIO)
 #else // X86OPT_INLINE
 #define _FORCEINLINE
 #endif // X86OPT_INLINE
+
+#ifndef X86OPT_INLINE
+static Int DecodeSignificantAbsLevel (struct CAdaptiveHuffman *pAHexpt, 
+BitIOInfo* pIO);
+#else
+static __forceinline Int DecodeSignificantAbsLevel (struct 
+CAdaptiveHuffman *pAHexpt, BitIOInfo* pIO);
+#endif
 
 //================================================================
 // Memory access functions
