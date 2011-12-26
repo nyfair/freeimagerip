@@ -25,12 +25,16 @@ int WINAPI GetPluginInfo(int infono, LPSTR buf, int buflen) {
 }
 
 int WINAPI IsSupported(LPSTR filename, DWORD dw) {
-	FREE_IMAGE_FORMAT fmt = FreeImage_GetFIFFromFilename(filename);
+	FREE_IMAGE_FORMAT fmt = FreeImage_GetFileType(filename);
+	if(fmt == FIF_UNKNOWN)
+		fmt = FreeImage_GetFIFFromFilename(filename);
 	return IsSupportedEx(fmt, dw);
 }
 
 int WINAPI IsSupportedW(LPWSTR filename, DWORD dw) {
-	FREE_IMAGE_FORMAT fmt = FreeImage_GetFIFFromFilenameU(filename);
+	FREE_IMAGE_FORMAT fmt = FreeImage_GetFileTypeU(filename);
+	if(fmt == FIF_UNKNOWN)
+		fmt = FreeImage_GetFIFFromFilenameU(filename);
 	return IsSupportedEx(fmt, dw);
 }
 
@@ -228,7 +232,9 @@ int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 
 	if((flag & 7) == 0) {
 	/* buf is filename */
-		fmt = FreeImage_GetFIFFromFilename(buf);
+		fmt = FreeImage_GetFileType(buf);
+		if(fmt == FIF_UNKNOWN)
+			fmt = FreeImage_GetFIFFromFilename(buf);
 		dib = FreeImage_Load(fmt, buf);
 	} else {
 	/* buf is memory */
@@ -250,7 +256,9 @@ int WINAPI GetPictureW(LPWSTR buf, long len, unsigned int flag,
 
 	if((flag & 7) == 0) {
 	/* buf is filename */
-		fmt = FreeImage_GetFIFFromFilenameU(buf);
+		fmt = FreeImage_GetFileTypeU(buf);
+		if(fmt == FIF_UNKNOWN)
+			fmt = FreeImage_GetFIFFromFilenameU(buf);
 		dib = FreeImage_LoadU(fmt, buf);
 	} else {
 	/* buf is memory */

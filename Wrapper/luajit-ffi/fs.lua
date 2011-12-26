@@ -58,7 +58,7 @@ function dir(pattern)
 end
 
 function mv(src, dst, override)
-	if(override == nil or override) then
+	if override == nil or override then
 		flag = 3
 	else flag = 2
 	end
@@ -79,7 +79,7 @@ end
 
 function stripext(fn)
 	local idx = fn:match(".+()%..+$")
-	if(idx) then
+	if idx then
 		return fn:sub(1, idx - 1)
 	else
 		return fn

@@ -18,6 +18,7 @@ ffi.cdef[[
 	unsigned __stdcall FreeImage_GetWidth(void*);
 	unsigned __stdcall FreeImage_GetHeight(void*);
 	int __stdcall FreeImage_GetFIFFromFilename(const char*);
+	int __stdcall FreeImage_GetFileType(const char*, int);
 	
 	void* __stdcall FreeImage_ConvertTo8Bits(void*);
 	void* __stdcall FreeImage_ConvertToGreyscale(void*);
@@ -41,7 +42,12 @@ ffi.cdef[[
 -- Image IO
 -- get format id from image's filename
 function getfmt(name)
-	return filua.FreeImage_GetFIFFromFilename(name)
+	fmt = filua.FreeImage_GetFileType(name, 0)
+	if fmt > -1 then
+		return fmt
+	else
+		return filua.FreeImage_GetFIFFromFilename(name)
+	end
 end
 
 -- open an image file
@@ -114,81 +120,56 @@ end
 -- File-based process function
 -- convert image format
 function convert(src, dst, flag)
-	local img = open(src)
-	save(img, dst, flag)
-	free(img)
+	if src:find("*") then
+		for k,v in ipairs(dir(src)) do
+			print(v)
+			local img = open(v)
+			save(img, stripext(v).."."..dst, flag)
+			free(img)
+		end
+	else
+		local img = open(src)
+		save(img, dst, flag)
+		free(img)
+	end
 end
 
--- decode image to BMP bitmap
-function imgdec(src, dst, flag)
-	if(dst == nil) then
-		dst = stripext(src)..".bmp"
+-- convert bpp
+function convbpp(src, bpp, dst, flag)
+	if bpp==24 or bpp==32 or bpp==1 or bpp==8 then
+		if src:find("*") then
+			if dst == nil then
+				dst = "bmp"
+			end
+			for k,v in ipairs(dir(src)) do
+				print(v)
+				local img = open(v)
+				local out
+				if bpp == 24 then out = filua.FreeImage_ConvertTo24Bits(img)
+				elseif bpp == 32 then out = filua.FreeImage_ConvertTo32Bits(img)
+				elseif bpp == 8 then out = filua.FreeImage_ConvertTo8Bits(img)
+				else out = filua.FreeImage_ConvertToGreyscale(img)
+				end
+				save(out, stripext(v).."."..dst, flag)
+				free(img)
+				free(out)
+			end
+		else
+			if dst == nil then
+				dst = src
+			end
+			local img = open(src)
+			local out
+			if bpp == 24 then out = filua.FreeImage_ConvertTo24Bits(img)
+			elseif bpp == 32 then out = filua.FreeImage_ConvertTo32Bits(img)
+			elseif bpp == 8 then out = filua.FreeImage_ConvertTo8Bits(img)
+			else out = filua.FreeImage_ConvertToGreyscale(img)
+			end
+			save(out, dst, flag)
+			free(img)
+			free(out)
+		end
 	end
-	convert(src, dst, flag)
-end
-
-function topng(src, dst, flag)
-	-- max compress
-	if(dst == nil) then
-		dst = stripext(src)..".png"
-	end
-	convert(src, dst, flag)
-end
-
-function tojpg(src, dst, flag)
-	-- 95quality and progressive
-	if(dst == nil) then
-		dst = stripext(src)..".jpg"
-	end
-	convert(src, dst, flag)
-end
-
--- convert to 24bpp
-function to24(src, dst, flag)
-	if(dst == nil) then
-		dst = stripext(src)..".bmp"
-	end
-	local img = open(src)
-	local out = filua.FreeImage_ConvertTo24Bits(img)
-	save(out, dst, flag)
-	free(img)
-	free(out)
-end
-
--- convert to 32bpp
-function to32(src, dst, flag)
-	if(dst == nil) then
-		dst = stripext(src)..".bmp"
-	end
-	local img = open(src)
-	local out = filua.FreeImage_ConvertTo32Bits(img)
-	save(out, dst, flag)
-	free(img)
-	free(out)
-end
-
--- convert to 256 colors
-function to8(src, dst, flag)
-	if(dst == nil) then
-		dst = stripext(src)..".bmp"
-	end
-	local img = open(src)
-	local out = filua.FreeImage_ConvertTo8Bits(img)
-	save(out, dst, flag)
-	free(img)
-	free(out)
-end
-
--- convert to black&white image
-function to1(src, dst, flag)
-	if(dst == nil) then
-		dst = stripext(src)..".bmp"
-	end
-	local img = open(src)
-	local out = filua.FreeImage_ConvertToGreyscale(img)
-	save(out, dst, flag)
-	free(img)
-	free(out)
 end
 
 function combine(back, front, dst, left, top, flag)
@@ -212,8 +193,8 @@ function combinealpha(back, front, dst, flag)
 end
 
 function rotate(src, degree, dst, flag)
-	if(dst == nil) then
-		dst = "rotate_"..stripext(src)..".bmp"
+	if dst == nil then
+		dst = stripext(src).."_rotate.bmp"
 	end
 	local img = open(src)
 	local out = filua.FreeImage_Rotate(img, degree, nil)
@@ -223,8 +204,8 @@ function rotate(src, degree, dst, flag)
 end
 
 function scale(src, width, height, filter, dst, flag)
-	if(dst == nil) then
-		dst = "thumb_"..stripext(src)..".bmp"
+	if dst == nil then
+		dst = stripext(src).."_thumb.bmp"
 	end
 	local img = open(src)
 	local out = filua.FreeImage_Rescale(img, width, height, filter or 0)
@@ -234,8 +215,8 @@ function scale(src, width, height, filter, dst, flag)
 end
 
 function fliph(src, dst, flag)
-	if(dst == nil) then
-		dst = "fliph_"..stripext(src)..".bmp"
+	if dst == nil then
+		dst = stripext(src).."_fliph.bmp"
 	end
 	local img = open(src)
 	filua.FreeImage_FlipHorizontal(img)
@@ -244,8 +225,8 @@ function fliph(src, dst, flag)
 end
 
 function flipv(src, dst, flag)
-	if(dst == nil) then
-		dst = "flipv_"..stripext(src)..".bmp"
+	if dst == nil then
+		dst = stripext(src).."_flipv.bmp"
 	end
 	local img = open(src)
 	filua.FreeImage_FlipVertical(img)
@@ -254,15 +235,15 @@ function flipv(src, dst, flag)
 end
 
 function jpgcrop(src, left, top, right, bottom, dst)
-	if(dst == nil) then
-		dst = "crop_"..stripext(src)..".jpg"
+	if dst == nil then
+		dst = stripext(src).."_crop.jpg"
 	end
 	filua.FreeImage_JPEGCrop(src, dst, left, top, right, bottom)
 end
 
 function jpgtran(src, func, dst, perfect)
-	if(dst == nil) then
-		dst = "crop_"..stripext(src)..".jpg"
+	if dst == nil then
+		dst = stripext(src).."_tran.jpg"
 	end
 	filua.FreeImage_JPEGTransform(src, dst, func, perfect or 0)
 end
