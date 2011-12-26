@@ -79,7 +79,7 @@ ELSE()
 		jf3dnflt ji3dnflt jcqntsse jfsseflt jisseflt jccolss2 jcgrass2 jdcolss2
 		jcsamss2 jdsamss2 jdmerss2 jcqnts2i jfss2fst jfss2int jiss2red jiss2int
 		jiss2fst jcqnts2f jiss2flt)
-		IF(WIN32)
+	IF(WIN32)
 		SET(NAFLAGS ${NAFLAGS} -fwin32 -DWIN32)
 	ELSE()
 		SET(NAFLAGS ${NAFLAGS} -felf -DELF)
