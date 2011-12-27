@@ -398,12 +398,6 @@ FreeImage_LoadU(FREE_IMAGE_FORMAT fif, const wchar_t *filename, int flags) {
 
 BOOL DLL_CALLCONV
 FreeImage_SaveToHandle(FREE_IMAGE_FORMAT fif, FIBITMAP *dib, FreeImageIO *io, fi_handle handle, int flags) {
-	// cannot save "header only" formats
-	if(FreeImage_HasPixels(dib) == FALSE) {
-		FreeImage_OutputMessageProc((int)fif, "FreeImage_SaveToHandle: cannot save \"header only\" formats");
-		return FALSE;
-	}
-
 	if ((fif >= 0) && (fif < FreeImage_GetFIFCount())) {
 		PluginNode *node = s_plugins->FindNodeFromFIF(fif);
 		
@@ -430,6 +424,8 @@ FreeImage_SaveToHandle(FREE_IMAGE_FORMAT fif, FIBITMAP *dib, FreeImageIO *io, fi
 
 BOOL DLL_CALLCONV
 FreeImage_Save(FREE_IMAGE_FORMAT fif, FIBITMAP *dib, const char *filename, int flags) {
+	if(FreeImage_HasPixels(dib) == FALSE) return FALSE;
+
 	FreeImageIO io;
 	SetDefaultIO(&io);
 	
@@ -450,6 +446,8 @@ FreeImage_Save(FREE_IMAGE_FORMAT fif, FIBITMAP *dib, const char *filename, int f
 
 BOOL DLL_CALLCONV
 FreeImage_SaveU(FREE_IMAGE_FORMAT fif, FIBITMAP *dib, const wchar_t *filename, int flags) {
+	if(FreeImage_HasPixels(dib) == FALSE) return FALSE;
+	
 	FreeImageIO io;
 	SetDefaultIO(&io);
 #ifdef _WIN32	
