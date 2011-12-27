@@ -25,7 +25,7 @@ ffi.cdef[[
 	void* __stdcall FreeImage_ConvertTo24Bits(void*);
 	void* __stdcall FreeImage_ConvertTo32Bits(void*);
 	
-	void* __stdcall FreeImage_Rotate(void*, double, const void*);
+	void* __stdcall FreeImage_Rotate(void*, double, RGBA*);
 	int __stdcall FreeImage_FlipHorizontal(void*);
 	int __stdcall FreeImage_FlipVertical(void*);
 	void* __stdcall FreeImage_Rescale(void*, int, int, int);
@@ -109,12 +109,16 @@ end
 
 -- paste a small image into a background image
 function paste(back, front, left, top, alpha)
-	return filua.FreeImage_Paste(back, front, left, top, alpha or 255)
+	filua.FreeImage_Paste(back, front, left, top, alpha or 255)
 end
 
 -- alpha composite
-function composite(front, usebg, rgba, back)
-	return filua.FreeImage_Composite(front, usebg, rgba, back)
+function composite(front, back, rgba)
+	if rgba == nil then
+		return filua.FreeImage_Composite(front, 0, nil, back)
+	else
+		return filua.FreeImage_Composite(front, 1, rgba, back)
+	end
 end
 
 -- File-based process function
@@ -184,20 +188,19 @@ end
 function combinealpha(back, front, dst, flag)
 	local img1 = open(back)
 	local img2 = open(front)
-	local img2 = open(front)
-	local img3 = composite(img2, 0, nil, img1)
+	local img3 = composite(img2, img1)
 	save(img3, dst, flag)
 	free(img1)
 	free(img2)
 	free(img3)
 end
 
-function rotate(src, degree, dst, flag)
+function rotate(src, degree, dst, flag, rgba)
 	if dst == nil then
 		dst = stripext(src).."_rotate.bmp"
 	end
 	local img = open(src)
-	local out = filua.FreeImage_Rotate(img, degree, nil)
+	local out = filua.FreeImage_Rotate(img, degree, rgba)
 	save(out, dst, flag)
 	free(img)
 	free(out)
@@ -208,7 +211,7 @@ function scale(src, width, height, filter, dst, flag)
 		dst = stripext(src).."_thumb.bmp"
 	end
 	local img = open(src)
-	local out = filua.FreeImage_Rescale(img, width, height, filter or 0)
+	local out = filua.FreeImage_Rescale(img, width, height, filter or 5)
 	save(out, dst, flag)
 	free(img)
 	free(out)
