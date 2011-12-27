@@ -620,7 +620,7 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define TARGA_LOAD_RGB888 	1		// If set the loader converts RGB555 and ARGB8888 -> RGB888.
 #define TARGA_SAVE_RLE		2		// If set, the writer saves with RLE compression
 // for hd photo usage, bit 1-2 was for RGB quality and bit 4-5 was for alpha quality
-#define JXR_DEFAULT			0		// save with quality 10 and 4:4:4
+#define JXR_DEFAULT			0		// save with quality 20 and 4:4:4
 #define JXR_SUBSAMPLING_420 0x100	// save with medium 2x2 medium chroma subsampling (4:2:0)
 #define JXR_SUBSAMPLING_422 0x200	// save with low 2x1 chroma subsampling (4:2:2) 
 #define JXR_SUBSAMPLING_444 0x400	// save with no chroma subsampling (4:4:4) - default value
