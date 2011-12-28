@@ -32,6 +32,7 @@ ffi.cdef[[
 	bool __stdcall CopyFileA(const char* src, const char* dst, bool flag);
 	bool __stdcall DeleteFileA(const char* dst);
 	bool __stdcall CreateDirectoryA(const char* dst, void*);
+	bool __stdcall RemoveDirectoryA(const char* dst);
 ]]
 
 local WIN32_FIND_DATA = ffi.typeof("struct WIN32_FIND_DATAA")
@@ -74,7 +75,11 @@ function rm(dst)
 end
 
 function md(dst)
-	ffi.C.CreateDirectoryA(dst)
+	ffi.C.CreateDirectoryA(dst, nil)
+end
+
+function rd(dst)
+	ffi.C.RemoveDirectoryA(dst)
 end
 
 function stripext(fn)

@@ -5,22 +5,24 @@ require "fs"
 local ffi = require "ffi"
 local filua = ffi.load("freeimage")
 ffi.cdef[[
-	typedef struct { uint8_t r, g, b, a; } RGBA;
+	typedef struct { uint8_t b, g, r, a; } RGBA;
 	
 	void* __stdcall FreeImage_Load(int, const char*, int);
 	int __stdcall FreeImage_Save(int, void*, const char*, int);
 	void* __stdcall FreeImage_Clone(void*);
 	void __stdcall FreeImage_Unload(void*);
-	void* __stdcall FreeImage_Allocate(int, int, int,
-																		unsigned, unsigned, unsigned);
+	void* __stdcall FreeImage_EnlargeCanvas(void*, int, int, int, int, RGBA*, int);
 	
 	unsigned __stdcall FreeImage_GetBPP(void*);
 	unsigned __stdcall FreeImage_GetWidth(void*);
 	unsigned __stdcall FreeImage_GetHeight(void*);
+	unsigned __stdcall FreeImage_GetDotsPerMeterX(void*);
+	unsigned __stdcall FreeImage_GetDotsPerMeterY(void*);
+	void __stdcall FreeImage_SetDotsPerMeterX(void*, unsigned);
+	void __stdcall FreeImage_SetDotsPerMeterY(void*, unsigned);
 	int __stdcall FreeImage_GetFIFFromFilename(const char*);
 	int __stdcall FreeImage_GetFileType(const char*, int);
 	
-	void* __stdcall FreeImage_ConvertTo8Bits(void*);
 	void* __stdcall FreeImage_ConvertToGreyscale(void*);
 	void* __stdcall FreeImage_ConvertTo24Bits(void*);
 	void* __stdcall FreeImage_ConvertTo32Bits(void*);
@@ -50,31 +52,35 @@ function getfmt(name)
 	end
 end
 
--- open an image file
 function open(name, flag)
 	local fmt = getfmt(name)
 	return filua.FreeImage_Load(fmt, name, flag or 0)
 end
 
--- save image with given name
 function save(img, name, flag)
 	local fmt = getfmt(name)
 	return filua.FreeImage_Save(fmt, img, name, flag or 0)
 end
 
--- clone the image
 function clone(img)
 	return filua.FreeImage_Clone(img)
 end
 
--- unload image to free memory
 function free(img)
 	filua.FreeImage_Unload(img)
 end
 
--- create new image with give w,h,bpp
-function newimg(width, height, bpp)
-	filua.FreeImage_Allocate(width, height, bpp, 0, 0, 0)
+function color(r, g, b, a)
+	color = ffi.new("RGBA[?]", 1)
+	color[0].b= b or 0
+	color[0].g= g or 0
+	color[0].r= r or 0
+	color[0].a= a or 0
+	return color
+end
+
+function enlarge(img, left, top, right, bottom, rgba)
+	return filua.FreeImage_EnlargeCanvas(img, left, top, right, bottom, rgba or color(), 0)
 end
 
 -- Common Info
@@ -90,39 +96,32 @@ function geth(img)
 	return filua.FreeImage_GetHeight(img)
 end
 
-function getResolution(img)
+function getdpi(img)
 	local x = filua.FreeImage_GetDotsPerMeterX(img)
 	local y = filua.FreeImage_GetDotsPerMeterY(img)
 	return math.floor(x*0.0254+0.5), math.floor(y*0.0254+0.5)
 end
 
-function setResolution(img, x, y)
+function setdpi(img, x, y)
 	filua.FreeImage_SetDotsPerMeterX(img, x/0.0254)
 	filua.FreeImage_SetDotsPerMeterY(img, y/0.0254)
 end
 
 -- Composite
--- get part of image from given area
 function copy(img, left, top, right, bottom)
 	return filua.FreeImage_Copy(img, left, top, right, bottom)
 end
 
--- paste a small image into a background image
 function paste(back, front, left, top, alpha)
 	filua.FreeImage_Paste(back, front, left, top, alpha or 255)
 end
 
 -- alpha composite
-function composite(front, back, rgba)
-	if rgba == nil then
-		return filua.FreeImage_Composite(front, 0, nil, back)
-	else
-		return filua.FreeImage_Composite(front, 1, rgba, back)
-	end
+function composite(back, front)
+	return filua.FreeImage_Composite(front, 0, nil, back)
 end
 
 -- File-based process function
--- convert image format
 function convert(src, dst, flag)
 	if src:find("*") then
 		for k,v in ipairs(dir(src)) do
@@ -138,9 +137,8 @@ function convert(src, dst, flag)
 	end
 end
 
--- convert bpp
 function convbpp(src, bpp, dst, flag)
-	if bpp==24 or bpp==32 or bpp==1 or bpp==8 then
+	if bpp==24 or bpp==32 or bpp==8 then
 		if src:find("*") then
 			if dst == nil then
 				dst = "bmp"
@@ -151,7 +149,6 @@ function convbpp(src, bpp, dst, flag)
 				local out
 				if bpp == 24 then out = filua.FreeImage_ConvertTo24Bits(img)
 				elseif bpp == 32 then out = filua.FreeImage_ConvertTo32Bits(img)
-				elseif bpp == 8 then out = filua.FreeImage_ConvertTo8Bits(img)
 				else out = filua.FreeImage_ConvertToGreyscale(img)
 				end
 				save(out, stripext(v).."."..dst, flag)
@@ -166,7 +163,6 @@ function convbpp(src, bpp, dst, flag)
 			local out
 			if bpp == 24 then out = filua.FreeImage_ConvertTo24Bits(img)
 			elseif bpp == 32 then out = filua.FreeImage_ConvertTo32Bits(img)
-			elseif bpp == 8 then out = filua.FreeImage_ConvertTo8Bits(img)
 			else out = filua.FreeImage_ConvertToGreyscale(img)
 			end
 			save(out, dst, flag)
@@ -200,7 +196,7 @@ function rotate(src, degree, dst, flag, rgba)
 		dst = stripext(src).."_rotate.bmp"
 	end
 	local img = open(src)
-	local out = filua.FreeImage_Rotate(img, degree, rgba)
+	local out = filua.FreeImage_Rotate(img, degree, rgba or color())
 	save(out, dst, flag)
 	free(img)
 	free(out)
