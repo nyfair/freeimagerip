@@ -63,12 +63,6 @@ static int s_format_id;
 #define MAX_BYTES_IN_MARKER 65533L		// maximum data length of a JPEG marker
 #define MAX_DATA_BYTES_IN_MARKER 65519L	// maximum data length of a JPEG APP2 marker
 
-#define MAX_JFXX_THUMB_SIZE (MAX_BYTES_IN_MARKER - 5 - 1)
-
-#define JFXX_TYPE_JPEG 	0x10	// JFIF extension marker: JPEG-compressed thumbnail image
-#define JFXX_TYPE_8bit 	0x11	// JFIF extension marker: palette thumbnail image
-#define JFXX_TYPE_24bit	0x13	// JFIF extension marker: RGB thumbnail image
-
 // ----------------------------------------------------------
 //   Typedef declarations
 // ----------------------------------------------------------
@@ -110,6 +104,22 @@ typedef ErrorManager*		freeimage_error_ptr;
 //   Error handling
 // ----------------------------------------------------------
 
+/** Fatal errors (print message and exit) */
+static inline void
+JPEG_EXIT(j_common_ptr cinfo, int code) {
+	freeimage_error_ptr error_ptr = (freeimage_error_ptr)cinfo->err;
+	error_ptr->pub.msg_code = code;
+	error_ptr->pub.error_exit(cinfo);
+}
+
+/** Nonfatal errors (we can keep going, but the data is probably corrupt) */
+static inline void
+JPEG_WARNING(j_common_ptr cinfo, int code) {
+	freeimage_error_ptr error_ptr = (freeimage_error_ptr)cinfo->err;
+	error_ptr->pub.msg_code = code;
+	error_ptr->pub.emit_message(cinfo, -1);
+}
+
 /**
 	Receives control for a fatal error.  Information sufficient to
 	generate the error message has been stored in cinfo->err; call
@@ -118,16 +128,19 @@ typedef ErrorManager*		freeimage_error_ptr;
 */
 METHODDEF(void)
 jpeg_error_exit (j_common_ptr cinfo) {
+	freeimage_error_ptr error_ptr = (freeimage_error_ptr)cinfo->err;
+
 	// always display the message
-	(*cinfo->err->output_message)(cinfo);
+	error_ptr->pub.output_message(cinfo);
 
 	// allow JPEG with unknown markers
-	if((cinfo)->err->msg_code != JERR_UNKNOWN_MARKER) {
+	if(error_ptr->pub.msg_code != JERR_UNKNOWN_MARKER) {
 	
 		// let the memory manager delete any temp files before we die
 		jpeg_destroy(cinfo);
 		
-		throw s_format_id;
+		// return control to the setjmp point
+		longjmp(error_ptr->setjmp_buffer, 1);		
 	}
 }
 
@@ -138,9 +151,10 @@ jpeg_error_exit (j_common_ptr cinfo) {
 METHODDEF(void)
 jpeg_output_message (j_common_ptr cinfo) {
 	char buffer[JMSG_LENGTH_MAX];
+	freeimage_error_ptr error_ptr = (freeimage_error_ptr)cinfo->err;
 
 	// create the message
-	(*cinfo->err->format_message)(cinfo, buffer);
+	error_ptr->pub.format_message(cinfo, buffer);
 	// send it to user's message proc
 	FreeImage_OutputMessageProc(s_format_id, buffer);
 }
@@ -161,7 +175,7 @@ init_destination (j_compress_ptr cinfo) {
 
 	dest->buffer = (JOCTET *)
 	  (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
-				  OUTPUT_BUF_SIZE * SIZEOF(JOCTET));
+				  OUTPUT_BUF_SIZE * sizeof(JOCTET));
 
 	dest->pub.next_output_byte = dest->buffer;
 	dest->pub.free_in_buffer = OUTPUT_BUF_SIZE;
@@ -186,7 +200,7 @@ empty_output_buffer (j_compress_ptr cinfo) {
 		// let the memory manager delete any temp files before we die
 		jpeg_destroy((j_common_ptr)cinfo);
 
-		throw(JERR_FILE_WRITE);
+		JPEG_EXIT((j_common_ptr)cinfo, JERR_FILE_WRITE);
 	}
 
 	dest->pub.next_output_byte = dest->buffer;
@@ -214,7 +228,7 @@ term_destination (j_compress_ptr cinfo) {
 			// let the memory manager delete any temp files before we die
 			jpeg_destroy((j_common_ptr)cinfo);
 			
-			throw(JERR_FILE_WRITE);
+			JPEG_EXIT((j_common_ptr)cinfo, JERR_FILE_WRITE);
 		}
 	}
 }
@@ -265,10 +279,10 @@ fill_input_buffer (j_decompress_ptr cinfo) {
 			// let the memory manager delete any temp files before we die
 			jpeg_destroy((j_common_ptr)cinfo);
 
-			throw(JERR_INPUT_EMPTY);
+			JPEG_EXIT((j_common_ptr)cinfo, JERR_INPUT_EMPTY);
 		}
 
-		WARNMS(cinfo, JWRN_JPEG_EOF);
+		JPEG_WARNING((j_common_ptr)cinfo, JWRN_JPEG_EOF);
 
 		/* Insert a fake EOI marker */
 
@@ -350,12 +364,12 @@ jpeg_freeimage_src (j_decompress_ptr cinfo, fi_handle infile, FreeImageIO *io) {
 
 	if (cinfo->src == NULL) {
 		cinfo->src = (struct jpeg_source_mgr *) (*cinfo->mem->alloc_small)
-			((j_common_ptr) cinfo, JPOOL_PERMANENT, SIZEOF(SourceManager));
+			((j_common_ptr) cinfo, JPOOL_PERMANENT, sizeof(SourceManager));
 
 		src = (freeimage_src_ptr) cinfo->src;
 
 		src->buffer = (JOCTET *) (*cinfo->mem->alloc_small)
-			((j_common_ptr) cinfo, JPOOL_PERMANENT, INPUT_BUF_SIZE * SIZEOF(JOCTET));
+			((j_common_ptr) cinfo, JPOOL_PERMANENT, INPUT_BUF_SIZE * sizeof(JOCTET));
 	}
 
 	// initialize the jpeg pointer struct with pointers to functions
@@ -383,7 +397,7 @@ jpeg_freeimage_dst (j_compress_ptr cinfo, fi_handle outfile, FreeImageIO *io) {
 
 	if (cinfo->dest == NULL) {
 		cinfo->dest = (struct jpeg_destination_mgr *)(*cinfo->mem->alloc_small)
-			((j_common_ptr) cinfo, JPOOL_PERMANENT, SIZEOF(DestinationManager));
+			((j_common_ptr) cinfo, JPOOL_PERMANENT, sizeof(DestinationManager));
 	}
 
 	dest = (freeimage_dst_ptr) cinfo->dest;
@@ -551,92 +565,6 @@ jpeg_read_icc_profile(j_decompress_ptr cinfo, JOCTET **icc_data_ptr, unsigned *i
 	return TRUE;
 }
 
-/**
-	Read JFIF "JFXX" extension APP0 marker
-	@param dib Input FIBITMAP
-	@param dataptr Pointer to the APP0 marker
-	@param datalen APP0 marker length
-	@return Returns TRUE if successful, FALSE otherwise
-*/
-static BOOL 
-jpeg_read_jfxx(FIBITMAP *dib, const BYTE *dataptr, unsigned int datalen) {
-	if(datalen < 6) {
-		return FALSE;
-	}
-	
-	const int id_length = 5;
-	const BYTE *data = dataptr + id_length;
-	unsigned remaining = datalen - id_length;
-		
-	const BYTE type = *data;
-	++data, --remaining;
-
-	switch(type) {
-		case JFXX_TYPE_JPEG:
-		{
-			// load the thumbnail
-			FIMEMORY* hmem = FreeImage_OpenMemory(const_cast<BYTE*>(data), remaining);
-			FIBITMAP* thumbnail = FreeImage_LoadFromMemory(FIF_JPEG, hmem);
-			FreeImage_CloseMemory(hmem);
-			// store the thumbnail
-			FreeImage_SetThumbnail(dib, thumbnail);
-			// then delete it
-			FreeImage_Unload(thumbnail);
-			break;
-		}
-		case JFXX_TYPE_8bit:
-			// colormapped uncompressed thumbnail (no supported)
-			break;
-		case JFXX_TYPE_24bit:
-			// truecolor uncompressed thumbnail (no supported)
-			break;
-		default:
-			break;
-	}
-
-	return TRUE;
-}
-
-
-/**
-	Read JPEG special markers
-*/
-static BOOL 
-read_markers(j_decompress_ptr cinfo, FIBITMAP *dib) {
-	jpeg_saved_marker_ptr marker;
-
-	for(marker = cinfo->marker_list; marker != NULL; marker = marker->next) {
-		switch(marker->marker) {
-			case JPEG_APP0:
-				// JFIF is handled by libjpeg already, handle JFXX
-				if(memcmp(marker->data, "JFIF" , 5) == 0) {
-					continue;
-				}
-				if(memcmp(marker->data, "JFXX" , 5) == 0) {
-					if(!cinfo->saw_JFIF_marker || cinfo->JFIF_minor_version < 2) {
-						FreeImage_OutputMessageProc(s_format_id, "Warning: non-standard JFXX segment");
-					}					
-					jpeg_read_jfxx(dib, marker->data, marker->data_length);
-				}
-				// other values such as 'Picasa' : ignore safely unknown APP0 marker
-				break;
-		}
-	}
-
-	// ICC profile
-	BYTE *icc_profile = NULL;
-	unsigned icc_length = 0;
-
-	if( jpeg_read_icc_profile(cinfo, &icc_profile, &icc_length) ) {
-		// copy ICC profile data
-		FreeImage_CreateICCProfile(dib, icc_profile, icc_length);
-		// clean up
-		free(icc_profile);
-	}
-
-	return TRUE;
-}
-
 // ----------------------------------------------------------
 //   Special markers write functions
 // ----------------------------------------------------------
@@ -675,94 +603,6 @@ jpeg_write_icc_profile(j_compress_ptr cinfo, FIBITMAP *dib) {
 	}
 	
 	return FALSE;
-}
-
-/**
-	Write thumbnail (JFXX segment, JPEG compressed)
-*/
-static BOOL
-jpeg_write_jfxx(j_compress_ptr cinfo, FIBITMAP *dib) {
-	// get the thumbnail to be stored
-	FIBITMAP* thumbnail = FreeImage_GetThumbnail(dib);
-	if(!thumbnail) {
-		return TRUE;
-	}
-	// check for a compatible output format
-	if((FreeImage_GetImageType(thumbnail) != FIT_BITMAP) || (FreeImage_GetBPP(thumbnail) != 8) && (FreeImage_GetBPP(thumbnail) != 24)) {
-		FreeImage_OutputMessageProc(s_format_id, FI_MSG_WARNING_INVALID_THUMBNAIL);
-		return FALSE;
-	}
-	
-	// stores the thumbnail as a baseline JPEG into a memory block
-	// return the memory block only if its size is within JFXX marker size limit!
-	FIMEMORY *stream = FreeImage_OpenMemory();
-	
-	if(FreeImage_SaveToMemory(FIF_JPEG, thumbnail, stream)) {
-		// check that the memory block size is within JFXX marker size limit
-		FreeImage_SeekMemory(stream, 0, SEEK_END);
-		const long eof = FreeImage_TellMemory(stream);
-		if(eof > MAX_JFXX_THUMB_SIZE) {
-			FreeImage_OutputMessageProc(s_format_id, "Warning: attached thumbnail is %d bytes larger than maximum supported size - Thumbnail saving aborted", eof - MAX_JFXX_THUMB_SIZE);
-			FreeImage_CloseMemory(stream);
-			return FALSE;
-		}
-	} else {
-		FreeImage_CloseMemory(stream);
-		return FALSE;
-	}
-
-	BYTE* thData = NULL;
-	DWORD thSize = 0;
-	
-	FreeImage_AcquireMemory(stream, &thData, &thSize);	
-	
-	BYTE id_length = 5; //< "JFXX"
-	BYTE type = JFXX_TYPE_JPEG;
-	
-	DWORD totalsize = id_length + sizeof(type) + thSize;
-	jpeg_write_m_header(cinfo, JPEG_APP0, totalsize);
-	
-	jpeg_write_m_byte(cinfo, 'J');
-	jpeg_write_m_byte(cinfo, 'F');
-	jpeg_write_m_byte(cinfo, 'X');
-	jpeg_write_m_byte(cinfo, 'X');
-	jpeg_write_m_byte(cinfo, '\0');
-	
-	jpeg_write_m_byte(cinfo, type);
-	
-	// write thumbnail to destination.
-	// We "cram it straight into the data destination module", because write_m_byte is slow
-	
-	freeimage_dst_ptr dest = (freeimage_dst_ptr) cinfo->dest;
-	
-	BYTE* & out = dest->pub.next_output_byte;
-	size_t & bufRemain = dest->pub.free_in_buffer;
-	
-	const BYTE *thData_end = thData + thSize;
-
-	while(thData < thData_end) {
-		*(out)++ = *(thData)++;
-		if (--bufRemain == 0) {	
-			// buffer full - flush
-			if (!dest->pub.empty_output_buffer(cinfo)) {
-				break;
-			}
-		}
-	}
-	
-	FreeImage_CloseMemory(stream);
-
-	return TRUE;
-}
-
-/**
-	Write JPEG special markers
-*/
-static BOOL 
-write_markers(j_compress_ptr cinfo, FIBITMAP *dib) {
-	// write thumbnail as a JFXX marker
-	jpeg_write_jfxx(cinfo, dib);
-	return TRUE;
 }
 
 // ------------------------------------------------------------
@@ -842,18 +682,27 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 		BOOL header_only = (flags & FIF_LOAD_NOPIXELS) == FIF_LOAD_NOPIXELS;
 
-		try {
-			// set up the jpeglib structures
+		// set up the jpeglib structures
 
-			struct jpeg_decompress_struct cinfo;
-			struct jpeg_error_mgr jerr;
+		struct jpeg_decompress_struct cinfo;
+		ErrorManager fi_error_mgr;
+
+		try {
 
 			// step 1: allocate and initialize JPEG decompression object
 
-			cinfo.err = jpeg_std_error(&jerr);
-
-			jerr.error_exit     = jpeg_error_exit;
-			jerr.output_message = jpeg_output_message;
+			// we set up the normal JPEG error routines, then override error_exit & output_message
+			cinfo.err = jpeg_std_error(&fi_error_mgr.pub);
+			fi_error_mgr.pub.error_exit     = jpeg_error_exit;
+			fi_error_mgr.pub.output_message = jpeg_output_message;
+			
+			// establish the setjmp return context for jpeg_error_exit to use
+			if (setjmp(fi_error_mgr.setjmp_buffer)) {
+				// If we get here, the JPEG code has signaled an error.
+				// We need to clean up the JPEG object, close the input file, and return.
+				jpeg_destroy_decompress(&cinfo);
+				throw (const char*)NULL;
+			}
 
 			jpeg_create_decompress(&cinfo);
 
@@ -907,17 +756,17 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 				if((flags & JPEG_CMYK) == JPEG_CMYK) {
 					// load as CMYK
 					dib = FreeImage_AllocateHeader(header_only, cinfo.output_width, cinfo.output_height, 32, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK);
-					if(!dib) return NULL;
+					if(!dib) throw FI_MSG_ERROR_DIB_MEMORY;
 					FreeImage_GetICCProfile(dib)->flags |= FIICC_COLOR_IS_CMYK;
 				} else {
 					// load as CMYK and convert to RGB
 					dib = FreeImage_AllocateHeader(header_only, cinfo.output_width, cinfo.output_height, 24, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK);
-					if(!dib) return NULL;
+					if(!dib) throw FI_MSG_ERROR_DIB_MEMORY;
 				}
 			} else {
 				// RGB or greyscale image
 				dib = FreeImage_AllocateHeader(header_only, cinfo.output_width, cinfo.output_height, 8 * cinfo.num_components, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK);
-				if(!dib) return NULL;
+				if(!dib) throw FI_MSG_ERROR_DIB_MEMORY;
 
 				if (cinfo.num_components == 1) {
 					// build a greyscale palette
@@ -949,7 +798,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 			
 			// step 6: read special markers
 			
-			read_markers(&cinfo, dib);
+			//read_markers(&cinfo, dib);
 
 			// --- header only mode => clean-up and return
 
@@ -1017,9 +866,14 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 			// everything went well. return the loaded dib
 
 			return dib;
-		} catch (...) {
+
+		} catch (const char *text) {
+			jpeg_destroy_decompress(&cinfo);
 			if(NULL != dib) {
 				FreeImage_Unload(dib);
+			}
+			if(NULL != text) {
+				FreeImage_OutputMessageProc(s_format_id, text);
 			}
 		}
 	}
@@ -1036,12 +890,12 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 			if(flags == 0) flags = JPEG_QUALITYGOOD | JPEG_SUBSAMPLING_420 | JPEG_PROGRESSIVE;
 			// Check dib format
 
-			const char *sError = "only 24-bit highcolor or 8-bit greyscale/palette bitmaps can be saved as JPEG";
+			const char *sError = "only 24/32-bit highcolor or 8-bit greyscale/palette bitmaps can be saved as JPEG";
 
 			FREE_IMAGE_COLOR_TYPE color_type = FreeImage_GetColorType(dib);
 			WORD bpp = (WORD)FreeImage_GetBPP(dib);
 
-			if ((bpp != 24) && (bpp != 8)) {
+			if ((bpp != 24) && (bpp != 32) && (bpp != 8)) {
 				throw sError;
 			}
 
@@ -1052,16 +906,25 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 				}
 			}
 
+			FIBITMAP *rawdib = ((bpp == 32) ? FreeImage_ConvertTo24Bits(dib) : dib);
 
 			struct jpeg_compress_struct cinfo;
-			struct jpeg_error_mgr jerr;
+			ErrorManager fi_error_mgr;
 
 			// Step 1: allocate and initialize JPEG compression object
 
-			cinfo.err = jpeg_std_error(&jerr);
-
-			jerr.error_exit     = jpeg_error_exit;
-			jerr.output_message = jpeg_output_message;
+			// we set up the normal JPEG error routines, then override error_exit & output_message
+			cinfo.err = jpeg_std_error(&fi_error_mgr.pub);
+			fi_error_mgr.pub.error_exit     = jpeg_error_exit;
+			fi_error_mgr.pub.output_message = jpeg_output_message;
+			
+			// establish the setjmp return context for jpeg_error_exit to use
+			if (setjmp(fi_error_mgr.setjmp_buffer)) {
+				// If we get here, the JPEG code has signaled an error.
+				// We need to clean up the JPEG object, close the input file, and return.
+				jpeg_destroy_compress(&cinfo);
+				throw (const char*)NULL;
+			}
 
 			// Now we can initialize the JPEG compression object
 
@@ -1073,8 +936,8 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 
 			// Step 3: set parameters for compression 
 
-			cinfo.image_width = FreeImage_GetWidth(dib);
-			cinfo.image_height = FreeImage_GetHeight(dib);
+			cinfo.image_width = FreeImage_GetWidth(rawdib);
+			cinfo.image_height = FreeImage_GetHeight(rawdib);
 
 			switch(color_type) {
 				case FIC_MINISBLACK :
@@ -1103,21 +966,16 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 
 			// Set JFIF density parameters from the DIB data
 
-			cinfo.X_density = (UINT16) (0.5 + 0.0254 * FreeImage_GetDotsPerMeterX(dib));
-			cinfo.Y_density = (UINT16) (0.5 + 0.0254 * FreeImage_GetDotsPerMeterY(dib));
+			cinfo.X_density = (UINT16) (0.5 + 0.0254 * FreeImage_GetDotsPerMeterX(rawdib));
+			cinfo.Y_density = (UINT16) (0.5 + 0.0254 * FreeImage_GetDotsPerMeterY(rawdib));
 			cinfo.density_unit = 1;	// dots / inch
-
-			// thumbnail support (JFIF 1.02 extension markers)
-			if(FreeImage_GetThumbnail(dib) != NULL) {
-				cinfo.write_JFIF_header = 1; //<### force it, though when color is CMYK it will be incorrect
-				cinfo.JFIF_minor_version = 2;
-			}
 
 			// baseline JPEG support
 			//if ((flags & JPEG_BASELINE) ==  JPEG_BASELINE) {
 			//	cinfo.write_JFIF_header = 0;	// No marker for non-JFIF colorspaces
 			//	cinfo.write_Adobe_marker = 0;	// write no Adobe marker by default				
 			//}
+
 
 			// set subsampling options if required
 
@@ -1170,14 +1028,14 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 
 			int quality;
 
-			if ((flags & JPEG_QUALITYBAD) == JPEG_QUALITYBAD) {
-				quality = 10;
-			} else if ((flags & JPEG_QUALITYAVERAGE) == JPEG_QUALITYAVERAGE) {
-				quality = 50;
+			if ((flags & JPEG_QUALITYGOOD) == JPEG_QUALITYGOOD) {
+				quality = 95;
 			} else if ((flags & JPEG_QUALITYNORMAL) == JPEG_QUALITYNORMAL) {
 				quality = 75;
-			} else if ((flags & JPEG_QUALITYGOOD) == JPEG_QUALITYGOOD) {
-				quality = 95;
+			} else if ((flags & JPEG_QUALITYAVERAGE) == JPEG_QUALITYAVERAGE) {
+				quality = 50;
+			} else if ((flags & JPEG_QUALITYBAD) == JPEG_QUALITYBAD) {
+				quality = 10;
 			} else 	if ((flags & JPEG_QUALITYSUPERB) == JPEG_QUALITYSUPERB) {
 				quality = 100;
 			} else {
@@ -1198,9 +1056,9 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 
 			// Step 7: while (scan lines remain to be written) 
 
-			if(color_type == FIC_RGB) {
+			if(color_type == FIC_RGB || color_type == FIC_RGBALPHA) {
 				// 24-bit RGB image : need to swap red and blue channels
-				unsigned pitch = FreeImage_GetPitch(dib);
+				unsigned pitch = FreeImage_GetPitch(rawdib);
 				BYTE *target = (BYTE*)malloc(pitch * sizeof(BYTE));
 				if (target == NULL) {
 					throw FI_MSG_ERROR_MEMORY;
@@ -1208,7 +1066,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 
 				while (cinfo.next_scanline < cinfo.image_height) {
 					// get a copy of the scanline
-					memcpy(target, FreeImage_GetScanLine(dib, FreeImage_GetHeight(dib) - cinfo.next_scanline - 1), pitch);
+					memcpy(target, FreeImage_GetScanLine(rawdib, FreeImage_GetHeight(rawdib) - cinfo.next_scanline - 1), pitch);
 #if FREEIMAGE_COLORORDER == FREEIMAGE_COLORORDER_BGR
 					// swap R and B channels
 					BYTE *target_p = target;
@@ -1225,21 +1083,21 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 			else if(color_type == FIC_MINISBLACK) {
 				// 8-bit standard greyscale images
 				while (cinfo.next_scanline < cinfo.image_height) {
-					JSAMPROW b = FreeImage_GetScanLine(dib, FreeImage_GetHeight(dib) - cinfo.next_scanline - 1);
+					JSAMPROW b = FreeImage_GetScanLine(rawdib, FreeImage_GetHeight(rawdib) - cinfo.next_scanline - 1);
 
 					jpeg_write_scanlines(&cinfo, &b, 1);
 				}
 			}
 			else if(color_type == FIC_PALETTE) {
 				// 8-bit palettized images are converted to 24-bit images
-				RGBQUAD *palette = FreeImage_GetPalette(dib);
+				RGBQUAD *palette = FreeImage_GetPalette(rawdib);
 				BYTE *target = (BYTE*)malloc(cinfo.image_width * 3);
 				if (target == NULL) {
 					throw FI_MSG_ERROR_MEMORY;
 				}
 
 				while (cinfo.next_scanline < cinfo.image_height) {
-					BYTE *source = FreeImage_GetScanLine(dib, FreeImage_GetHeight(dib) - cinfo.next_scanline - 1);
+					BYTE *source = FreeImage_GetScanLine(rawdib, FreeImage_GetHeight(rawdib) - cinfo.next_scanline - 1);
 					FreeImage_ConvertLine8To24(target, source, cinfo.image_width, palette);
 
 #if FREEIMAGE_COLORORDER == FREEIMAGE_COLORORDER_BGR
@@ -1271,7 +1129,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 				}
 
 				while(cinfo.next_scanline < cinfo.image_height) {
-					BYTE *source = FreeImage_GetScanLine(dib, FreeImage_GetHeight(dib) - cinfo.next_scanline - 1);
+					BYTE *source = FreeImage_GetScanLine(rawdib, FreeImage_GetHeight(rawdib) - cinfo.next_scanline - 1);
 					for(i = 0; i < cinfo.image_width; i++) {
 						target[i] = reverse[ source[i] ];
 					}
@@ -1289,6 +1147,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 
 			jpeg_destroy_compress(&cinfo);
 
+			if(bpp == 32) FreeImage_Unload(rawdib);
 			return TRUE;
 
 		} catch (const char *text) {
