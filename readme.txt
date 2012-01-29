@@ -1,7 +1,7 @@
-Image process library forks from FreeImage which remove some uncommon image format and tag support.
+Gamecg composite library forks from FreeImage
 
 New Feature:
 google webp and jpeg-xr support
 asm accelerate for jpeg and png
-lua / python wrapper
+lua wrapper
 susie plugin on windows
