@@ -135,9 +135,9 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 				for(int y = 0; y < height; y++) {
 					rgb = (RGBTRIPLE *) FreeImage_GetScanLine(dib, height-1-y);
 					for(int x = 0; x < width; x++) {
-						rgb[x].rgbtBlue		= bitmap[0];
+						rgb[x].rgbtBlue	= bitmap[0];
 						rgb[x].rgbtGreen	= bitmap[1];
-						rgb[x].rgbtRed		= bitmap[2];
+						rgb[x].rgbtRed	= bitmap[2];
 						bitmap += 3;
 					}
 				}
@@ -147,10 +147,10 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 				for(int y = 0; y < height; y++) {
 					rgba = (RGBQUAD *) FreeImage_GetScanLine(dib, height-1-y);
 					for(int x = 0; x < width; x++) {
-						rgba[x].rgbBlue			= bitmap[0];
+						rgba[x].rgbBlue		= bitmap[0];
 						rgba[x].rgbGreen		= bitmap[1];
-						rgba[x].rgbRed			= bitmap[2];
-						rgba[x].rgbReserved = bitmap[3];
+						rgba[x].rgbRed		= bitmap[2];
+						rgba[x].rgbReserved	= bitmap[3];
 						bitmap += 4;
 					}
 				}

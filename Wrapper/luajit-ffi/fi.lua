@@ -1,7 +1,7 @@
 -- The file is in public domain
 -- nyfair (nyfair2012@gmail.com)
 
-require "fs"
+require "fswin"
 local ffi = require "ffi"
 local filua = ffi.load("freeimage")
 ffi.cdef[[

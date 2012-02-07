@@ -48,7 +48,7 @@ int IsSupportedEx(FREE_IMAGE_FORMAT fmt, DWORD dw) {
 }
 
 int DLL_API WINAPI GetPictureInfo(LPSTR buf, long len,
-																	unsigned int flag, PictureInfo *lpInfo) {
+									unsigned int flag, PictureInfo *lpInfo) {
 	/**
 	int ret = SPI_ALL_RIGHT;
 	FIBITMAP* dib;
@@ -71,7 +71,7 @@ int DLL_API WINAPI GetPictureInfo(LPSTR buf, long len,
 	lpInfo->height = FreeImage_GetHeight(dib);
 	lpInfo->x_density	= floor(FreeImage_GetDotsPerMeterX(dib)*0.0254+0.5);
 	lpInfo->y_density	= floor(FreeImage_GetDotsPerMeterY(dib)*0.0254+0.5);
-	lpInfo->colorDepth	 = FreeImage_GetBPP(dib);
+	lpInfo->colorDepth = FreeImage_GetBPP(dib);
 	lpInfo->hInfo	= NULL;
 	FreeImage_Unload(dib);
 	return ret;
@@ -80,13 +80,13 @@ int DLL_API WINAPI GetPictureInfo(LPSTR buf, long len,
 }
 
 int DLL_API WINAPI GetPictureInfoW(LPWSTR buf, long len,
-																	unsigned int flag, PictureInfo *lpInfo) {
+									unsigned int flag, PictureInfo *lpInfo) {
 	return SPI_ALL_RIGHT;
 }
 
 int GetPictureEx(FIBITMAP* dib, FREE_IMAGE_FORMAT fmt,
-												HANDLE *pHBInfo, HANDLE *pHBm,
-												SPI_PROGRESS lpPrgressCallback, long lData) {
+				HANDLE *pHBInfo, HANDLE *pHBm,
+				SPI_PROGRESS lpPrgressCallback, long lData) {
 	if(lpPrgressCallback != NULL)
 		if(lpPrgressCallback(0, 1, lData))
 			return SPI_ABORT;
@@ -249,8 +249,8 @@ int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 }
 
 int WINAPI GetPictureW(LPWSTR buf, long len, unsigned int flag,
-											HANDLE *pHBInfo, HANDLE *pHBm,
-											SPI_PROGRESS lpPrgressCallback, long lData) {
+						HANDLE *pHBInfo, HANDLE *pHBm,
+						SPI_PROGRESS lpPrgressCallback, long lData) {
 	FIBITMAP* dib;
 	FREE_IMAGE_FORMAT fmt;
 
@@ -273,13 +273,13 @@ int WINAPI GetPictureW(LPWSTR buf, long len, unsigned int flag,
 }
 
 int WINAPI GetPreview(LPSTR buf, long len, unsigned int flag,
-											HANDLE *pHBInfo, HANDLE *pHBm,
-											SPI_PROGRESS lpPrgressCallback, long lData) {
+						HANDLE *pHBInfo, HANDLE *pHBm,
+						SPI_PROGRESS lpPrgressCallback, long lData) {
 	return SPI_NO_FUNCTION;
 }
 
 int WINAPI GetPreviewW(LPWSTR buf, long len, unsigned int flag,
-											HANDLE *pHBInfo, HANDLE *pHBm,
-											SPI_PROGRESS lpPrgressCallback, long lData) {
+						HANDLE *pHBInfo, HANDLE *pHBm,
+						SPI_PROGRESS lpPrgressCallback, long lData) {
 	return SPI_NO_FUNCTION;
 }

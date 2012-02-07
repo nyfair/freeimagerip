@@ -1,4 +1,4 @@
-﻿;;LIBRARY "susiespi"
+﻿;;LIBRARY "spi"
 
 EXPORTS
 	GetPluginInfo

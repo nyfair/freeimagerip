@@ -48,7 +48,8 @@ ENDIF()
 
 # Project directories
 FIND_PATH(PROJECT_DIR FreeImage.h PATHS ../Source/)
-SET(3RDPARTY_DIR ${PROJECT_DIR}/../3rdparty/)
+SET(3RDPARTY_DIR ${PROJECT_DIR}/../3rdparty)
+SET(PLUGIN_DIR ${PROJECT_DIR}/../Plugins)
 
 # FreeImage core
 SET(SOURCE_FILES
@@ -118,6 +119,13 @@ ENDIF()
 OPTION(USE_BUILTIN_LIBJPEG8-TURBO "Use built-in jpeg-turbo library" ON)
 OPTION(USE_BUILTIN_LIBPNG "Use built-in png library" ON)
 OPTION(USE_BUILTIN_LIBWEBP "Use built-in webp library" ON)
+IF(MSVC)
+	OPTION(SUSIE_PLUGIN "Build Susie plugin" OFF)
+ENDIF()
+OPTION(QT_PLUGIN "Build QT plugin" OFF)
+OPTION(GTK_PLUGIN "Build GTK plugin" OFF)
+OPTION(CONV_TEST "Build a simple convert test program" OFF)
+ADD_SUBDIRECTORY(Plugins)
 
 ADD_SUBDIRECTORY(HDPhoto)
 ADD_DEPENDENCIES(freeimage HDPhoto)
@@ -171,16 +179,3 @@ INSTALL(FILES
 	${PROJECT_DIR}/FreeImage.h
 	DESTINATION ${INSTALL_INCDIR}
 )
-
-IF(MSVC)
-# Susie Plugin
-	SET(CMAKE_LINK_DEF_FILE_FLAG "/DEF:${PROJECT_DIR}/susiespi.def")
-	ADD_LIBRARY(SUSIE SHARED ${PROJECT_DIR}/susie.cc ${PROJECT_DIR}/susiespi.def)
-	ADD_DEPENDENCIES(SUSIE freeimage)
-	TARGET_LINK_LIBRARIES(SUSIE freeimage)
-	SET_TARGET_PROPERTIES(SUSIE PROPERTIES OUTPUT_NAME "iffi" SUFFIX ".spi")
-ENDIF()
-
-ADD_EXECUTABLE(convtest ${PROJECT_DIR}/Test/conv.cc)
-ADD_DEPENDENCIES(convtest freeimage)
-TARGET_LINK_LIBRARIES(convtest freeimage)
