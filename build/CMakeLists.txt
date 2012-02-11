@@ -123,7 +123,6 @@ IF(MSVC)
 	OPTION(SUSIE_PLUGIN "Build Susie plugin" OFF)
 ENDIF()
 OPTION(QT_PLUGIN "Build QT plugin" OFF)
-OPTION(GTK_PLUGIN "Build GTK plugin" OFF)
 OPTION(CONV_TEST "Build a simple convert test program" OFF)
 ADD_SUBDIRECTORY(Plugins)
 
