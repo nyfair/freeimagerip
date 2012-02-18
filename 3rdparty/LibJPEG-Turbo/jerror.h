@@ -40,10 +40,8 @@ typedef enum {
 JMESSAGE(JMSG_NOMESSAGE, "Bogus message code %d") /* Must be first entry! */
 
 /* For maintenance convenience, list is alphabetical by message code name */
-#if JPEG_LIB_VERSION < 70
 JMESSAGE(JERR_ARITH_NOTIMPL,
 	 "Sorry, arithmetic coding is not implemented")
-#endif
 JMESSAGE(JERR_BAD_ALIGN_TYPE, "ALIGN_TYPE is wrong, please fix")
 JMESSAGE(JERR_BAD_ALLOC_CHUNK, "MAX_ALLOC_CHUNK is wrong, please fix")
 JMESSAGE(JERR_BAD_BUFFER_MODE, "Bogus buffer control mode")

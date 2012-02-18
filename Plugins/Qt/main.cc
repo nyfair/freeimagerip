@@ -1,4 +1,4 @@
-#include "freeimage.h"
+#include "FreeImage.h"
 #include "fihandler.h"
 
 QT_BEGIN_NAMESPACE

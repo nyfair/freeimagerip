@@ -1,22 +1,22 @@
-#include "freeimage.h"
+#include "FreeImage.h"
 #include "fihandler.h"
 #include "qimage.h"
 #include "qvariant.h"
 
 QT_BEGIN_NAMESPACE
 
-static  unsigned __stdcall
+static unsigned DLL_CALLCONV
 ReadProc(void *buffer, unsigned size, unsigned count, fi_handle handle) {
 	return static_cast<QIODevice*>(handle)->read((char*)buffer, size *count);
 }
 
-static unsigned __stdcall
+static unsigned DLL_CALLCONV
 WriteProc(void *buffer, unsigned size, unsigned count, fi_handle handle) {
 	QIODevice *quid = static_cast<QIODevice*>(handle);
 	return quid->write((char*)buffer, size*count);
 }
 
-static  int __stdcall
+static int DLL_CALLCONV
 SeekProc(fi_handle handle, long offset, int origin) {
 	QIODevice *quid = static_cast<QIODevice*>(handle);
 	switch (origin) {
@@ -35,7 +35,7 @@ SeekProc(fi_handle handle, long offset, int origin) {
 	return (-1);
 }
 
-static long __stdcall
+static long DLL_CALLCONV
 TellProc(fi_handle handle) {
 	return static_cast<QIODevice*>(handle)->pos();
 }
