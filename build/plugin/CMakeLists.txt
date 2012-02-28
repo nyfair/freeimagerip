@@ -17,7 +17,7 @@ IF(QT_PLUGIN)
 ENDIF()
 
 IF(CONV_TEST)
-	ADD_EXECUTABLE(convtest ${PROJECT_DIR}/Test/conv.cc)
+	ADD_EXECUTABLE(convtest ${PLUGIN_DIR}/Test/conv.cc)
 	ADD_DEPENDENCIES(convtest freeimage)
 	TARGET_LINK_LIBRARIES(convtest freeimage)
 ENDIF()

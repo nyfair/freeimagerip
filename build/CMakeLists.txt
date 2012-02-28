@@ -47,9 +47,9 @@ ELSE()
 ENDIF()
 
 # Project directories
-FIND_PATH(PROJECT_DIR FreeImage.h PATHS ../Source/)
+FIND_PATH(PROJECT_DIR FreeImage.h PATHS ../src/)
 SET(3RDPARTY_DIR ${PROJECT_DIR}/../3rdparty)
-SET(PLUGIN_DIR ${PROJECT_DIR}/../Plugins)
+SET(PLUGIN_DIR ${PROJECT_DIR}/../plugin)
 
 # FreeImage core
 SET(SOURCE_FILES
@@ -121,27 +121,27 @@ IF(MSVC)
 ENDIF()
 OPTION(QT_PLUGIN "Build QT plugin" OFF)
 OPTION(CONV_TEST "Build a simple convert test program" OFF)
-ADD_SUBDIRECTORY(Plugins)
+ADD_SUBDIRECTORY(plugin)
 
-ADD_SUBDIRECTORY(HDPhoto)
-ADD_SUBDIRECTORY(LibJPEG-Turbo)
-ADD_SUBDIRECTORY(LibPNG)
-ADD_SUBDIRECTORY(LibWebP)
-ADD_SUBDIRECTORY(Zlib)
+ADD_SUBDIRECTORY(libjpeg-turbo)
+ADD_SUBDIRECTORY(libpng)
+ADD_SUBDIRECTORY(libwdp)
+ADD_SUBDIRECTORY(libwebp)
+ADD_SUBDIRECTORY(zlib)
 
-ADD_DEPENDENCIES(freeimage HDPhoto LibJPEG LibPNG LibWebP Zlib)
-TARGET_LINK_LIBRARIES(freeimage HDPhoto LibJPEG LibPNG LibWebP Zlib)
+ADD_DEPENDENCIES(freeimage libjpeg-turbo libpng libwdp libwebp zlib)
+TARGET_LINK_LIBRARIES(freeimage libjpeg-turbo libpng libwdp libwebp zlib)
 INCLUDE_DIRECTORIES(
 	${PROJECT_DIR}/
-	${3RDPARTY_DIR}/HDPhoto/common/include/
-	${3RDPARTY_DIR}/HDPhoto/image/sys/
-	${3RDPARTY_DIR}/HDPhoto/image/x86/
-	${3RDPARTY_DIR}/HDPhoto/Systems/tools/WMPGlueLib/
-	${3RDPARTY_DIR}/HDPhoto/Systems/tools/WMPMetaLib/
-	${3RDPARTY_DIR}/LibJPEG-Turbo/
-	${3RDPARTY_DIR}/LibPNG/
-	${3RDPARTY_DIR}/Zlib/
-	${3RDPARTY_DIR}/LibWebP/src/
+	${3RDPARTY_DIR}/libjpeg-turbo/
+	${3RDPARTY_DIR}/libpng/
+	${3RDPARTY_DIR}/libwdp/common/include/
+	${3RDPARTY_DIR}/libwdp/image/sys/
+	${3RDPARTY_DIR}/libwdp/image/x86/
+	${3RDPARTY_DIR}/libwdp/Systems/tools/WMPGlueLib/
+	${3RDPARTY_DIR}/libwdp/Systems/tools/WMPMetaLib/
+	${3RDPARTY_DIR}/libwebp/src/
+	${3RDPARTY_DIR}/zlib/
 )
 
 INSTALL(TARGETS freeimage
