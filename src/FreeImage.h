@@ -365,8 +365,8 @@ FI_ENUM(FREE_IMAGE_FORMAT) {
 	FIF_JP2			= 8,
 	FIF_PSD			= 9,
 	FIF_ICO			= 10,
-	FIF_HDR			= 11,
-	FIF_DDS			= 12
+	FIF_DDS			= 11,
+	FIF_HDR			= 12
 };
 
 /** Image type used in FreeImage.

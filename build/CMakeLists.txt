@@ -124,23 +124,27 @@ OPTION(CONV_TEST "Build a simple convert test program" OFF)
 ADD_SUBDIRECTORY(plugin)
 
 ADD_SUBDIRECTORY(libjpeg-turbo)
+ADD_SUBDIRECTORY(libjxr)
 ADD_SUBDIRECTORY(libpng)
-ADD_SUBDIRECTORY(libwdp)
+ADD_SUBDIRECTORY(libtiff)
 ADD_SUBDIRECTORY(libwebp)
+ADD_SUBDIRECTORY(openjpeg)
 ADD_SUBDIRECTORY(zlib)
 
-ADD_DEPENDENCIES(freeimage libjpeg-turbo libpng libwdp libwebp zlib)
-TARGET_LINK_LIBRARIES(freeimage libjpeg-turbo libpng libwdp libwebp zlib)
+ADD_DEPENDENCIES(freeimage libjpeg-turbo libjxr libpng libtiff libwebp openjpeg zlib)
+TARGET_LINK_LIBRARIES(freeimage libjpeg-turbo libjxr libpng libtiff libwebp openjpeg zlib)
 INCLUDE_DIRECTORIES(
 	${PROJECT_DIR}/
 	${3RDPARTY_DIR}/libjpeg-turbo/
 	${3RDPARTY_DIR}/libpng/
-	${3RDPARTY_DIR}/libwdp/common/include/
-	${3RDPARTY_DIR}/libwdp/image/sys/
-	${3RDPARTY_DIR}/libwdp/image/x86/
-	${3RDPARTY_DIR}/libwdp/Systems/tools/WMPGlueLib/
-	${3RDPARTY_DIR}/libwdp/Systems/tools/WMPMetaLib/
+	${3RDPARTY_DIR}/libjxr/common/include/
+	${3RDPARTY_DIR}/libjxr/image/sys/
+	${3RDPARTY_DIR}/libjxr/image/x86/
+	${3RDPARTY_DIR}/libjxr/Systems/tools/WMPGlueLib/
+	${3RDPARTY_DIR}/libjxr/Systems/tools/WMPMetaLib/
+	${3RDPARTY_DIR}/libtiff/
 	${3RDPARTY_DIR}/libwebp/src/
+	${3RDPARTY_DIR}/openjpeg/
 	${3RDPARTY_DIR}/zlib/
 )
 
