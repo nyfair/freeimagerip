@@ -21,7 +21,7 @@
 
 #include "FreeImage.h"
 #include "Utilities.h"
-#include "../LibOpenJPEG/openjpeg.h"
+#include "openjpeg.h"
 
 // ==========================================================
 // Plugin Interface
@@ -127,7 +127,7 @@ Close(FreeImageIO *io, fi_handle handle, void *data) {
 // ----------------------------------------------------------
 
 static FIBITMAP * DLL_CALLCONV
-Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
+Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 	if (handle) {
 		opj_dparameters_t parameters;	// decompression parameters 
 		opj_event_mgr_t event_mgr;		// event manager 
@@ -229,7 +229,7 @@ Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
 }
 
 static BOOL DLL_CALLCONV
-Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int page, int flags, void *data) {
+Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 	if ((dib) && (handle)) {
 		BOOL bSuccess;
 		opj_cparameters_t parameters;		// compression parameters 
@@ -327,13 +327,10 @@ InitJP2(Plugin *plugin, int format_id) {
 	plugin->regexpr_proc = RegExpr;
 	plugin->open_proc = Open;
 	plugin->close_proc = Close;
-	plugin->pagecount_proc = NULL;
-	plugin->pagecapability_proc = NULL;
 	plugin->load_proc = Load;
 	plugin->save_proc = Save;
 	plugin->validate_proc = Validate;
 	plugin->mime_proc = MimeType;
 	plugin->supports_export_bpp_proc = SupportsExportDepth;
 	plugin->supports_export_type_proc = SupportsExportType;
-	plugin->supports_icc_profiles_proc = NULL;
 }

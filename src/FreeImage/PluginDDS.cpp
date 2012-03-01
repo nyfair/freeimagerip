@@ -394,7 +394,7 @@ static int s_format_id;
 // ==========================================================
 
 static FIBITMAP *
-LoadRGB (DDSURFACEDESC2 &desc, FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
+LoadRGB (DDSURFACEDESC2 &desc, FreeImageIO *io, fi_handle handle, int flags, void *data) {
 	int width = (int)desc.dwWidth & ~3;
 	int height = (int)desc.dwHeight & ~3;
 	int bpp = (int)desc.ddpfPixelFormat.dwRGBBitCount;
@@ -439,7 +439,7 @@ LoadRGB (DDSURFACEDESC2 &desc, FreeImageIO *io, fi_handle handle, int page, int 
 }
 
 template <class DECODER> static void 
-LoadDXT_Helper (FreeImageIO *io, fi_handle handle, int page, int flags, void *data, FIBITMAP *dib, int width, int height, int line) {
+LoadDXT_Helper (FreeImageIO *io, fi_handle handle, int flags, void *data, FIBITMAP *dib, int width, int height, int line) {
 	typedef typename DECODER::INFO INFO;
 	typedef typename INFO::Block Block;
 
@@ -493,7 +493,7 @@ LoadDXT_Helper (FreeImageIO *io, fi_handle handle, int page, int flags, void *da
 }
 
 static FIBITMAP *
-LoadDXT (int type, DDSURFACEDESC2 &desc, FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
+LoadDXT (int type, DDSURFACEDESC2 &desc, FreeImageIO *io, fi_handle handle, int flags, void *data) {
 	int width = (int)desc.dwWidth & ~3;
 	int height = (int)desc.dwHeight & ~3;
 
@@ -509,13 +509,13 @@ LoadDXT (int type, DDSURFACEDESC2 &desc, FreeImageIO *io, fi_handle handle, int 
 	// select the right decoder
 	switch (type) {
 		case 1:
-			LoadDXT_Helper <DXT_BLOCKDECODER_1> (io, handle, page, flags, data, dib, width, height, line);
+			LoadDXT_Helper <DXT_BLOCKDECODER_1> (io, handle, flags, data, dib, width, height, line);
 			break;
 		case 3:
-			LoadDXT_Helper <DXT_BLOCKDECODER_3> (io, handle, page, flags, data, dib, width, height, line);
+			LoadDXT_Helper <DXT_BLOCKDECODER_3> (io, handle, flags, data, dib, width, height, line);
 			break;
 		case 5:
-			LoadDXT_Helper <DXT_BLOCKDECODER_5> (io, handle, page, flags, data, dib, width, height, line);
+			LoadDXT_Helper <DXT_BLOCKDECODER_5> (io, handle, flags, data, dib, width, height, line);
 			break;
 	}
 	
@@ -590,7 +590,7 @@ Close(FreeImageIO *io, fi_handle handle, void *data) {
 // ----------------------------------------------------------
 
 static FIBITMAP * DLL_CALLCONV
-Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
+Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 	DDSHEADER header;
 	FIBITMAP *dib = NULL;
 
@@ -600,18 +600,18 @@ Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
 	SwapHeader(&header);
 #endif
 	if (header.surfaceDesc.ddpfPixelFormat.dwFlags & DDPF_RGB) {
-		dib = LoadRGB (header.surfaceDesc, io, handle, page, flags, data);
+		dib = LoadRGB (header.surfaceDesc, io, handle, flags, data);
 	}
 	else if (header.surfaceDesc.ddpfPixelFormat.dwFlags & DDPF_FOURCC) {
 		switch (header.surfaceDesc.ddpfPixelFormat.dwFourCC) {
 			case FOURCC_DXT1:
-				dib = LoadDXT (1, header.surfaceDesc, io, handle, page, flags, data);
+				dib = LoadDXT (1, header.surfaceDesc, io, handle, flags, data);
 				break;
 			case FOURCC_DXT3:
-				dib = LoadDXT (3, header.surfaceDesc, io, handle, page, flags, data);
+				dib = LoadDXT (3, header.surfaceDesc, io, handle, flags, data);
 				break;
 			case FOURCC_DXT5:
-				dib = LoadDXT (5, header.surfaceDesc, io, handle, page, flags, data);
+				dib = LoadDXT (5, header.surfaceDesc, io, handle, flags, data);
 				break;
 		}
 	}
@@ -620,7 +620,7 @@ Load(FreeImageIO *io, fi_handle handle, int page, int flags, void *data) {
 
 /*
 static BOOL DLL_CALLCONV
-Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int page, int flags, void *data) {
+Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 	return FALSE;
 }
 */
@@ -639,13 +639,10 @@ InitDDS(Plugin *plugin, int format_id) {
 	plugin->regexpr_proc = RegExpr;
 	plugin->open_proc = Open;
 	plugin->close_proc = Close;
-	plugin->pagecount_proc = NULL;
-	plugin->pagecapability_proc = NULL;
 	plugin->load_proc = Load;
-	plugin->save_proc = NULL;	//Save;	// not implemented (yet?)
+	plugin->save_proc = NULL;
 	plugin->validate_proc = Validate;
 	plugin->mime_proc = MimeType;
 	plugin->supports_export_bpp_proc = SupportsExportDepth;
 	plugin->supports_export_type_proc = SupportsExportType;
-	plugin->supports_icc_profiles_proc = NULL;
 }

@@ -21,7 +21,7 @@
 
 #include "FreeImage.h"
 #include "Utilities.h"
-#include "../LibOpenJPEG/openjpeg.h"
+#include "openjpeg.h"
 
 /**
 Divide an integer by a power of 2 and round upwards

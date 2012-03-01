@@ -5,8 +5,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.4)
 
 IF(MSVC)
 # More MSVC specific compilation flags
-	ADD_DEFINITIONS(-D_SCL_SECURE_NO_WARNINGS)
-	ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE)
+	ADD_DEFINITIONS(-D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_DEPRECATE)
 	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4996 /wd4819 /wd4244")
 	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4996 /wd4819 /wd4244")
 ENDIF()
@@ -71,20 +70,25 @@ SET(SOURCE_FILES
 	${PROJECT_DIR}/FreeImage/FreeImageIO.cpp
 	${PROJECT_DIR}/FreeImage/GetType.cpp
 	${PROJECT_DIR}/FreeImage/Halftoning.cpp
+	${PROJECT_DIR}/FreeImage/J2KHelper.cpp
 	${PROJECT_DIR}/FreeImage/MemoryIO.cpp
 	${PROJECT_DIR}/FreeImage/PixelAccess.cpp
 	${PROJECT_DIR}/FreeImage/Plugin.cpp
 	${PROJECT_DIR}/FreeImage/PluginBMP.cpp
+	${PROJECT_DIR}/FreeImage/PluginDDS.cpp
 	${PROJECT_DIR}/FreeImage/PluginGIF.cpp
 	${PROJECT_DIR}/FreeImage/PluginHDR.cpp
 	${PROJECT_DIR}/FreeImage/PluginICO.cpp
+	${PROJECT_DIR}/FreeImage/PluginJP2.cpp
 	${PROJECT_DIR}/FreeImage/PluginJPEG.cpp
 	${PROJECT_DIR}/FreeImage/PluginJXR.cpp
 	${PROJECT_DIR}/FreeImage/PluginPNG.cpp
 	${PROJECT_DIR}/FreeImage/PluginPSD.cpp
 	${PROJECT_DIR}/FreeImage/PluginTARGA.cpp
+	${PROJECT_DIR}/FreeImage/PluginTIFF.cpp
 	${PROJECT_DIR}/FreeImage/PluginWEBP.cpp
 	${PROJECT_DIR}/FreeImage/PSDParser.cpp
+	${PROJECT_DIR}/FreeImage/TIFFLogLuv.cpp
 	${PROJECT_DIR}/FreeImage/tmoColorConvert.cpp
 	${PROJECT_DIR}/FreeImage/tmoDrago03.cpp
 	${PROJECT_DIR}/FreeImage/tmoFattal02.cpp
@@ -108,10 +112,9 @@ SET(SOURCE_FILES
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
 
-ADD_DEFINITIONS(-DFREEIMAGE_EXPORTS)
+ADD_DEFINITIONS(-DFREEIMAGE_EXPORTS -DOPJ_STATIC)
 ADD_LIBRARY(freeimage SHARED ${SOURCE_FILES})
 
-ADD_DEFINITIONS(-DOPJ_STATIC -DLIBRAW_NODLL)
 IF(NOT MSVC)
 	ADD_DEFINITIONS(-D__ANSI__)
 ENDIF()
