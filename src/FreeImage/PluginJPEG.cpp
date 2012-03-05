@@ -566,21 +566,26 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 			// step 5b: allocate dib and init header
 
-			// RGB or greyscale image
-			dib = FreeImage_AllocateHeader(header_only, cinfo.output_width, cinfo.output_height, 8 * cinfo.num_components, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK);
-			if(!dib) throw FI_MSG_ERROR_DIB_MEMORY;
+			if((cinfo.num_components == 4) && (cinfo.out_color_space == JCS_CMYK)) {
+				// load as CMYK and convert to RGB
+				dib = FreeImage_AllocateHeader(header_only, cinfo.output_width, cinfo.output_height, 24, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK);
+				if(!dib) throw FI_MSG_ERROR_DIB_MEMORY;
+			} else {
+				// RGB or greyscale image
+				dib = FreeImage_AllocateHeader(header_only, cinfo.output_width, cinfo.output_height, 8 * cinfo.num_components, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK);
+				if(!dib) throw FI_MSG_ERROR_DIB_MEMORY;
 
-			if (cinfo.num_components == 1) {
-				// build a greyscale palette
-				RGBQUAD *colors = FreeImage_GetPalette(dib);
+				if (cinfo.num_components == 1) {
+					// build a greyscale palette
+					RGBQUAD *colors = FreeImage_GetPalette(dib);
 
-				for (int i = 0; i < 256; i++) {
-					colors[i].rgbRed   = (BYTE)i;
-					colors[i].rgbGreen = (BYTE)i;
-					colors[i].rgbBlue  = (BYTE)i;
+					for (int i = 0; i < 256; i++) {
+						colors[i].rgbRed   = (BYTE)i;
+						colors[i].rgbGreen = (BYTE)i;
+						colors[i].rgbBlue  = (BYTE)i;
+					}
 				}
 			}
-
 			if(scale_denom != 1) {
 				// store original size info if a scaling was requested
 				store_size_info(dib, cinfo.image_width, cinfo.image_height);

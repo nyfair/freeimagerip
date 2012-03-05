@@ -38,8 +38,10 @@
 #define PSDP_GRAYSCALE		1
 #define PSDP_INDEXED		2
 #define PSDP_RGB			3
+#define PSDP_CMYK			4
 #define PSDP_MULTICHANNEL	7
 #define PSDP_DUOTONE		8
+#define PSDP_LAB			9
 
 // PSD compression schemes
 #define PSDP_COMPRESSION_NONE	0	// Raw data
@@ -581,7 +583,14 @@ FIBITMAP* psdParser::ReadImageData(FreeImageIO *io, fi_handle handle) {
 			}
 			break;
 		case PSDP_RGB:	
-		case PSDP_MULTICHANNEL	:
+		case PSDP_LAB:		
+		case PSDP_CMYK:
+		case PSDP_MULTICHANNEL:
+			// force PSDP_MULTICHANNEL CMY as CMYK
+			dstCh = (mode == PSDP_MULTICHANNEL && !header_only) ? 4 : MIN<unsigned>(nChannels, 4);
+			if(dstCh < 3) {
+				throw "Invalid number of channels";
+			}
 			switch(depth) {
 				case 16:
 				bitmap = FreeImage_AllocateHeaderT(header_only, dstCh < 4 ? FIT_RGB16 : FIT_RGBA16, nWidth, nHeight, depth*dstCh);
@@ -787,10 +796,30 @@ FIBITMAP* psdParser::ReadImageData(FreeImageIO *io, fi_handle handle) {
 	
 	// --- Further process the bitmap ---
 	
-	if(mode == PSDP_MULTICHANNEL) {	
-		invertColor(bitmap);
-	}
-	else {
+	if((mode == PSDP_CMYK || mode == PSDP_MULTICHANNEL)) {	
+		// CMYK values are "inverted", invert them back		
+
+		if(mode == PSDP_MULTICHANNEL) {
+			invertColor(bitmap);
+		} else {
+			FreeImage_Invert(bitmap);
+		}
+
+		// convert to RGB
+			
+		ConvertCMYKtoRGBA(bitmap);
+			
+		// remove the pending A if not present in source 
+		if(nChannels == 4 || nChannels == 3 ) {
+			FIBITMAP* t = RemoveAlphaChannel(bitmap);
+			if(t) {
+				FreeImage_Unload(bitmap);
+				bitmap = t;
+			} // else: silently fail
+		}
+	} else if(mode == PSDP_LAB) {
+		ConvertLABtoRGB(bitmap);
+	} else {
 		if (needPalette && FreeImage_GetPalette(bitmap)) {
 			
 			if(mode == PSDP_BITMAP) {

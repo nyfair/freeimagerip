@@ -54,6 +54,7 @@ void tiff_ConvertLineRGBToXYZ(BYTE *target, BYTE *source, int width_in_pixels);
 /** Supported loading methods */
 typedef enum {
 	LoadAsRBGA			= 0,
+	LoadAsCMYK			= 1,
 	LoadAs8BitTrns		= 2,
 	LoadAsGenericStrip	= 3,
 	LoadAsTiled			= 4,
@@ -157,7 +158,7 @@ Open a TIFF file descriptor for reading or writing
 TIFF *
 TIFFFdOpen(thandle_t handle, const char *name, const char *mode) {
 	TIFF *tif;
-	
+
 	// Open the file; the callback will set everything up
 	tif = TIFFClientOpen(name, mode, handle,
 	    _tiffReadProc, _tiffWriteProc, _tiffSeekProc, _tiffCloseProc,
@@ -894,8 +895,8 @@ FindLoadMethod(TIFF *tif, FREE_IMAGE_TYPE image_type, int flags) {
 			if((image_type == FIT_RGB16) || (image_type == FIT_RGBA16)) {
 				// load 48-bit RGB and 64-bit RGBA without conversion 
 				loadMethod = LoadAsGenericStrip;
-				break;
 			} 
+			break;
 		case PHOTOMETRIC_YCBCR:
 		case PHOTOMETRIC_CIELAB:
 		case PHOTOMETRIC_ICCLAB:
@@ -906,6 +907,15 @@ FindLoadMethod(TIFF *tif, FREE_IMAGE_TYPE image_type, int flags) {
 			loadMethod = LoadAsLogLuv;
 			break;
 		case PHOTOMETRIC_SEPARATED:
+			// if image is PHOTOMETRIC_SEPARATED _and_ comes with an ICC profile, 
+			// then the image should preserve its original (CMYK) colour model and 
+			// should be read as CMYK (to keep the match of pixel and profile and 
+			// to avoid multiple conversions. Conversion can be done by changing 
+			// the profile from it's original CMYK to an RGB profile with an 
+			// apropriate color management system. Works with non-tiled TIFFs.
+			if(!bIsTiled) {
+				loadMethod = LoadAsCMYK;
+			}
 			break;
 		case PHOTOMETRIC_MINISWHITE:
 		case PHOTOMETRIC_MINISBLACK:
@@ -1231,6 +1241,238 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 			
 			FreeImage_SetTransparencyTable(dib, &trns[0], 256);
 			FreeImage_SetTransparent(dib, TRUE);
+
+		} else if(loadMethod == LoadAsCMYK) {
+			// ---------------------------------------------------------------------------------
+			// CMYK loading
+			// ---------------------------------------------------------------------------------
+
+			// At this place, samplesperpixel could be > 4, esp. when a CMYK(A) format
+			// is recognized. Where all other formats are handled straight-forward, this
+			// format has to be handled special 
+
+			BOOL isCMYKA = (photometric == PHOTOMETRIC_SEPARATED) && (samplesperpixel > 4);
+
+			// We use a temp dib to store the alpha for the CMYKA to RGBA conversion
+			// NOTE this is until we have Extra channels implementation.
+			// Also then it will be possible to merge LoadAsCMYK with LoadAsGenericStrip
+			
+			FIBITMAP *alpha = NULL;
+			unsigned alpha_pitch = 0;
+			BYTE *alpha_bits = NULL;
+			unsigned alpha_Bpp = 0;
+
+			if(isCMYKA && !header_only) {
+				if(bitspersample == 16) {
+					alpha = FreeImage_AllocateT(FIT_UINT16, width, height);
+				} else if (bitspersample == 8) {
+					alpha = FreeImage_Allocate(width, height, 8);
+				}
+					
+				if(!alpha) {
+					FreeImage_OutputMessageProc(s_format_id, "Failed to allocate temporary alpha channel");
+				} else {
+					alpha_bits = FreeImage_GetScanLine(alpha, height - 1);
+					alpha_pitch = FreeImage_GetPitch(alpha);
+					alpha_Bpp = FreeImage_GetBPP(alpha) / 8;
+				}
+				
+			}
+			
+			// create a new DIB
+			const uint16 chCount = MIN<uint16>(samplesperpixel, 4);
+			dib = CreateImageType(header_only, image_type, width, height, bitspersample, chCount);
+			if (dib == NULL) {
+				FreeImage_Unload(alpha);
+				throw FI_MSG_ERROR_MEMORY;
+			}
+
+			// fill in the resolution (english or universal)
+
+			ReadResolution(tif, dib);
+
+			if(!header_only) {
+
+				// calculate the line + pitch (separate for scr & dest)
+
+				const tmsize_t src_line = TIFFScanlineSize(tif);
+				const tmsize_t dst_line = FreeImage_GetLine(dib);
+				const unsigned dib_pitch = FreeImage_GetPitch(dib);
+				const unsigned dibBpp = FreeImage_GetBPP(dib) / 8;
+				const unsigned Bpc = dibBpp / chCount;
+				const unsigned srcBpp = bitspersample * samplesperpixel / 8;
+
+				assert(Bpc <= 2); //< CMYK is only BYTE or SHORT 
+				
+				// In the tiff file the lines are save from up to down 
+				// In a DIB the lines must be saved from down to up
+
+				BYTE *bits = FreeImage_GetScanLine(dib, height - 1);
+
+				// read the tiff lines and save them in the DIB
+
+				BYTE *buf = (BYTE*)malloc(TIFFStripSize(tif) * sizeof(BYTE));
+				if(buf == NULL) {
+					FreeImage_Unload(alpha);
+					throw FI_MSG_ERROR_MEMORY;
+				}
+
+				if(planar_config == PLANARCONFIG_CONTIG) {
+					
+					// - loop for strip blocks -
+					
+					for (uint32 y = 0; y < height; y += rowsperstrip) {
+						const int32 strips = (y + rowsperstrip > height ? height - y : rowsperstrip);
+
+						if (TIFFReadEncodedStrip(tif, TIFFComputeStrip(tif, y, 0), buf, strips * src_line) == -1) {
+							free(buf);
+							FreeImage_Unload(alpha);
+							throw FI_MSG_ERROR_PARSING;
+						} 
+						
+						// - loop for strips -
+						
+						if(src_line != dst_line) {
+							// CMYKA+
+							if(alpha) {
+								for (int l = 0; l < strips; l++) {					
+									for(BYTE *pixel = bits, *al_pixel = alpha_bits, *src_pixel =  buf + l * src_line; pixel < bits + dib_pitch; pixel += dibBpp, al_pixel += alpha_Bpp, src_pixel += srcBpp) {
+										// copy pixel byte by byte
+										BYTE b = 0;
+										for( ; b < dibBpp; ++b) {
+											pixel[b] =  src_pixel[b];
+										}
+										// TODO write the remaining bytes to extra channel(s)
+										
+										// HACK write the first alpha to a separate dib (assume BYTE or WORD)
+										al_pixel[0] = src_pixel[b];
+										if(Bpc > 1) {
+											al_pixel[1] = src_pixel[b + 1];
+										}
+										
+									}
+									bits -= dib_pitch;
+									alpha_bits -= alpha_pitch;
+								}
+							}
+							else {
+								// alpha/extra channels alloc failed
+								for (int l = 0; l < strips; l++) {
+									for(BYTE* pixel = bits, * src_pixel =  buf + l * src_line; pixel < bits + dst_line; pixel += dibBpp, src_pixel += srcBpp) {
+										AssignPixel(pixel, src_pixel, dibBpp);
+									}
+									bits -= dib_pitch;
+								}
+							}
+						}
+						else { 
+							// CMYK to CMYK
+							for (int l = 0; l < strips; l++) {
+								BYTE *b = buf + l * src_line;
+								memcpy(bits, b, src_line);
+								bits -= dib_pitch;
+							}
+						}
+
+					} // height
+				
+				}
+				else if(planar_config == PLANARCONFIG_SEPARATE) {
+
+					BYTE *dib_strip = bits;
+					BYTE *al_strip = alpha_bits;
+
+					// - loop for strip blocks -
+					
+					for (uint32 y = 0; y < height; y += rowsperstrip) {
+						const int32 strips = (y + rowsperstrip > height ? height - y : rowsperstrip);
+						
+						// - loop for channels (planes) -
+						
+						for(uint16 sample = 0; sample < samplesperpixel; sample++) {
+							
+							if (TIFFReadEncodedStrip(tif, TIFFComputeStrip(tif, y, sample), buf, strips * src_line) == -1) {
+								free(buf);
+								FreeImage_Unload(alpha);
+								throw FI_MSG_ERROR_PARSING;
+							} 
+									
+							BYTE *dst_strip = dib_strip;
+							unsigned dst_pitch = dib_pitch;
+							uint16 ch = sample;
+							unsigned Bpp = dibBpp;
+
+							if(sample >= chCount) {
+								// TODO Write to Extra Channel
+								
+								// HACK redirect write to temp alpha
+								if(alpha && sample == chCount) {
+
+									dst_strip = al_strip;
+									dst_pitch = alpha_pitch;
+
+									ch = 0;
+									Bpp = alpha_Bpp;
+								}
+								else {
+									break; 
+								}
+							}
+							
+							const unsigned channelOffset = ch * Bpc;			
+							
+							// - loop for strips in block -
+							
+							BYTE *src_line_begin = buf;
+							BYTE *dst_line_begin = dst_strip;
+							for (int l = 0; l < strips; l++, src_line_begin += src_line, dst_line_begin -= dst_pitch ) {
+								// - loop for pixels in strip -
+								
+								const BYTE* const src_line_end = src_line_begin + src_line;
+								for (BYTE *src_bits = src_line_begin, * dst_bits = dst_line_begin; src_bits < src_line_end; src_bits += Bpc, dst_bits += Bpp) {
+									AssignPixel(dst_bits + channelOffset, src_bits, Bpc);									
+								} // line
+								
+							} // strips
+															
+						} // channels
+							
+						// done with a strip block, incr to the next
+						dib_strip -= strips * dib_pitch;
+						al_strip -= strips * alpha_pitch;
+							
+					} //< height
+					
+				}
+
+				free(buf);
+			
+				ConvertCMYKtoRGBA(dib);
+					
+				// The ICC Profile is invalid, clear it
+				iccSize = 0;
+				iccBuf = NULL;
+					
+				if(isCMYKA) {
+					// HACK until we have Extra channels. (ConvertCMYKtoRGBA will then do the work)
+						
+					FreeImage_SetChannel(dib, alpha, FICC_ALPHA);
+					FreeImage_Unload(alpha);
+					alpha = NULL;
+				}
+				else {
+					FIBITMAP *t = RemoveAlphaChannel(dib);
+					if(t) {
+						FreeImage_Unload(dib);
+						dib = t;
+					}
+					else {
+						FreeImage_OutputMessageProc(s_format_id, "Cannot allocate memory for buffer. CMYK image converted to RGB + pending Alpha");
+					}
+				}
+				
+			} // !header_only
+			
 		} else if(loadMethod == LoadAsGenericStrip) {
 			// ---------------------------------------------------------------------------------
 			// Generic loading
@@ -1574,7 +1816,7 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 				bitspersample = 8;
 			}
 			else if(bitsperpixel == 32) {
-				// 32-bit images : check for alpha transparency
+				// 32-bit images : check for CMYK or alpha transparency
 
 				if(photometric == PHOTOMETRIC_RGB) {
 					// transparency mask support
@@ -1813,6 +2055,7 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 			}
 			free(buffer);
 		}
+
 		return TRUE;
 		
 	} catch(const char *text) {
@@ -1830,6 +2073,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 	if(!bResult) {
 		return FALSE;
 	}
+
 	return bResult;
 }
 
