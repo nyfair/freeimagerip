@@ -2,8 +2,7 @@
 -- nyfair (nyfair2012@gmail.com)
 
 require "fswin"
-local ffi = require "ffi"
-local filua = ffi.load("freeimage")
+filua = ffi.load("freeimage")
 ffi.cdef[[
 	typedef struct { uint8_t b, g, r, a; } RGBA;
 	
@@ -12,6 +11,7 @@ ffi.cdef[[
 	void* __stdcall FreeImage_Clone(void*);
 	void __stdcall FreeImage_Unload(void*);
 	void* __stdcall FreeImage_EnlargeCanvas(void*, int, int, int, int, RGBA*, int);
+	void* __stdcall FreeImage_Allocate(int, int, int, unsigned, unsigned, unsigned);
 	
 	unsigned __stdcall FreeImage_GetBPP(void*);
 	unsigned __stdcall FreeImage_GetWidth(void*);
@@ -31,14 +31,14 @@ ffi.cdef[[
 	int __stdcall FreeImage_FlipHorizontal(void*);
 	int __stdcall FreeImage_FlipVertical(void*);
 	void* __stdcall FreeImage_Rescale(void*, int, int, int);
-	int __stdcall FreeImage_JPEGTransform(const char*, const char*,
-																				int, int);
-	int __stdcall FreeImage_JPEGCrop(const char *, const char*,
-																	int, int, int, int);
+	int __stdcall FreeImage_JPEGTransform(const char*, const char*, int, int);
+	int __stdcall FreeImage_JPEGCrop(const char *, const char*, int, int, int, int);
 	
 	void* __stdcall FreeImage_Copy(void*, int, int, int, int);
 	int __stdcall FreeImage_Paste(void*, void*, int, int, int);
 	void* __stdcall FreeImage_Composite(void*, int, RGBA*, void*);
+	int __stdcall FreeImage_GetPixelColor(void*, unsigned, unsigned, RGBA*);
+	int __stdcall FreeImage_SetPixelColor(void*, unsigned, unsigned, RGBA*);
 ]]
 
 -- Image IO
@@ -71,7 +71,7 @@ function free(img)
 end
 
 function color(r, g, b, a)
-	color = ffi.new("RGBA[?]", 1)
+	local color = ffi.new("RGBA[?]", 1)
 	color[0].b= b or 0
 	color[0].g= g or 0
 	color[0].r= r or 0
@@ -81,6 +81,10 @@ end
 
 function enlarge(img, left, top, right, bottom, rgba)
 	return filua.FreeImage_EnlargeCanvas(img, left, top, right, bottom, rgba or color(), 0)
+end
+
+function newimg(width, height, bpp, r, g, b)
+	return filua.FreeImage_Allocate(width, height, bpp or 24, r or 0, g or 0, b or 0)
 end
 
 -- Common Info
@@ -107,6 +111,14 @@ function setdpi(img, x, y)
 	filua.FreeImage_SetDotsPerMeterY(img, y/0.0254)
 end
 
+function getpixel(img, x, y, rgba)
+	filua.FreeImage_GetPixelColor(img, x, y, rgba)
+end
+
+function setpixel(img, x, y, rgba)
+	filua.FreeImage_SetPixelColor(img, x, y, rgba)
+end
+
 -- Composite
 function copy(img, left, top, right, bottom)
 	return filua.FreeImage_Copy(img, left, top, right, bottom)
@@ -124,7 +136,7 @@ end
 -- File-based process function
 function convert(src, dst, flag)
 	if src:find("*") then
-		for k,v in ipairs(dir(src)) do
+		for k,v in ipairs(ls(src)) do
 			print(v)
 			local img = open(v)
 			save(img, stripext(v).."."..dst, flag)
@@ -143,7 +155,7 @@ function convbpp(src, bpp, dst, flag)
 			if dst == nil then
 				dst = "bmp"
 			end
-			for k,v in ipairs(dir(src)) do
+			for k,v in ipairs(ls(src)) do
 				print(v)
 				local img = open(v)
 				local out

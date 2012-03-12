@@ -1,7 +1,7 @@
 -- The file is in public domain
 -- nyfair (nyfair2012@gmail.com)
 
-local ffi = require "ffi"
+ffi = require "ffi"
 ffi.cdef[[
 	#pragma pack(push)
 	#pragma pack(1)
@@ -37,7 +37,7 @@ ffi.cdef[[
 
 local WIN32_FIND_DATA = ffi.typeof("struct WIN32_FIND_DATAA")
 local INVALID_HANDLE = ffi.cast("void*", -1)
-function dir(pattern)
+function ls(pattern)
 	local fd = ffi.new(WIN32_FIND_DATA)
 	local tFiles = {}
 	if pattern == nil then
