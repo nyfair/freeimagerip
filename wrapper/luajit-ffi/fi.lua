@@ -1,8 +1,12 @@
 -- The file is in public domain
 -- nyfair (nyfair2012@gmail.com)
 
-require "fswin"
 local ffi = require "ffi"
+if ffi.os == "Windows" then
+	require "fswin"
+else
+	require "fsposix"
+end
 local filua = ffi.load("freeimage")
 ffi.cdef[[
 	typedef struct { uint8_t b, g, r, a; } RGBA;
@@ -245,4 +249,14 @@ function jpgtran(src, func, dst, perfect)
 		dst = stripext(src).."_tran.jpg"
 	end
 	filua.FreeImage_JPEGTransform(src, dst, func, perfect or 0)
+end
+
+-- helper
+function stripext(fn)
+	local idx = fn:match(".+()%..+$")
+	if idx then
+		return fn:sub(1, idx - 1)
+	else
+		return fn
+	end
 end

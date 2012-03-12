@@ -81,12 +81,3 @@ end
 function rd(dst)
 	ffi.C.RemoveDirectoryA(dst)
 end
-
-function stripext(fn)
-	local idx = fn:match(".+()%..+$")
-	if idx then
-		return fn:sub(1, idx - 1)
-	else
-		return fn
-	end
-end
