@@ -1,8 +1,8 @@
 -- The file is in public domain
 -- nyfair (nyfair2012@gmail.com)
 
-require "fswin"
-filua = ffi.load("freeimage")
+ffi = require 'ffi'
+local filua = ffi.load('freeimage')
 ffi.cdef[[
 	typedef struct { uint8_t b, g, r, a; } RGBA;
 	
@@ -71,7 +71,7 @@ function free(img)
 end
 
 function color(r, g, b, a)
-	local color = ffi.new("RGBA[?]", 1)
+	local color = ffi.new('RGBA[?]', 1)
 	color[0].b= b or 0
 	color[0].g= g or 0
 	color[0].r= r or 0
@@ -133,13 +133,25 @@ function composite(back, front)
 	return filua.FreeImage_Composite(front, 0, nil, back)
 end
 
+function to8(src)
+	return filua.FreeImage_ConvertToGreyscale(src)
+end
+
+function to24(src)
+	return filua.FreeImage_ConvertTo24Bits(src)
+end
+
+function to32(src)
+	return filua.FreeImage_ConvertTo32Bits(src)
+end
+
 -- File-based process function
 function convert(src, dst, flag)
-	if src:find("*") then
+	if src:find('*') then
 		for k,v in ipairs(ls(src)) do
 			print(v)
 			local img = open(v)
-			save(img, stripext(v).."."..dst, flag)
+			save(img, stripext(v)..'.'..dst, flag)
 			free(img)
 		end
 	else
@@ -151,19 +163,19 @@ end
 
 function convbpp(src, bpp, dst, flag)
 	if bpp==24 or bpp==32 or bpp==8 then
-		if src:find("*") then
+		if src:find('*') then
 			if dst == nil then
-				dst = "bmp"
+				dst = 'bmp'
 			end
 			for k,v in ipairs(ls(src)) do
 				print(v)
 				local img = open(v)
 				local out
-				if bpp == 24 then out = filua.FreeImage_ConvertTo24Bits(img)
-				elseif bpp == 32 then out = filua.FreeImage_ConvertTo32Bits(img)
-				else out = filua.FreeImage_ConvertToGreyscale(img)
+				if bpp == 24 then out = to24(img)
+				elseif bpp == 32 then out = to32(img)
+				else out = to8(img)
 				end
-				save(out, stripext(v).."."..dst, flag)
+				save(out, stripext(v)..'.'..dst, flag)
 				free(img)
 				free(out)
 			end
@@ -173,9 +185,9 @@ function convbpp(src, bpp, dst, flag)
 			end
 			local img = open(src)
 			local out
-			if bpp == 24 then out = filua.FreeImage_ConvertTo24Bits(img)
-			elseif bpp == 32 then out = filua.FreeImage_ConvertTo32Bits(img)
-			else out = filua.FreeImage_ConvertToGreyscale(img)
+			if bpp == 24 then out = to24(img)
+			elseif bpp == 32 then out = to32(img)
+			else out = to8(img)
 			end
 			save(out, dst, flag)
 			free(img)
@@ -205,7 +217,7 @@ end
 
 function rotate(src, degree, dst, flag, rgba)
 	if dst == nil then
-		dst = stripext(src).."_rotate.bmp"
+		dst = stripext(src)..'_rotate.bmp'
 	end
 	local img = open(src)
 	local out = filua.FreeImage_Rotate(img, degree, rgba or color())
@@ -216,7 +228,7 @@ end
 
 function scale(src, width, height, filter, dst, flag)
 	if dst == nil then
-		dst = stripext(src).."_thumb.bmp"
+		dst = stripext(src)..'_thumb.bmp'
 	end
 	local img = open(src)
 	local out = filua.FreeImage_Rescale(img, width, height, filter or 5)
@@ -227,7 +239,7 @@ end
 
 function fliph(src, dst, flag)
 	if dst == nil then
-		dst = stripext(src).."_fliph.bmp"
+		dst = stripext(src)..'_fliph.bmp'
 	end
 	local img = open(src)
 	filua.FreeImage_FlipHorizontal(img)
@@ -237,7 +249,7 @@ end
 
 function flipv(src, dst, flag)
 	if dst == nil then
-		dst = stripext(src).."_flipv.bmp"
+		dst = stripext(src)..'_flipv.bmp'
 	end
 	local img = open(src)
 	filua.FreeImage_FlipVertical(img)
@@ -247,14 +259,58 @@ end
 
 function jpgcrop(src, left, top, right, bottom, dst)
 	if dst == nil then
-		dst = stripext(src).."_crop.jpg"
+		dst = stripext(src)..'_crop.jpg'
 	end
 	filua.FreeImage_JPEGCrop(src, dst, left, top, right, bottom)
 end
 
 function jpgtran(src, func, dst, perfect)
 	if dst == nil then
-		dst = stripext(src).."_tran.jpg"
+		dst = stripext(src)..'_tran.jpg'
 	end
 	filua.FreeImage_JPEGTransform(src, dst, func, perfect or 0)
+end
+
+-- helper
+if ffi.os == 'Windows' then
+	require 'fswin'
+else
+	require 'fsposix'
+end
+
+function rm(dst)
+	os.rm(dst)
+end
+
+function mv(src, dst)
+	os.mv(src, dst)
+end
+
+function dir(pattern)
+	return ls(pattern)
+end
+
+function copy(src, dst)
+	cp(src, dst)
+end
+
+function mkdir(dst)
+	md(dst)
+end
+
+function move(src, dst)
+	mv(src, dst)
+end
+
+function rmdir(dst)
+	rd(dst)
+end
+
+function stripext(fn)
+	local idx = fn:match('.+()%..+$')
+	if idx then
+		return fn:sub(1, idx - 1)
+	else
+		return fn
+	end
 end
