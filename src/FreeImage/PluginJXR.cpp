@@ -137,7 +137,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 						rgb = (RGBTRIPLE *) FreeImage_GetScanLine(dib, height-1-y);
 						for(int x = 0; x < width; x++) {
 							rgb[x].rgbtBlue	= bitmap[0];
-							rgb[x].rgbtGreen	= bitmap[1];
+							rgb[x].rgbtGreen= bitmap[1];
 							rgb[x].rgbtRed	= bitmap[2];
 							bitmap += 3;
 						}
@@ -152,7 +152,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 						rgba = (RGBQUAD *) FreeImage_GetScanLine(dib, height-1-y);
 						for(int x = 0; x < width; x++) {
 							rgba[x].rgbBlue		= bitmap[0];
-							rgba[x].rgbGreen		= bitmap[1];
+							rgba[x].rgbGreen	= bitmap[1];
 							rgba[x].rgbRed		= bitmap[2];
 							rgba[x].rgbReserved	= bitmap[3];
 							bitmap += 4;
@@ -167,9 +167,9 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 					for(int y = 0; y < height; y++) {
 						rgb16 = (FIRGB16 *) FreeImage_GetScanLine(dib, height-1-y);
 						for(int x = 0; x < width; x++) {
-							rgb16[x].red		= ((short *)(bitmap))[0];
+							rgb16[x].red	= ((short *)(bitmap))[0];
 							rgb16[x].green	= ((short *)(bitmap))[1];
-							rgb16[x].blue		= ((short *)(bitmap))[2];
+							rgb16[x].blue	= ((short *)(bitmap))[2];
 							bitmap += 6;
 						}
 					}
@@ -182,7 +182,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 					for(int y = 0; y < height; y++) {
 						rgba16 = (FIRGBA16 *) FreeImage_GetScanLine(dib, height-1-y);
 						for(int x = 0; x < width; x++) {
-							rgba16[x].red		= ((short *)(bitmap))[0];
+							rgba16[x].red	= ((short *)(bitmap))[0];
 							rgba16[x].green	= ((short *)(bitmap))[1];
 							rgba16[x].blue	= ((short *)(bitmap))[2];
 							rgba16[x].alpha	= ((short *)(bitmap))[3];
@@ -419,7 +419,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 		unsigned y = FreeImage_GetDotsPerMeterY(dib);
 		pEncoder->SetResolution(pEncoder, x*(float)0.0254, y*(float)0.0254);
 		pEncoder->WritePixels(pEncoder, height, (U8 *) bitmap_ptr, cbStride);
-		size_t image_size = pEncoder->WMP.nCbImage + pEncoder->WMP.nCbAlpha
+		int image_size = pEncoder->WMP.nCbImage + pEncoder->WMP.nCbAlpha
 							+ pEncoder->WMP.nOffImage;
 		io->write_proc(encode_cache, 1, image_size, handle);
 

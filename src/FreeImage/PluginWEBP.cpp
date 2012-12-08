@@ -36,7 +36,7 @@ static int WebPWriter(const uint8_t* data, size_t data_size,
   BYTE *ptr = (BYTE*) pic->custom_ptr;
   ptr += offset;
   memcpy(ptr, data, data_size);
-  offset += data_size;
+  offset += (int) data_size;
   return 1;
 }
 
@@ -66,7 +66,7 @@ RegExpr() {
 
 static const char * DLL_CALLCONV
 MimeType() {
-	return "image/freeimage-webp";
+	return "image/webp";
 }
 
 static BOOL DLL_CALLCONV
@@ -136,7 +136,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 					rgb = (RGBTRIPLE *) FreeImage_GetScanLine(dib, height-1-y);
 					for(int x = 0; x < width; x++) {
 						rgb[x].rgbtBlue	= bitmap[0];
-						rgb[x].rgbtGreen	= bitmap[1];
+						rgb[x].rgbtGreen= bitmap[1];
 						rgb[x].rgbtRed	= bitmap[2];
 						bitmap += 3;
 					}
@@ -148,7 +148,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 					rgba = (RGBQUAD *) FreeImage_GetScanLine(dib, height-1-y);
 					for(int x = 0; x < width; x++) {
 						rgba[x].rgbBlue		= bitmap[0];
-						rgba[x].rgbGreen		= bitmap[1];
+						rgba[x].rgbGreen	= bitmap[1];
 						rgba[x].rgbRed		= bitmap[2];
 						rgba[x].rgbReserved	= bitmap[3];
 						bitmap += 4;

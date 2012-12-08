@@ -121,6 +121,7 @@ ENDIF()
 
 IF(MSVC)
 	OPTION(SUSIE_PLUGIN "Build Susie plugin" OFF)
+	SET_TARGET_PROPERTIES(freeimage PROPERTIES OUTPUT_NAME "FreeImage")
 ENDIF()
 OPTION(QT_PLUGIN "Build QT plugin" OFF)
 OPTION(CONV_TEST "Build a simple convert test program" OFF)

@@ -584,13 +584,14 @@ FIBITMAP* psdParser::ReadImageData(FreeImageIO *io, fi_handle handle) {
 			break;
 		case PSDP_RGB:	
 		case PSDP_LAB:		
-		case PSDP_CMYK:
-		case PSDP_MULTICHANNEL:
+		case PSDP_CMYK	:
+		case PSDP_MULTICHANNEL	:
 			// force PSDP_MULTICHANNEL CMY as CMYK
 			dstCh = (mode == PSDP_MULTICHANNEL && !header_only) ? 4 : MIN<unsigned>(nChannels, 4);
 			if(dstCh < 3) {
 				throw "Invalid number of channels";
 			}
+
 			switch(depth) {
 				case 16:
 				bitmap = FreeImage_AllocateHeaderT(header_only, dstCh < 4 ? FIT_RGB16 : FIT_RGBA16, nWidth, nHeight, depth*dstCh);
@@ -806,7 +807,6 @@ FIBITMAP* psdParser::ReadImageData(FreeImageIO *io, fi_handle handle) {
 		}
 
 		// convert to RGB
-			
 		ConvertCMYKtoRGBA(bitmap);
 			
 		// remove the pending A if not present in source 
@@ -817,9 +817,11 @@ FIBITMAP* psdParser::ReadImageData(FreeImageIO *io, fi_handle handle) {
 				bitmap = t;
 			} // else: silently fail
 		}
-	} else if(mode == PSDP_LAB) {
+	}
+	else if ( mode == PSDP_LAB ) {
 		ConvertLABtoRGB(bitmap);
-	} else {
+	}
+	else {
 		if (needPalette && FreeImage_GetPalette(bitmap)) {
 			
 			if(mode == PSDP_BITMAP) {

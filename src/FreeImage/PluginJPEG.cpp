@@ -425,11 +425,6 @@ jpeg_read_comment(FIBITMAP *dib, const BYTE *dataptr, unsigned int datalen) {
 	return TRUE;
 }
 
-// ------------------------------------------------------------
-//   Keep original size info when using scale option on loading
-// ------------------------------------------------------------
-static void 
-store_size_info(FIBITMAP *dib, JDIMENSION width, JDIMENSION height) {}
 
 // ==========================================================
 // Plugin Implementation
@@ -566,16 +561,17 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 			// step 5b: allocate dib and init header
 
-			if((cinfo.num_components == 4) && (cinfo.out_color_space == JCS_CMYK)) {
+			if((cinfo.output_components == 4) && (cinfo.out_color_space == JCS_CMYK)) {
+				// CMYK image
 				// load as CMYK and convert to RGB
 				dib = FreeImage_AllocateHeader(header_only, cinfo.output_width, cinfo.output_height, 24, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK);
 				if(!dib) throw FI_MSG_ERROR_DIB_MEMORY;
 			} else {
 				// RGB or greyscale image
-				dib = FreeImage_AllocateHeader(header_only, cinfo.output_width, cinfo.output_height, 8 * cinfo.num_components, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK);
+				dib = FreeImage_AllocateHeader(header_only, cinfo.output_width, cinfo.output_height, 8 * cinfo.output_components, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK);
 				if(!dib) throw FI_MSG_ERROR_DIB_MEMORY;
 
-				if (cinfo.num_components == 1) {
+				if (cinfo.output_components == 1) {
 					// build a greyscale palette
 					RGBQUAD *colors = FreeImage_GetPalette(dib);
 
@@ -585,10 +581,6 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 						colors[i].rgbBlue  = (BYTE)i;
 					}
 				}
-			}
-			if(scale_denom != 1) {
-				// store original size info if a scaling was requested
-				store_size_info(dib, cinfo.image_width, cinfo.image_height);
 			}
 
 			// step 5c: handle metrices
@@ -605,8 +597,6 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 			
 			// step 6: read special markers
 			
-			//read_markers(&cinfo, dib);
-
 			// --- header only mode => clean-up and return
 
 			if (header_only) {
@@ -618,21 +608,49 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 			// step 7a: while (scan lines remain to be read) jpeg_read_scanlines(...);
 
-			// normal case (RGB or greyscale image)
+			if(cinfo.out_color_space == JCS_CMYK) {
+				// convert from CMYK to RGB
 
-			while (cinfo.output_scanline < cinfo.output_height) {
-				JSAMPROW dst = FreeImage_GetScanLine(dib, cinfo.output_height - cinfo.output_scanline - 1);
+				JSAMPARRAY buffer;		// output row buffer
+				unsigned row_stride;	// physical row width in output buffer
 
-				jpeg_read_scanlines(&cinfo, &dst, 1);
-			}
+				// JSAMPLEs per row in output buffer
+				row_stride = cinfo.output_width * cinfo.output_components;
+				// make a one-row-high sample array that will go away when done with image
+				buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr) &cinfo, JPOOL_IMAGE, row_stride, 1);
 
-			// step 7b: swap red and blue components (see LibJPEG/jmorecfg.h: #define RGB_RED, ...)
-			// The default behavior of the JPEG library is kept "as is" because LibTIFF uses 
-			// LibJPEG "as is".
+				while (cinfo.output_scanline < cinfo.output_height) {
+					JSAMPROW src = buffer[0];
+					JSAMPROW dst = FreeImage_GetScanLine(dib, cinfo.output_height - cinfo.output_scanline - 1);
+
+					jpeg_read_scanlines(&cinfo, buffer, 1);
+
+					for(unsigned x = 0; x < cinfo.output_width; x++) {
+						WORD K = (WORD)src[3];
+						dst[FI_RGBA_RED]   = (BYTE)((K * src[0]) / 255);	// C -> R
+						dst[FI_RGBA_GREEN] = (BYTE)((K * src[1]) / 255);	// M -> G
+						dst[FI_RGBA_BLUE]  = (BYTE)((K * src[2]) / 255);	// Y -> B
+						src += 4;
+						dst += 3;
+					}
+				}
+			} else {
+				// normal case (RGB or greyscale image)
+
+				while (cinfo.output_scanline < cinfo.output_height) {
+					JSAMPROW dst = FreeImage_GetScanLine(dib, cinfo.output_height - cinfo.output_scanline - 1);
+
+					jpeg_read_scanlines(&cinfo, &dst, 1);
+				}
+
+				// step 7b: swap red and blue components (see LibJPEG/jmorecfg.h: #define RGB_RED, ...)
+				// The default behavior of the JPEG library is kept "as is" because LibTIFF uses 
+				// LibJPEG "as is".
 
 #if FREEIMAGE_COLORORDER == FREEIMAGE_COLORORDER_BGR
-			SwapRedBlue32(dib);
+				SwapRedBlue32(dib);
 #endif
+			}
 
 			// step 8: finish decompression
 
