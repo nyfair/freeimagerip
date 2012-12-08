@@ -30,7 +30,7 @@
 #endif
 
 #ifdef Z_SOLO
-   typedef long ptrdiff_t;  /* guess -- will be caught if guess is wrong */
+   //typedef long ptrdiff_t;  /* guess -- will be caught if guess is wrong */
 #endif
 
 #ifndef local

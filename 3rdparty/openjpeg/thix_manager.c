@@ -1,5 +1,5 @@
 /*
- * $Id: thix_manager.c,v 1.1 2012/02/11 19:46:26 drolon Exp $
+ * $Id: thix_manager.c 897 2011-08-28 21:43:57Z Kaori.Hagihara@gmail.com $
  *
  * Copyright (c) 2002-2011, Communications and Remote Sensing Laboratory, Universite catholique de Louvain (UCL), Belgium
  * Copyright (c) 2002-2011, Professor Benoit Macq

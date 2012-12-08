@@ -1,4 +1,4 @@
-/* $Id: tif_zip.c,v 1.3 2012/06/17 15:57:23 drolon Exp $ */
+/* $Id: tif_zip.c,v 1.31 2011-01-06 16:00:23 fwarmerdam Exp $ */
 
 /*
  * Copyright (c) 1995-1997 Sam Leffler
@@ -47,7 +47,7 @@
  * last found at ftp://ftp.uu.net/pub/archiving/zip/zlib/zlib-0.99.tar.gz.
  */
 #include "tif_predict.h"
-#include "../ZLib/zlib.h"
+#include "zlib.h"
 
 #include <stdio.h>
 

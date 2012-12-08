@@ -184,7 +184,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 				config.quality = 90;
 			} else {
 				config.quality = flags & 0x7F;
-				if(config.quality > 100) config.quality = 100;
+				if(config.quality >= 100) config.lossless = 1;
 			}
 			BYTE *bitmap, *bitmap_ptr, *encode_cache;
 

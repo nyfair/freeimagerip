@@ -1,4 +1,4 @@
-/* $Id: tif_ojpeg.c,v 1.3 2012/06/17 15:57:23 drolon Exp $ */
+/* $Id: tif_ojpeg.c,v 1.56 2012-05-24 03:15:18 fwarmerdam Exp $ */
 
 /* WARNING: The type of JPEG encapsulation defined by the TIFF Version 6.0
    specification is now totally obsolete and deprecated for new applications and

@@ -1,4 +1,4 @@
-/* $Id: tiffiop.h,v 1.3 2012/06/17 15:57:23 drolon Exp $ */
+/* $Id: tiffiop.h,v 1.84 2012-05-30 01:50:17 fwarmerdam Exp $ */
 
 /*
  * Copyright (c) 1988-1997 Sam Leffler

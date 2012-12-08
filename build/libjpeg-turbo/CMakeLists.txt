@@ -1,10 +1,14 @@
 SET(SRC ${3RDPARTY_DIR}/libjpeg-turbo)
 
+SET(JPEG_LIB_VERSION 80)
+SET(DLL_VERSION 8)
+SET(FULLVERSION ${DLL_VERSION}.0.2)
+CONFIGURE_FILE(${SRC}/win/jconfig.h.in ${CMAKE_CURRENT_BINARY_DIR}/jconfig.h)
+CONFIGURE_FILE(${SRC}/win/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+
 SET(SOURCE_FILES
-	${SRC}/jaricom.c
 	${SRC}/jcapimin.c
 	${SRC}/jcapistd.c
-	${SRC}/jcarith.c
 	${SRC}/jccoefct.c
 	${SRC}/jccolor.c
 	${SRC}/jcdctmgr.c
@@ -21,7 +25,6 @@ SET(SOURCE_FILES
 	${SRC}/jctrans.c
 	${SRC}/jdapimin.c
 	${SRC}/jdapistd.c
-	${SRC}/jdarith.c
 	${SRC}/jdatadst.c
 	${SRC}/jdatasrc.c
 	${SRC}/jdcoefct.c
@@ -45,11 +48,11 @@ SET(SOURCE_FILES
 	${SRC}/jidctfst.c
 	${SRC}/jidctint.c
 	${SRC}/jidctred.c
-	${SRC}/jmemmgr.c
-	${SRC}/jmemnobs.c
 	${SRC}/jquant1.c
 	${SRC}/jquant2.c
 	${SRC}/jutils.c
+	${SRC}/jmemmgr.c
+	${SRC}/jmemnobs.c
 	${SRC}/transupp.c
 )
 
@@ -86,16 +89,34 @@ ELSE()
 	ENDIF()
 ENDIF()
 
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
+
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
 
+FILE(GLOB INC_FILES *.inc)
+
 FOREACH(FILE ${SIMD_BASENAMES})
-	SET(SIMD_OBJ ${CMAKE_CURRENT_BINARY_DIR}/${FILE}${SIMDEXT})
+	SET(DEPFILE "")
 	SET(SIMD_SRC ${SRC}/simd/${FILE}.asm)
+	IF(${FILE} MATCHES col)
+		SET(DEPFILE ${SIMD_SRC})
+		STRING(REGEX REPLACE "col" "clr" DEPFILE ${DEPFILE})
+	ENDIF()
+	IF(${FILE} MATCHES mer)
+		SET(DEPFILE ${SIMD_SRC})
+		STRING(REGEX REPLACE "mer" "mrg" DEPFILE ${DEPFILE})
+	ENDIF()
+	IF(${FILE} MATCHES gra)
+		SET(DEPFILE ${SIMD_SRC})
+		STRING(REGEX REPLACE "gra" "gry" DEPFILE ${DEPFILE})
+	ENDIF()
+	SET(SIMD_OBJ ${CMAKE_CURRENT_BINARY_DIR}/${FILE}.obj)
 	ADD_CUSTOM_COMMAND(OUTPUT ${SIMD_OBJ}
-		COMMAND yasm ${SIMD_SRC} ${NAFLAGS} -o ${SIMD_OBJ})
-	SET(ASM_FILES ${ASM_FILES} ${SIMD_OBJ})
+    		DEPENDS ${SIMD_SRC} ${DEPFILE} ${INC_FILES}
+    		COMMAND yasm ${NAFLAGS} ${SIMD_SRC} -o${SIMD_OBJ})
+	SET(SIMD_OBJS ${SIMD_OBJS} ${SIMD_OBJ})
 ENDFOREACH()
 
 ADD_DEFINITIONS(-DWITH_SIMD)
 
-ADD_LIBRARY(libjpeg-turbo STATIC ${SOURCE_FILES} ${ASM_FILES})
+ADD_LIBRARY(libjpeg-turbo STATIC ${SOURCE_FILES} ${SIMD_OBJS})

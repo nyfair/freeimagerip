@@ -1,4 +1,4 @@
-/* $Id: tif_color.c,v 1.3 2012/06/17 15:57:22 drolon Exp $ */
+/* $Id: tif_color.c,v 1.19 2010-12-14 02:22:42 faxguy Exp $ */
 
 /*
  * Copyright (c) 1988-1997 Sam Leffler

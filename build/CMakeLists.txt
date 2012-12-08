@@ -149,6 +149,9 @@ INCLUDE_DIRECTORIES(
 	${3RDPARTY_DIR}/libwebp/src/
 	${3RDPARTY_DIR}/openjpeg/
 	${3RDPARTY_DIR}/zlib/
+	${CMAKE_BINARY_DIR}/libjpeg-turbo/
+	${CMAKE_BINARY_DIR}/libpng/
+	${CMAKE_BINARY_DIR}/openjpeg/
 )
 
 INSTALL(TARGETS freeimage

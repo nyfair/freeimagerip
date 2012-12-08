@@ -1,4 +1,4 @@
-/* $Header: /cvsroot/freeimage/FreeImage/Source/LibTIFF4/tif_extension.c,v 1.3 2012/06/17 15:57:22 drolon Exp $ */
+/* $Header: /cvs/maptools/cvsroot/libtiff/libtiff/tif_extension.c,v 1.7 2010-03-10 18:56:48 bfriesen Exp $ */
 
 /*
  * Copyright (c) 1988-1997 Sam Leffler

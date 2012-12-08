@@ -1,4 +1,4 @@
-/* $Id: tif_codec.c,v 1.3 2012/06/17 15:57:22 drolon Exp $ */
+/* $Id: tif_codec.c,v 1.15 2010-12-14 12:53:00 dron Exp $ */
 
 /*
  * Copyright (c) 1988-1997 Sam Leffler
