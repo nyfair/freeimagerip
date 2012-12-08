@@ -603,8 +603,9 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define JXR_SUBSAMPLING_420 0x100	// save with medium 2x2 medium chroma subsampling (4:2:0)
 #define JXR_SUBSAMPLING_422 0x200	// save with low 2x1 chroma subsampling (4:2:2) 
 #define JXR_SUBSAMPLING_444 0x400	// save with no chroma subsampling (4:4:4) - default value
-#define JXR_LOSSLESS		0x800	// save lossless hd photo
+#define JXR_LOSSLESS		100		// save lossless hd photo
 #define WEBP_DEFAULT		0		// save with quality 90
+#define WEBP_LOSSLESS		100		// save lossless vp8 photo
 //#define WEBP_SUBSAMPLING_420 0x100	// save with medium 2x2 medium chroma subsampling (4:2:0) - default value
 //#define WEBP_SUBSAMPLING_422 0x200	// save with low 2x1 chroma subsampling (4:2:2) 
 //#define WEBP_SUBSAMPLING_444 0x400	// save with no chroma subsampling (4:4:4)
