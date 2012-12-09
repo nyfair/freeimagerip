@@ -39,6 +39,10 @@ ffi.cdef[[
 	void* __stdcall FreeImage_Composite(void*, int, RGBA*, void*);
 	int __stdcall FreeImage_GetPixelColor(void*, unsigned, unsigned, RGBA*);
 	int __stdcall FreeImage_SetPixelColor(void*, unsigned, unsigned, RGBA*);
+	void* __stdcall FreeImage_GetChannel(void*, int);
+	int __stdcall FreeImage_SetChannel(void*, void*, int);
+	int __stdcall FreeImage_SwapColors(void*, RGBA*, RGBA*, int);
+	int __stdcall FreeImage_Invert(void*);
 ]]
 
 -- Image IO
@@ -117,6 +121,30 @@ end
 
 function setpixel(img, x, y, rgba)
 	filua.FreeImage_SetPixelColor(img, x, y, rgba)
+end
+
+function getchannel(img, channel)
+	return filua.FreeImage_GetChannel(img, channel)
+end
+
+function setchannel(dst, src, channel)
+	return filua.FreeImage_SetChannel(dst, src, channel)
+end
+
+function swapcolor(img, fromcolor, tocolor)
+	filua.FreeImage_SwapColors(img, fromcolor or color(0,0,0,0), tocolor or color(0,0,0,255), 0)
+end
+
+function invert(img)
+	filua.FreeImage_Invert(img)
+end
+
+function greyalpha(back, front, channel)
+	b = to32(back)
+	f = getchannel(front, channel or 1)
+	setchannel(b, f, 4)
+	free(f)
+	return b
 end
 
 -- Composite
@@ -284,26 +312,6 @@ end
 
 function mv(src, dst)
 	os.mv(src, dst)
-end
-
-function dir(pattern)
-	return ls(pattern)
-end
-
-function copy(src, dst)
-	cp(src, dst)
-end
-
-function mkdir(dst)
-	md(dst)
-end
-
-function move(src, dst)
-	mv(src, dst)
-end
-
-function rmdir(dst)
-	rd(dst)
 end
 
 function stripext(fn)
