@@ -1,15 +1,16 @@
 require 'fi'
 
-md('out')
+out='out/'
+md(out)
 for k,v in ipairs(ls('*.bmp')) do
-	print(v)
+	print v
 	i=open(v)
 	
 	--[[
 	do something
 	]]--
 	
-	save(o,'out/'..v)
+	save(o,out..stripext(v)..'.bmp')
 	free(o)
 	free(i)
 	

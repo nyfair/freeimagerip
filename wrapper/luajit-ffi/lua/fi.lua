@@ -140,8 +140,13 @@ function invert(img)
 end
 
 function greyalpha(back, front, channel)
-	b = to32(back)
+	if getbpp(back) == 32 then
+		b = clone(back)
+	else
+		b = to32(back)
+	end
 	f = getchannel(front, channel or 1)
+	invert(f)
 	setchannel(b, f, 4)
 	free(f)
 	return b
