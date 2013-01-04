@@ -9,7 +9,7 @@ qt plugin
 
 [3rd Party]
 libjpeg-turbo 1.2.1
-libpng 1.5.3
+libpng 1.5.13
 libtiff 4.0.3
 libwebp 0.2.1
 openjpeg 1.5.1
