@@ -572,9 +572,9 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define JPEG_QUALITYAVERAGE 0x40000		// save with average quality (50:1)
 #define JPEG_QUALITYBAD	 	0x80000		// save with bad quality (10:1)
 #define JPEG_PROGRESSIVE	0x1000		// save as a progressive-JPEG (use | to combine with other save flags)
-#define JPEG_SUBSAMPLING_411 0x800		// save with high 4x1 chroma subsampling (4:1:1) 
-#define JPEG_SUBSAMPLING_420 0x100		// save with medium 2x2 medium chroma subsampling (4:2:0) - default value
-#define JPEG_SUBSAMPLING_422 0x200		// save with low 2x1 chroma subsampling (4:2:2) 
+#define JPEG_SUBSAMPLING_411 0x800		// save with high 4x1 chroma subsampling (4:1:1)
+#define JPEG_SUBSAMPLING_420 0x100		// save with medium 2x2 medium chroma subsampling (4:2:0)
+#define JPEG_SUBSAMPLING_422 0x200		// save with low 2x1 chroma subsampling (4:2:2)
 #define JPEG_SUBSAMPLING_444 0x400		// save with no chroma subsampling (4:4:4)
 #define JPEG_OPTIMIZE		0x2000		// on saving, compute optimal Huffman coding tables (can reduce a few percent of file size)
 #define PNG_DEFAULT			0			// same as PNG_Z_BEST_COMPRESSION
@@ -598,17 +598,19 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define TIFF_LZW			0x4000	// save using LZW compression
 #define TIFF_JPEG			0x8000	// save using JPEG compression
 #define TIFF_LOGLUV			0x10000	// save using LogLuv compression
-// for hd photo usage, bit 1-2 was for RGB quality and bit 4-5 was for alpha quality
-#define JXR_DEFAULT			0		// save with quality 20 and 4:4:4
+#define JXR_DEFAULT			0		// save with quality 80 and 4:4:4
+#define JXR_LOSSLESS		100		// save lossless hd photo
 #define JXR_SUBSAMPLING_420 0x100	// save with medium 2x2 medium chroma subsampling (4:2:0)
 #define JXR_SUBSAMPLING_422 0x200	// save with low 2x1 chroma subsampling (4:2:2) 
 #define JXR_SUBSAMPLING_444 0x400	// save with no chroma subsampling (4:4:4) - default value
-#define JXR_LOSSLESS		100		// save lossless hd photo
-#define WEBP_DEFAULT		0		// save with quality 90
+#define JXR_8BIT 			0x800	// save with 8bit
+#define JXR_10BIT 			0x1000	// save with 10bit
+#define JXR_16BIT 			0x2000	// save with 16bit
+#define WEBP_DEFAULT		0		// save with quality 80 & 4:2:0
 #define WEBP_LOSSLESS		100		// save lossless vp8 photo
-//#define WEBP_SUBSAMPLING_420 0x100	// save with medium 2x2 medium chroma subsampling (4:2:0) - default value
-//#define WEBP_SUBSAMPLING_422 0x200	// save with low 2x1 chroma subsampling (4:2:2) 
-//#define WEBP_SUBSAMPLING_444 0x400	// save with no chroma subsampling (4:4:4)
+#define WEBP_SUBSAMPLING_420 0x100	// save with medium 2x2 medium chroma subsampling (4:2:0) - default value
+#define WEBP_SUBSAMPLING_422 0x200	// save with low 2x1 chroma subsampling (4:2:2) 
+#define WEBP_SUBSAMPLING_444 0x400	// save with no chroma subsampling (4:4:4)
 
 
 // Background filling options ---------------------------------------------------------

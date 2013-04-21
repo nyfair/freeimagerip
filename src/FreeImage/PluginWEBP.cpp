@@ -181,7 +181,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 			picture.height = height;
 			config.method = 6;
 			if((flags & 0x7F) == 0) {
-				config.quality = 90;
+				config.quality = 80;
 			} else {
 				config.quality = flags & 0x7F;
 				if(config.quality >= 100) {
@@ -191,13 +191,13 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 			}
 			BYTE *bitmap, *bitmap_ptr, *encode_cache;
 
-			//if((flags & WEBP_SUBSAMPLING_444) == WEBP_SUBSAMPLING_444) {
-			//	picture.colorspace = WEBP_YUV444;
-			//} else if((flags & WEBP_SUBSAMPLING_422) == WEBP_SUBSAMPLING_422) {
-			//	picture.colorspace = WEBP_YUV422;
-			//} else {
-			//	picture.colorspace = WEBP_YUV420;
-			//}
+			if((flags & WEBP_SUBSAMPLING_444) == WEBP_SUBSAMPLING_444) {
+				picture.colorspace = WEBP_YUV444;
+			} else if((flags & WEBP_SUBSAMPLING_422) == WEBP_SUBSAMPLING_422) {
+				picture.colorspace = WEBP_YUV422;
+			} else {
+				picture.colorspace = WEBP_YUV420;
+			}
 
 			int pixel_depth = FreeImage_GetBPP(dib);
 			switch(pixel_depth) {

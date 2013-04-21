@@ -419,6 +419,8 @@ FreeImage_GetColorType(FIBITMAP *dib) {
 	// special bitmap type
 	if(image_type != FIT_BITMAP) {
 		switch(image_type) {
+			case FIT_UINT16:
+				return FIC_MINISBLACK;
 			case FIT_RGB16:
 			case FIT_RGBF:
 				return FIC_RGB;

@@ -34,6 +34,7 @@ SET(SOURCE_FILES
 	${SRC}/enc/picture.c
 	${SRC}/enc/quant.c
 	${SRC}/enc/syntax.c
+	${SRC}/enc/token.c
 	${SRC}/enc/tree.c
 	${SRC}/enc/vp8l.c
 	${SRC}/enc/webpenc.c
@@ -44,11 +45,14 @@ SET(SOURCE_FILES
 	${SRC}/utils/huffman.c
 	${SRC}/utils/huffman_encode.c
 	${SRC}/utils/quant_levels.c
+	${SRC}/utils/quant_levels_dec.c
 	${SRC}/utils/rescaler.c
 	${SRC}/utils/thread.c
 	${SRC}/utils/utils.c
 )
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
+
+ADD_DEFINITIONS(-DWEBP_EXPERIMENTAL_FEATURES)
 
 ADD_LIBRARY(libwebp STATIC ${SOURCE_FILES})
