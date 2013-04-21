@@ -3,6 +3,8 @@
 #include "FreeImage.h"
 #include "susie.h"
 
+FREE_IMAGE_FORMAT fmt;
+
 int WINAPI GetPluginInfo(int infono, LPSTR buf, int buflen) {
 	int count = FreeImage_GetFIFCount(), i;
 	std::string ext = "";
@@ -25,53 +27,17 @@ int WINAPI GetPluginInfo(int infono, LPSTR buf, int buflen) {
 }
 
 int WINAPI IsSupported(LPSTR filename, DWORD dw) {
-	FREE_IMAGE_FORMAT fmt = FreeImage_GetFIFFromFilename(filename);
-	return IsSupportedEx(fmt, dw);
+	fmt = FreeImage_GetFIFFromFilename(filename);
+	return fmt != FIF_UNKNOWN;
 }
 
 int WINAPI IsSupportedW(LPWSTR filename, DWORD dw) {
-	FREE_IMAGE_FORMAT fmt = FreeImage_GetFIFFromFilenameU(filename);
-	return IsSupportedEx(fmt, dw);
-}
-
-int IsSupportedEx(FREE_IMAGE_FORMAT fmt, DWORD dw) {
-	if(fmt != FIF_UNKNOWN) return TRUE;
-	FIMEMORY mem = FIMEMORY();
-	mem.data = &dw;
-	fmt = FreeImage_GetFileTypeFromMemory(&mem);
-	FreeImage_CloseMemory(&mem);
+	fmt = FreeImage_GetFIFFromFilenameU(filename);
 	return fmt != FIF_UNKNOWN;
 }
 
 int DLL_API WINAPI GetPictureInfo(LPSTR buf, long len,
 									unsigned int flag, PictureInfo *lpInfo) {
-	/**
-	int ret = SPI_ALL_RIGHT;
-	FIBITMAP* dib;
-	FREE_IMAGE_FORMAT fmt;
-	
-	if((flag & 7) == 0) {
-		fmt = FreeImage_GetFIFFromFilename(buf);
-		dib = FreeImage_Load(fmt, buf);
-	} else {
-		FIMEMORY mem = FIMEMORY();
-		mem.data = &buf;
-		fmt = FreeImage_GetFileTypeFromMemory(&mem);
-		dib = FreeImage_LoadFromMemory(fmt, &mem);
-		FreeImage_CloseMemory(&mem);
-	}
-
-	lpInfo->left = 0;
-	lpInfo->top = 0;
-	lpInfo->width	= FreeImage_GetWidth(dib);
-	lpInfo->height = FreeImage_GetHeight(dib);
-	lpInfo->x_density	= floor(FreeImage_GetDotsPerMeterX(dib)*0.0254+0.5);
-	lpInfo->y_density	= floor(FreeImage_GetDotsPerMeterY(dib)*0.0254+0.5);
-	lpInfo->colorDepth	 = FreeImage_GetBPP(dib);
-	lpInfo->hInfo	= NULL;
-	FreeImage_Unload(dib);
-	return ret;
-	*/
 	return SPI_ALL_RIGHT;
 }
 
@@ -80,8 +46,7 @@ int DLL_API WINAPI GetPictureInfoW(LPWSTR buf, long len,
 	return SPI_ALL_RIGHT;
 }
 
-int GetPictureEx(FIBITMAP* dib, FREE_IMAGE_FORMAT fmt,
-				HANDLE *pHBInfo, HANDLE *pHBm,
+int GetPictureEx(FIBITMAP* dib, HANDLE *pHBInfo, HANDLE *pHBm,
 				SPI_PROGRESS lpPrgressCallback, long lData) {
 	if(lpPrgressCallback != NULL)
 		if(lpPrgressCallback(0, 1, lData))
@@ -224,44 +189,38 @@ int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 						HANDLE *pHBInfo, HANDLE *pHBm,
 						SPI_PROGRESS lpPrgressCallback, long lData) {
 	FIBITMAP* dib;
-	FREE_IMAGE_FORMAT fmt;
-
 	if((flag & 7) == 0) {
 	/* buf is filename */
 		fmt = FreeImage_GetFIFFromFilename(buf);
 		dib = FreeImage_Load(fmt, buf);
 	} else {
 	/* buf is memory */
-		FIMEMORY mem = FIMEMORY();
-		mem.data = &buf;
-		fmt = FreeImage_GetFileTypeFromMemory(&mem);
-		dib = FreeImage_LoadFromMemory(fmt, &mem);
-		FreeImage_CloseMemory(&mem);
+		FIMEMORY *mem = FreeImage_OpenMemory((BYTE*) buf, len); 
+		fmt = FreeImage_GetFileTypeFromMemory(mem);
+		dib = FreeImage_LoadFromMemory(fmt, mem);
+		FreeImage_CloseMemory(mem);
 	}
 
-	return GetPictureEx(dib, fmt, pHBInfo, pHBm, lpPrgressCallback, lData);
+	return GetPictureEx(dib, pHBInfo, pHBm, lpPrgressCallback, lData);
 }
 
 int WINAPI GetPictureW(LPWSTR buf, long len, unsigned int flag,
 						HANDLE *pHBInfo, HANDLE *pHBm,
 						SPI_PROGRESS lpPrgressCallback, long lData) {
 	FIBITMAP* dib;
-	FREE_IMAGE_FORMAT fmt;
-
 	if((flag & 7) == 0) {
 	/* buf is filename */
 		fmt = FreeImage_GetFIFFromFilenameU(buf);
 		dib = FreeImage_LoadU(fmt, buf);
 	} else {
 	/* buf is memory */
-		FIMEMORY mem = FIMEMORY();
-		mem.data = &buf;
-		fmt = FreeImage_GetFileTypeFromMemory(&mem);
-		dib = FreeImage_LoadFromMemory(fmt, &mem);
-		FreeImage_CloseMemory(&mem);
+		FIMEMORY *mem = FreeImage_OpenMemory((BYTE*) buf, len); 
+		fmt = FreeImage_GetFileTypeFromMemory(mem);
+		dib = FreeImage_LoadFromMemory(fmt, mem);
+		FreeImage_CloseMemory(mem);
 	}
 
-	return GetPictureEx(dib, fmt, pHBInfo, pHBm, lpPrgressCallback, lData);
+	return GetPictureEx(dib, pHBInfo, pHBm, lpPrgressCallback, lData);
 }
 
 int WINAPI GetPreview(LPSTR buf, long len, unsigned int flag,
