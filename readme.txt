@@ -1,11 +1,14 @@
 Gamecg composite library forks from FreeImage
 
 New Feature:
-google webp and jpeg-xr support
-asm accelerate for jpeg and png
-lua wrapper
-susie plugin on windows
-qt plugin
++jpeg-xr support
++asm accelerate for jpeg and png
++lua wrapper
++susie plugin on windows
++qt plugin
+
+-keep image metatag
+-multipage image suport
 
 [3rd Party]
 libjpeg-turbo 1.2.90
