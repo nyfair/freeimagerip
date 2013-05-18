@@ -1,7 +1,5 @@
 SET(SRC ${3RDPARTY_DIR}/libpng)
 
-CONFIGURE_FILE(${SRC}/scripts/pnglibconf.h.prebuilt ${CMAKE_CURRENT_BINARY_DIR}/pnglibconf.h)
-
 SET(SOURCE_FILES
 	${SRC}/png.c
 	${SRC}/pngerror.c
@@ -20,10 +18,7 @@ SET(SOURCE_FILES
 	${SRC}/pngwutil.c
 )
 
-INCLUDE_DIRECTORIES(
-	${3RDPARTY_DIR}/zlib/
-	${CMAKE_CURRENT_BINARY_DIR}
-)
+INCLUDE_DIRECTORIES(${3RDPARTY_DIR}/zlib/)
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
 

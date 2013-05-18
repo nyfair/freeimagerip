@@ -3,7 +3,7 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
-/* @(#) $Id$ */
+/* @(#) $Id: zutil.c,v 1.10 2013/05/10 17:22:52 drolon Exp $ */
 
 #include "zutil.h"
 #ifndef Z_SOLO
@@ -14,7 +14,7 @@
 struct internal_state      {int dummy;}; /* for buggy compilers */
 #endif
 
-const char * const z_errmsg[10] = {
+z_const char * const z_errmsg[10] = {
 "need dictionary",     /* Z_NEED_DICT       2  */
 "stream end",          /* Z_STREAM_END      1  */
 "",                    /* Z_OK              0  */

@@ -1,17 +1,17 @@
 SET(SRC ${3RDPARTY_DIR}/libwebp/src)
 
 SET(SOURCE_FILES
-	${SRC}/dec/alpha.c
-	${SRC}/dec/buffer.c
-	${SRC}/dec/frame.c
-	${SRC}/dec/idec.c
-	${SRC}/dec/io.c
-	${SRC}/dec/layer.c
-	${SRC}/dec/quant.c
-	${SRC}/dec/tree.c
-	${SRC}/dec/vp8.c
-	${SRC}/dec/vp8l.c
-	${SRC}/dec/webp.c
+	${SRC}/dec/dec_alpha.c
+	${SRC}/dec/dec_buffer.c
+	${SRC}/dec/dec_frame.c
+	${SRC}/dec/dec_idec.c
+	${SRC}/dec/dec_io.c
+	${SRC}/dec/dec_layer.c
+	${SRC}/dec/dec_quant.c
+	${SRC}/dec/dec_tree.c
+	${SRC}/dec/dec_vp8.c
+	${SRC}/dec/dec_vp8l.c
+	${SRC}/dec/dec_webp.c
 	${SRC}/dsp/cpu.c
 	${SRC}/dsp/dec.c
 	${SRC}/dsp/dec_sse2.c
@@ -21,23 +21,23 @@ SET(SOURCE_FILES
 	${SRC}/dsp/upsampling.c
 	${SRC}/dsp/upsampling_sse2.c
 	${SRC}/dsp/yuv.c
-	${SRC}/enc/alpha.c
-	${SRC}/enc/analysis.c
-	${SRC}/enc/backward_references.c
-	${SRC}/enc/config.c
-	${SRC}/enc/cost.c
-	${SRC}/enc/filter.c
-	${SRC}/enc/frame.c
-	${SRC}/enc/histogram.c
-	${SRC}/enc/iterator.c
-	${SRC}/enc/layer.c
-	${SRC}/enc/picture.c
-	${SRC}/enc/quant.c
-	${SRC}/enc/syntax.c
+	${SRC}/enc/enc_alpha.c
+	${SRC}/enc/enc_analysis.c
+	${SRC}/enc/enc_backward_references.c
+	${SRC}/enc/enc_config.c
+	${SRC}/enc/enc_cost.c
+	${SRC}/enc/enc_filter.c
+	${SRC}/enc/enc_frame.c
+	${SRC}/enc/enc_histogram.c
+	${SRC}/enc/enc_iterator.c
+	${SRC}/enc/enc_layer.c
+	${SRC}/enc/enc_picture.c
+	${SRC}/enc/enc_quant.c
+	${SRC}/enc/enc_syntax.c
+	${SRC}/enc/enc_tree.c
+	${SRC}/enc/enc_vp8l.c
+	${SRC}/enc/enc_webpenc.c
 	${SRC}/enc/token.c
-	${SRC}/enc/tree.c
-	${SRC}/enc/vp8l.c
-	${SRC}/enc/webpenc.c
 	${SRC}/utils/bit_reader.c
 	${SRC}/utils/bit_writer.c
 	${SRC}/utils/color_cache.c

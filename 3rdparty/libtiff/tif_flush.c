@@ -1,4 +1,4 @@
-/* $Id: tif_flush.c,v 1.9 2010-03-31 06:40:10 fwarmerdam Exp $ */
+/* $Id: tif_flush.c,v 1.6 2013/05/10 17:00:04 drolon Exp $ */
 
 /*
  * Copyright (c) 1988-1997 Sam Leffler

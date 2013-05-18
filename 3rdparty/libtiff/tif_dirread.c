@@ -1,4 +1,4 @@
-/* $Id: tif_dirread.c,v 1.178 2012-08-19 16:56:34 bfriesen Exp $ */
+/* $Id: tif_dirread.c,v 1.6 2013/05/10 17:00:04 drolon Exp $ */
 
 /*
  * Copyright (c) 1988-1997 Sam Leffler

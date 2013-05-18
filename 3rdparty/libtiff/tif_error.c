@@ -1,4 +1,4 @@
-/* $Header: /cvs/maptools/cvsroot/libtiff/libtiff/tif_error.c,v 1.5 2010-03-10 18:56:48 bfriesen Exp $ */
+/* $Header: /cvsroot/freeimage/FreeImage/Source/LibTIFF4/tif_error.c,v 1.6 2013/05/10 17:00:04 drolon Exp $ */
 
 /*
  * Copyright (c) 1988-1997 Sam Leffler

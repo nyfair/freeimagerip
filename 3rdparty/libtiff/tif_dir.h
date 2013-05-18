@@ -1,4 +1,4 @@
-/* $Id: tif_dir.h,v 1.54 2011-02-18 20:53:05 fwarmerdam Exp $ */
+/* $Id: tif_dir.h,v 1.6 2013/05/10 17:00:04 drolon Exp $ */
 
 /*
  * Copyright (c) 1988-1997 Sam Leffler

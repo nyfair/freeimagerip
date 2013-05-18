@@ -1,4 +1,4 @@
-/* $Id: tif_stream.cxx,v 1.11 2010-12-11 23:12:29 faxguy Exp $ */
+/* $Id: tif_stream.cxx,v 1.6 2013/05/10 17:00:04 drolon Exp $ */
 
 /*
  * Copyright (c) 1988-1996 Sam Leffler

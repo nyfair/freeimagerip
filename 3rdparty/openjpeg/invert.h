@@ -1,10 +1,5 @@
 /*
- * $Id: cidx_manager.h 897 2011-08-28 21:43:57Z Kaori.Hagihara@gmail.com $
- *
- * Copyright (c) 2002-2011, Communications and Remote Sensing Laboratory, Universite catholique de Louvain (UCL), Belgium
- * Copyright (c) 2002-2011, Professor Benoit Macq
- * Copyright (c) 2003-2004, Yannick Verschueren
- * Copyright (c) 2010-2011, Kaori Hagihara
+ * Copyright (c) 2008, Jerome Fimes, Communications & Systemes <jerome.fimes@c-s.fr>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,28 +24,36 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*! \file
- *  \brief Modification of jpip.h from 2KAN indexer
- */
+#ifndef __INVERT_H
+#define __INVERT_H
+/**
+@file invert.h
+@brief Implementation of the matrix inversion
 
+The function in INVERT.H compute a matrix inversion with a LUP method
+*/
 
-#ifndef  CIDX_MANAGER_H_
-# define CIDX_MANAGER_H_
+/** @defgroup INVERT INVERT - Implementation of a matrix inversion */
+/*@{*/
+/** @name Exported functions */
+/*@{*/
+/* ----------------------------------------------------------------------- */
 
-#include "openjpeg.h"
-
-
-/* 
- * Write Codestream index box (superbox)
+/**
+ * Calculates a n x n double matrix inversion with a LUP method. Data is aligned, rows after rows (or columns after columns).
+ * The function does not take ownership of any memory block, data must be fred by the user.
  *
- * @param[in] offset    offset of j2k codestream
- * @param[in] cio       file output handle
- * @param[in] image     image data
- * @param[in] cstr_info codestream information
- * @param[in] j2klen    length of j2k codestream
- * @return              length of cidx box
+ * @param pSrcMatrix	the matrix to invert.
+ * @param pDestMatrix	data to store the inverted matrix. 
+ * @param n size of the matrix
+ * @return OPJ_TRUE if the inversion is successful, OPJ_FALSE if the matrix is singular.
  */
-int write_cidx( int offset, opj_cio_t *cio, opj_image_t *image, opj_codestream_info_t cstr_info, int j2klen);
+OPJ_BOOL opj_matrix_inversion_f(OPJ_FLOAT32 * pSrcMatrix,
+                                OPJ_FLOAT32 * pDestMatrix, 
+                                OPJ_UINT32 nb_compo);
+/* ----------------------------------------------------------------------- */
+/*@}*/
 
+/*@}*/
 
-#endif      /* !CIDX_MANAGER_H_ */
+#endif /* __INVERT_H */ 

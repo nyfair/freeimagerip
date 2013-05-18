@@ -1,7 +1,4 @@
 /*
- * Copyright (c) 2002-2007, Communications and Remote Sensing Laboratory, Universite catholique de Louvain (UCL), Belgium
- * Copyright (c) 2002-2007, Professor Benoit Macq
- * Copyright (c) 2002-2003, Yannick Verschueren
  * Copyright (c) 2005, Herve Drolon, FreeImage Team
  * All rights reserved.
  *
@@ -27,49 +24,36 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __JPT_H
-#define __JPT_H
-/**
-@file jpt.h
-@brief JPT-stream reader (JPEG 2000, JPIP)
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <sys/times.h>
+#endif /* _WIN32 */
+#include "opj_includes.h"
 
-JPT-stream functions are implemented in J2K.C. 
-*/
-
-/**
-Message Header JPT stream structure
-*/
-typedef struct opj_jpt_msg_header {
-	/** In-class Identifier */
-	unsigned int Id;
-	/** Last byte information */
-	unsigned int last_byte;	
-	/** Class Identifier */
-	unsigned int Class_Id;	
-	/** CSn : index identifier */
-	unsigned int CSn_Id;
-	/** Message offset */
-	unsigned int Msg_offset;
-	/** Message length */
-	unsigned int Msg_length;
-	/** Auxiliary for JPP case */
-	unsigned int Layer_nb;
-} opj_jpt_msg_header_t;
-
-/* ----------------------------------------------------------------------- */
-
-/**
-Initialize the value of the message header structure 
-@param header Message header structure
-*/
-void jpt_init_msg_header(opj_jpt_msg_header_t * header);
-
-/**
-Read the message header for a JPP/JPT - stream
-@param cinfo Codec context info
-@param cio CIO handle
-@param header Message header structure
-*/
-void jpt_read_msg_header(opj_common_ptr cinfo, opj_cio_t *cio, opj_jpt_msg_header_t *header);
-
+OPJ_FLOAT64 opj_clock(void) {
+#ifdef _WIN32
+	/* _WIN32: use QueryPerformance (very accurate) */
+    LARGE_INTEGER freq , t ;
+    /* freq is the clock speed of the CPU */
+    QueryPerformanceFrequency(&freq) ;
+	/* cout << "freq = " << ((double) freq.QuadPart) << endl; */
+    /* t is the high resolution performance counter (see MSDN) */
+    QueryPerformanceCounter ( & t ) ;
+    return ( t.QuadPart /(OPJ_FLOAT64) freq.QuadPart ) ;
+#else
+	/* Unix or Linux: use resource usage */
+    struct rusage t;
+    OPJ_FLOAT64 procTime;
+    /* (1) Get the rusage data structure at this moment (man getrusage) */
+    getrusage(0,&t);
+    /* (2) What is the elapsed time ? - CPU time = User time + System time */
+	/* (2a) Get the seconds */
+    procTime = t.ru_utime.tv_sec + t.ru_stime.tv_sec;
+    /* (2b) More precisely! Get the microseconds part ! */
+    return ( procTime + (t.ru_utime.tv_usec + t.ru_stime.tv_usec) * 1e-6 ) ;
 #endif
+}
+

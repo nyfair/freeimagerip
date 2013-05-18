@@ -38,7 +38,7 @@ static WEBP_INLINE int BitsLog2Floor(uint32_t n) {
   assert(n != 0);
   return 31 ^ __builtin_clz(n);
 }
-#elif defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+#elif defined(_MSC_VER) && (_MSC_VER > 1310) && (defined(_M_X64) || defined(_M_IX86))
 #include <intrin.h>
 #pragma intrinsic(_BitScanReverse)
 

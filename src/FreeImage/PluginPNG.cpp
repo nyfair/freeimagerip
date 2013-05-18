@@ -33,6 +33,8 @@
 
 #define PNG_BYTES_TO_CHECK 8
 
+#undef PNG_Z_DEFAULT_COMPRESSION        // already used in ../LibPNG/pnglibconf.h
+
 // ----------------------------------------------------------
 
 #include "zlib.h"
