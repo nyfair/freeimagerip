@@ -1,7 +1,28 @@
 //*@@@+++@@@@******************************************************************
 //
-// Microsoft Windows Media
-// Copyright (C) Microsoft Corporation. All rights reserved.
+// Copyright © Microsoft Corp.
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 
+// • Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// • Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //
 //*@@@---@@@@******************************************************************
 
@@ -44,32 +65,6 @@
 #define CODEC_ENCODE "encode"
 #define CODEC_DECODE "decode"
 #define PHOTON "ptn"
-int XPLATparser(char *pcARGV[], char *pcCodec);
-void freeXPLATparser(int iARGC, char *pcARGV[]);
-
-// WinCE intrinsic
-#include <Cmnintrin.h>
-#endif  // ARM, WinCE
-
-
-#ifdef __ADI__
-// ADI
-#define FORCE_INLINE inline
-#define CDECL
-#define UINTPTR_T unsigned int
-#define INTPTR_T int
-#define DECLSPEC_ALIGN(bytes)
-
-// parser
-#define FULL_PATH_CONFIG_FILE_ENCODE    "d:\\qunli\\imageFile\\ConfigFile_encode.txt"
-#define FULL_PATH_CONFIG_FILE_DECODE    "d:\\qunli\\imageFile\\ConfigFile_decode.txt"
-#define MAX_ARGC 14
-#define MaxCharReadCount 10
-#define MAX_FNAME 256
-#define DELIMITER "filelist:"
-#define CODEC_ENCODE "encode"
-#define CODEC_DECODE "decode"
-#define PHOTON "photon"
 #define OUTRAW "raw"
 #define OUTBMP "bmp"
 #define OUTPPM "ppm"
@@ -81,38 +76,9 @@ void freeXPLATparser(int iARGC, char *pcARGV[]);
 int XPLATparser(char *pcARGV[], char *pcCodec);
 void freeXPLATparser(int iARGC, char *pcARGV[]);
 
-// PCI IO
-#include <device.h>
-extern DevEntry pci_io_deventry;
-extern DevEntry_t DevDrvTable[MAXDEV];      
-
-// time.h bug workaround
-void reset_cycle(void);
-void get_cycle(unsigned int *cycle);
-
-// SDRAM
-void InitSDRAM(void);
-
-// Cache
-#include <cplb.h>
-
-// bitIO opt
-#ifdef ADI_BITIO_OPT
-#include "bitIO.h"
-#endif
-
-// multi heaps
-#ifdef ADI_SYSMEM_OPT
-#include <stdlib_bf.h>
-
-#define FAST_HEAP 1     // L2 on-chip fast access heap 
-#define free_fast(ptr) heap_free(1, ptr)
-void* malloc_fast(size_t nBytes);
-
-extern char *g_pLargeMem;
-#endif	//ADI_SYSMEM_OPT
-#endif		// __ADI__
-
+// WinCE intrinsic
+#include <Cmnintrin.h>
+#endif  // ARM, WinCE
 
 #endif      // XPLATFORM_IMAGE_H
 

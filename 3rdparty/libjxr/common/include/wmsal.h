@@ -1,7 +1,29 @@
 /***
 *sal.h - markers for documenting the semantics of APIs
 *
-*       Copyright (c) Microsoft Corporation. All rights reserved.
+* Copyright © Microsoft Corp.
+* All rights reserved.
+* 
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+* 
+* • Redistributions of source code must retain the above copyright notice,
+*   this list of conditions and the following disclaimer.
+* • Redistributions in binary form must reproduce the above copyright notice,
+*   this list of conditions and the following disclaimer in the documentation
+*   and/or other materials provided with the distribution.
+* 
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+* ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+* LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+* CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+* SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+* INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+* CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+* ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+* POSSIBILITY OF SUCH DAMAGE.
 *
 *Purpose:
 *       sal.h provides a set of annotations to describe how a function uses its
@@ -265,7 +287,7 @@ nothing, and do not affect the compiled code.
      in the negated form __notnull or the possibly null form __maybenull.
     */
 
-    #define __null                  __declspec("SAL_null")
+//    #define __null                  __declspec("SAL_null")
     #define __notnull               __declspec("SAL_notnull")
     #define __maybenull             __declspec("SAL_maybenull")
 
@@ -449,7 +471,8 @@ nothing, and do not affect the compiled code.
     #define __inner_fallthrough                 __FallThrough();
 
 #else
-    #define __null
+//  This conflicts with gcc definition of __null.
+//    #define __null
     #define __notnull
     #define __maybenull
     #define __readonly
@@ -496,16 +519,21 @@ buffer, use the table in the buffer annotations section.
 
 #define __ecount(size)                                          __notnull __elem_writableTo(size)
 #define __bcount(size)                                          __notnull __byte_writableTo(size)
-#define __in                                                    __pre __valid __pre __deref __readonly
-#define __in_ecount(size)                                       __in __pre __elem_readableTo(size)
-#define __in_bcount(size)                                       __in __pre __byte_readableTo(size)
-#define __in_z                                                  __in __pre __nullterminated
+//#define __in                                                    __pre __valid __pre __deref __readonly
+#define __in_win                                                __pre __valid __pre __deref __readonly
+
+#define __in_ecount(size)                                       __in_win __pre __elem_readableTo(size)
+#define __in_bcount(size)                                       __in_win __pre __byte_readableTo(size)
+#define __in_z                                                  __in_win __pre __nullterminated
 #define __in_ecount_z(size)                                     __in_ecount(size) __pre __nullterminated
 #define __in_bcount_z(size)                                     __in_bcount(size) __pre __nullterminated
-#define __in_nz                                                 __in
+#define __in_nz                                                 __in_win
 #define __in_ecount_nz(size)                                    __in_ecount(size)
 #define __in_bcount_nz(size)                                    __in_bcount(size)
-#define __out                                                   __ecount(1) __post __valid __refparam
+
+//#define __out                                                   __ecount(1) __post __valid __refparam
+#define __out_win                                                 __ecount(1) __post __valid __refparam
+
 #define __out_ecount(size)                                      __ecount(size) __post __valid __refparam
 #define __out_bcount(size)                                      __bcount(size) __post __valid __refparam
 #define __out_ecount_part(size,length)                          __out_ecount(size) __post __elem_readableTo(length)
@@ -539,7 +567,7 @@ buffer, use the table in the buffer annotations section.
 #define __inout_bcount_nz(size)                                 __inout_bcount(size) 
 #define __ecount_opt(size)                                      __ecount(size)                              __exceptthat __maybenull
 #define __bcount_opt(size)                                      __bcount(size)                              __exceptthat __maybenull
-#define __in_opt                                                __in                                        __exceptthat __maybenull
+#define __in_opt                                                __in_win                                        __exceptthat __maybenull
 #define __in_ecount_opt(size)                                   __in_ecount(size)                           __exceptthat __maybenull
 #define __in_bcount_opt(size)                                   __in_bcount(size)                           __exceptthat __maybenull
 #define __in_z_opt                                              __in_opt __pre __nullterminated 
@@ -548,7 +576,7 @@ buffer, use the table in the buffer annotations section.
 #define __in_nz_opt                                             __in_opt                                     
 #define __in_ecount_nz_opt(size)                                __in_ecount_opt(size)                         
 #define __in_bcount_nz_opt(size)                                __in_bcount_opt(size)                         
-#define __out_opt                                               __out                                       __exceptthat __maybenull
+#define __out_opt                                               __out_win                                       __exceptthat __maybenull
 #define __out_ecount_opt(size)                                  __out_ecount(size)                          __exceptthat __maybenull
 #define __out_bcount_opt(size)                                  __out_bcount(size)                          __exceptthat __maybenull
 #define __out_ecount_part_opt(size,length)                      __out_ecount_part(size,length)              __exceptthat __maybenull

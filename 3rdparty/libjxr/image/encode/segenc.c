@@ -1,7 +1,28 @@
 //*@@@+++@@@@******************************************************************
 //
-// Microsoft Windows Media
-// Copyright (C) Microsoft Corporation. All rights reserved.
+// Copyright © Microsoft Corp.
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 
+// • Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// • Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //
 //*@@@---@@@@******************************************************************
 
@@ -50,7 +71,6 @@ static Void EncodeSignificantAbsLevel (UInt iAbsLevel, struct CAdaptiveHuffman *
             i >>= 1;
         }
         
-        //pAHexpt->m_pHistogram[iIndex]++;
         pAHexpt->m_iDiscriminant += pAHexpt->m_pDelta[iIndex];
         putBit16z(pOut, pAHexpt->m_pTable[iIndex * 2 + 1], pAHexpt->m_pTable[iIndex * 2 + 2]);
         if (iFixed > 18) {
@@ -71,7 +91,6 @@ static Void EncodeSignificantAbsLevel (UInt iAbsLevel, struct CAdaptiveHuffman *
         iIndex = aIndex[iAbsLevel];
         iFixed = aFixedLength[iIndex];
 
-        //pAHexpt->m_pHistogram[iIndex]++;
         pAHexpt->m_iDiscriminant += pAHexpt->m_pDelta[iIndex];
         putBit16z(pOut, pAHexpt->m_pTable[iIndex * 2 + 1], pAHexpt->m_pTable[iIndex * 2 + 2]);
         putBit32(pOut, iAbsLevel, iFixed);
@@ -104,6 +123,9 @@ Int EncodeMacroblockDC (CWMImageStrCodec *pSC, CCodingContext *pContext, Int iMB
     COLORFORMAT cf = pSC->m_param.cfColorFormat;
     const Int iChannels = (Int) pSC->m_param.cNumChannels;
 
+    UNREFERENCED_PARAMETER( iMBX );
+    UNREFERENCED_PARAMETER( iMBY );
+
     writeIS_L1(pSC, pIO);
 
     if(pSC->m_param.bTranscode == FALSE){
@@ -126,7 +148,7 @@ Int EncodeMacroblockDC (CWMImageStrCodec *pSC, CCodingContext *pContext, Int iMB
     predMacroblockEnc(pSC);
 
     /** code path for Y_ONLY, CMYK and N_CHANNEL DC **/
-    if(cf == Y_ONLY || cf == CMYK || cf == N_CHANNEL) {
+    if(cf == Y_ONLY || cf == CMYK || cf == NCOMPONENT) {
         Int iQDC, iDC, iSign;
         for (j = 0; j < iChannels; j++) {
             iDC = pMBInfo->iBlockDC[j][0];
@@ -209,6 +231,12 @@ Int EncodeMacroblockDC (CWMImageStrCodec *pSC, CCodingContext *pContext, Int iMB
 
     UpdateModelMB (cf, iChannels, aLaplacianMean, &(pContext->m_aModelDC));
 
+    if (pSC->m_bResetContext && pSC->WMISCP.sbSubband == SB_DC_ONLY) {
+        AdaptDiscriminant(pContext->m_pAHexpt[2]);
+        AdaptDiscriminant(pContext->m_pAHexpt[3]);
+        AdaptDiscriminant(pContext->m_pAHexpt[4]);
+    }
+
     return ICERR_OK;
 }
 
@@ -219,16 +247,12 @@ Int EncodeMacroblockDC (CWMImageStrCodec *pSC, CCodingContext *pContext, Int iMB
 __forceinline
 #endif
 static Int AdaptiveScanZero (const PixelI *pCoeffs, CAdaptiveScan *pScan,
-                             /*Int *pTotals,*/ Int *pRLCoeffs, const Int iCount)
+                             Int *pRLCoeffs, const Int iCount)
 {
     Int k, iRun = 1, iLevel, iNumNonzero = 0; 
-//#ifdef __ADI__
-//    Int iTmp;
-//#endif
 
 	iLevel = pCoeffs[pScan[1].uScan];
     if (iLevel) {
-        //pTotals[1]++;
         pScan[1].uTotal++;
         pRLCoeffs[iNumNonzero * 2] = 0;
         pRLCoeffs[iNumNonzero * 2 + 1] = iLevel;
@@ -239,25 +263,11 @@ static Int AdaptiveScanZero (const PixelI *pCoeffs, CAdaptiveScan *pScan,
         iLevel = pCoeffs[pScan[k].uScan];
         iRun++;
         if (iLevel) {
-            //pTotals[k]++;
             pScan[k].uTotal++;
-            //if (pTotals[k] > pTotals[k - 1]) {
             if (pScan[k].uTotal > pScan[k - 1].uTotal) {
                 CAdaptiveScan cTemp = pScan[k];
                 pScan[k] = pScan[k - 1];
                 pScan[k - 1] = cTemp;
-//#ifndef __ADI__
-//                pTotals[k] ^= pTotals[k - 1] ^= pTotals[k] ^= pTotals[k - 1];
-//                pScan[k] ^= pScan[k - 1] ^= pScan[k] ^= pScan[k - 1];
-//#else
-//                iTmp = pTotals[k];
-//                pTotals[k] = pTotals[k-1];
-//                pTotals[k-1] = iTmp;
-//
-//                iTmp = pScan[k];
-//                pScan[k] = pScan[k-1];
-//                pScan[k-1] = iTmp;
-//#endif
             }
             pRLCoeffs[iNumNonzero * 2] = iRun - 1;
             pRLCoeffs[iNumNonzero * 2 + 1] = iLevel;
@@ -274,21 +284,17 @@ static Int AdaptiveScanZero (const PixelI *pCoeffs, CAdaptiveScan *pScan,
 #ifdef X86OPT_INLINE
 __forceinline
 #endif
-static Int AdaptiveScanTrim (const PixelI *pCoeffs, CAdaptiveScan *pScan, /*Int *pTotals, */
+static Int AdaptiveScanTrim (const PixelI *pCoeffs, CAdaptiveScan *pScan,
                              const Int iModelBits, Int *pRLCoeffs, const Int iCount)
 {
     Int k, iRun = 1, iLevel, iNumNonzero = 0;
     Int iTemp; 
-//#ifdef __ADI__
-//    Int iTmp;
-//#endif
     unsigned int iThOff = (1 << iModelBits) - 1, iTh = iThOff * 2 + 1;
 
     iLevel = pCoeffs[pScan[1].uScan];
 
     if ((unsigned int)(iLevel + iThOff) >= iTh) {
         iTemp = abs (iLevel) >> iModelBits;
-        //pTotals[1]++;
         pScan[1].uTotal++;
         pRLCoeffs[iNumNonzero * 2] = 0;
         pRLCoeffs[iNumNonzero * 2 + 1] = (iLevel < 0) ? -iTemp : iTemp;
@@ -305,21 +311,6 @@ static Int AdaptiveScanTrim (const PixelI *pCoeffs, CAdaptiveScan *pScan, /*Int 
                 CAdaptiveScan cTemp = pScan[k];
                 pScan[k] = pScan[k - 1];
                 pScan[k - 1] = cTemp;
-
-//            pTotals[k]++;
-//            if (pTotals[k] > pTotals[k - 1]) {
-//#ifndef __ADI__
-//                pTotals[k] ^= pTotals[k - 1] ^= pTotals[k] ^= pTotals[k - 1];
-//                pScan[k] ^= pScan[k - 1] ^= pScan[k] ^= pScan[k - 1];
-//#else
-//                iTmp = pTotals[k];
-//                pTotals[k] = pTotals[k-1];
-//                pTotals[k-1] = iTmp;
-//
-//                iTmp = pScan[k];
-//                pScan[k] = pScan[k-1];
-//                pScan[k-1] = iTmp;
-//#endif
             }
             pRLCoeffs[iNumNonzero * 2] = iRun - 1;
             pRLCoeffs[iNumNonzero * 2 + 1] =  (iLevel < 0) ? -iTemp : iTemp;
@@ -350,15 +341,15 @@ static const Int gRes[] = {
 //__forceinline
 #endif
 static Int AdaptiveScan (const PixelI *pCoeffs, Int *pResidual,
-                         CAdaptiveScan *pScan, //Int *pTotals,
+                         CAdaptiveScan *pScan,
                          const Int iModelBits, const Int iTrimBits,
                          Int *pRLCoeffs, const Int iCount)
 {
     if (iModelBits == 0) {
-        return AdaptiveScanZero (pCoeffs, pScan, /*pTotals,*/ pRLCoeffs, iCount);
+        return AdaptiveScanZero (pCoeffs, pScan, pRLCoeffs, iCount);
     }
     else if (iModelBits <= iTrimBits) {
-        return AdaptiveScanTrim (pCoeffs, pScan, /*pTotals,*/ iModelBits, pRLCoeffs, iCount);
+        return AdaptiveScanTrim (pCoeffs, pScan, iModelBits, pRLCoeffs, iCount);
     }
     else if (iTrimBits == 0
 #ifdef USE_GRES_LUT
@@ -367,9 +358,6 @@ static Int AdaptiveScan (const PixelI *pCoeffs, Int *pResidual,
         ) {
         Int k, iRun = 0, iLevel, iNumNonzero = 0;
         Int iTemp, iTemp1; 
-#ifdef __ADI__
-        Int iTmp;
-#endif
         const unsigned int iThOff = (1 << iModelBits) - 1, iTh = iThOff * 2 + 1;
 
         iLevel = pCoeffs[pScan[1].uScan];
@@ -378,7 +366,6 @@ static Int AdaptiveScan (const PixelI *pCoeffs, Int *pResidual,
             iTemp1 = abs (iLevel);
             iTemp = iTemp1 >> iModelBits;
             pResidual[pScan[1].uScan] = (iTemp1 & iThOff) * 2;
-            //pTotals[1]++;
             pScan[1].uTotal++;
             pRLCoeffs[iNumNonzero * 2] = iRun;
             pRLCoeffs[iNumNonzero * 2 + 1] = (iLevel < 0) ? -iTemp : iTemp;
@@ -401,22 +388,8 @@ static Int AdaptiveScan (const PixelI *pCoeffs, Int *pResidual,
             if ((unsigned int)(iLevel + iThOff) >= iTh) {
                 const Int iSign = -(iLevel < 0);
                 iTemp1 = (iSign ^ iLevel) - iSign;
-                //iTemp1 = abs (iLevel);
                 iTemp = iTemp1 >> iModelBits;
                 pResidual[sk] = (iTemp1 & iThOff) * 2;
-//                pTotals[k]++;
-//                if (pTotals[k] > pTotals[k - 1]) {
-//#ifndef __ADI__
-//                    pTotals[k] ^= pTotals[k - 1] ^= pTotals[k] ^= pTotals[k - 1];
-//                    pScan[k] ^= pScan[k - 1] ^= pScan[k] ^= pScan[k - 1];
-//#else
-//                    iTmp = pTotals[k];
-//                    pTotals[k] = pTotals[k-1];
-//                    pTotals[k-1] = iTmp;
-//
-//                    pScan[k] = pScan[k-1];
-//                    pScan[k-1] = sk;
-//#endif
                 pScan[k].uTotal++;
                 if (pScan[k].uTotal > pScan[k - 1].uTotal) {
                     CAdaptiveScan cTemp = pScan[k];
@@ -425,7 +398,6 @@ static Int AdaptiveScan (const PixelI *pCoeffs, Int *pResidual,
                 }
                 pRLCoeffs[iNumNonzero * 2] = iRun;
                 pRLCoeffs[iNumNonzero * 2 + 1] =  (iTemp ^ iSign) - iSign;
-                //pRLCoeffs[iNumNonzero * 2 + 1] =  (iLevel < 0) ? -iTemp : iTemp;
                 iNumNonzero++;
                 iRun = 0;
             }
@@ -445,9 +417,6 @@ static Int AdaptiveScan (const PixelI *pCoeffs, Int *pResidual,
     else {
         Int k, iRun = 0, iLevel, iNumNonzero = 0;
         Int iTemp, iTemp1; 
-#ifdef __ADI__
-        Int iTmp;
-#endif
         const unsigned int iThOff = (1 << iModelBits) - 1, iTh = iThOff * 2 + 1;
 
         iLevel = pCoeffs[pScan[1].uScan];
@@ -456,7 +425,6 @@ static Int AdaptiveScan (const PixelI *pCoeffs, Int *pResidual,
             iTemp1 = abs (iLevel);
             iTemp = iTemp1 >> iModelBits;
             pResidual[pScan[1].uScan] = ((iTemp1 & iThOff) >> iTrimBits) * 2;
-            //pTotals[1]++;
             pScan[1].uTotal++;
             pRLCoeffs[iNumNonzero * 2] = iRun;
             pRLCoeffs[iNumNonzero * 2 + 1] = (iLevel < 0) ? -iTemp : iTemp;
@@ -478,19 +446,6 @@ static Int AdaptiveScan (const PixelI *pCoeffs, Int *pResidual,
                 iTemp1 = abs (iLevel);
                 iTemp = iTemp1 >> iModelBits;
                 pResidual[sk] = ((iTemp1 & iThOff) >> iTrimBits) * 2;
-//                pTotals[k]++;
-//                if (pTotals[k] > pTotals[k - 1]) {
-//#ifndef __ADI__
-//                    pTotals[k] ^= pTotals[k - 1] ^= pTotals[k] ^= pTotals[k - 1];
-//                    pScan[k] ^= pScan[k - 1] ^= pScan[k] ^= pScan[k - 1];
-//#else
-//                    iTmp = pTotals[k];
-//                    pTotals[k] = pTotals[k-1];
-//                    pTotals[k-1] = iTmp;
-//
-//                    pScan[k] = pScan[k-1];
-//                    pScan[k-1] = sk;
-//#endif
                 pScan[k].uTotal++;
                 if (pScan[k].uTotal > pScan[k - 1].uTotal) {
                     CAdaptiveScan cTemp = pScan[k];
@@ -508,7 +463,6 @@ static Int AdaptiveScan (const PixelI *pCoeffs, Int *pResidual,
                 iLevel = ((iLevel + iTemp) >> iTrimBits) - iTemp;  // round towards zero
                 iTemp = -(iLevel < 0);
                 pResidual[sk] = (iLevel ^ iTemp) * 4 + (6 & iTemp) + (iLevel != 0);
-                //(abs(iLevel) * 4) + ((iLevel < 0) * 2) + (iLevel != 0);
             }
         }
         return iNumNonzero;
@@ -526,10 +480,8 @@ Int EncodeMacroblockLowpass (CWMImageStrCodec *pSC, CCodingContext *pContext, In
     CWMIMBInfo *pMBInfo = &pSC->MBInfo;
     BitIOInfo* pIO = pContext->m_pIOLP;
 
-    //Int  *pScan = pContext->m_rgiZigzagInvLowpass;
-    //Int  *pTotals = pContext->m_rgiTotalsLowpass;
     CAdaptiveScan *pScan = pContext->m_aScanLowpass;
-    Int  k, iPrevRun = -1, iRun = 0, iLastIndex = 0;
+    Int  k, /*iPrevRun = -1,*/ iRun = 0;// iLastIndex = 0;
     Int iModelBits = pContext->m_aModelLP.m_iFlcBits[0];
     PixelI aBuf[2][8];
     Int aLaplacianMean[2] = {0, 0}, *pLM = aLaplacianMean;
@@ -539,10 +491,13 @@ Int EncodeMacroblockLowpass (CWMImageStrCodec *pSC, CCodingContext *pContext, In
     Int aResidual[MAX_CHANNELS][16];
     Void (*putBits)(BitIOInfo* pIO, U32 uiBits, U32 cBits) = putBit16;
 
+    UNREFERENCED_PARAMETER( iMBX );
+    UNREFERENCED_PARAMETER( iMBY );
+
     if (iChannels > MAX_CHANNELS)
         return ICERR_ERROR;
 
-    if(pSC->pTile[pSC->cTileColumn].cBitsLP > 0)  // MB-based LP QP index
+    if((pSC->WMISCP.bfBitstreamFormat != SPATIAL) && (pSC->pTile[pSC->cTileColumn].cBitsLP > 0))  // MB-based LP QP index
         encodeQPIndex(pIO, pMBInfo->iQIndexLP, pSC->pTile[pSC->cTileColumn].cBitsLP);
 
     // set arrays
@@ -554,10 +509,8 @@ Int EncodeMacroblockLowpass (CWMImageStrCodec *pSC, CCodingContext *pContext, In
     if (pSC->m_bResetRGITotals) {
         int iScale = 2;
         int iWeight = iScale * 16;
-        //pTotals[0] = MAXTOTAL;
         pScan[0].uTotal = MAXTOTAL;
         for (k = 1; k < 16; k++) {
-            //pTotals[k] = iWeight;
             pScan[k].uTotal = iWeight;
             iWeight -= iScale;
         }
@@ -566,7 +519,7 @@ Int EncodeMacroblockLowpass (CWMImageStrCodec *pSC, CCodingContext *pContext, In
     /** scan 4x4 transform **/
     for (iChannel = 0; iChannel < iFullChannels; iChannel++) {
         iNumCoeffs[iChannel] = AdaptiveScan (aDC[iChannel], aResidual[iChannel],
-            pScan, /*pTotals,*/ iModelBits, 0, aRLCoeffs[iChannel], 16);
+            pScan, iModelBits, 0, aRLCoeffs[iChannel], 16);
 
         iModelBits = pContext->m_aModelLP.m_iFlcBits[1];
     }
@@ -778,93 +731,16 @@ static Void EncodeSignificantRun (Int iRun, Int iMaxRun, struct CAdaptiveHuffman
     putBit16(pOut, iRun + 1, iFLC);
 }
 
-#if 0
-#ifdef X86OPT_INLINE
-__forceinline
-#endif
-static Int EncodeSignificantLevel (Int iLevel, struct CAdaptiveHuffman *pAHexpt, BitIOInfo* pOut)
-{
-    Int iIndex, iFixed;
-    static const Int aFixedLength[] = { 0, 0, 1, 2, 2, 2 };
-    static const Int aIndex[] = { 0,1,2,2, 3,3,3,3, 4,4,4,4, 5,5,5,5 };
-    Int iAbsLevel = abs (iLevel), word, len;
-    assert (pAHexpt->m_iNSymbols == 7);
-
-    iAbsLevel -= 2;
-    if (iAbsLevel >= 16) {
-        Int i = iAbsLevel;
-        iIndex = 6;
-        /** find leftmost bit **/
-        i >>= 5;
-        iFixed = 4;
-        while (i) { /** caution - infinite loop if not careful **/
-            iFixed++;
-            if(iFixed >= 20)
-                return ICERR_ERROR;
-            i >>= 1;
-        }
-        /** minimize writes **/
-        word = pAHexpt->m_pTable[6 * 2 + 1] * 16 + (iFixed - 4);
-        len = pAHexpt->m_pTable[6 * 2 + 2] + 4;
-        if (len > 16) {
-            putBit16z(pOut, word >> 16, len - 16);
-            word &= 0xffff;
-            len = 16;
-        }
-        putBit16z(pOut, word, len);
-        word = iAbsLevel;// * 2 + (iLevel < 0);
-        len = iFixed;// + 1;
-
-        //pAHexpt->m_pHistogram[iIndex]++;
-        pAHexpt->m_iDiscriminant += pAHexpt->m_pDelta[iIndex];
-        if(len <= 16)
-            putBit16(pOut, word, len);
-        else
-            putBit32(pOut, word, len);
-    }
-    else {
-        iIndex = aIndex[iAbsLevel];
-        iFixed = aFixedLength[iIndex];
-        if (iFixed == 0) {
-            word = pAHexpt->m_pTable[iIndex * 2 + 1];
-            len = pAHexpt->m_pTable[iIndex * 2 + 2];
-            //word += word + (iLevel < 0);
-            //len++;
-        }
-        else {
-            word = pAHexpt->m_pTable[iIndex * 2 + 1];
-            len = pAHexpt->m_pTable[iIndex * 2 + 2];
-            putBit16z(pOut, word, len);
-            word = iAbsLevel;
-            len = iFixed;// + 1;
-        }
-        
-        //pAHexpt->m_pHistogram[iIndex]++;
-        pAHexpt->m_iDiscriminant += pAHexpt->m_pDelta[iIndex];
-        putBit16(pOut, word, len);
-    }
-    /**
-    putBit16z(pOut, pAHexpt->m_pTable[iIndex * 2 + 1], pAHexpt->m_pTable[iIndex * 2 + 2]);
-    if (iIndex == 6) {
-        putBit16z(pOut, (iFixed - 4), 3);
-    }
-    putBit16z(pOut, iAbsLevel, iFixed);
-    putBit16z(pOut, (iLevel < 0), 1);
-    **/
-
-    return ICERR_OK;
-}
-#endif // 0
-
 #ifdef X86OPT_INLINE
 __forceinline
 #endif
 static Void EncodeFirstIndex (Bool bChroma, Int iLoc, Int iCont, Int iIndex, Int iSign,
                   struct CAdaptiveHuffman **ppAHexpt, BitIOInfo* pOut)
 {
-    Int iContext = iCont + 1 + bChroma * 3;
+    // Int iContext = iCont + 1 + bChroma * 3;
     struct CAdaptiveHuffman *pAHexpt = ppAHexpt[bChroma * 3];
-    //pAHexpt->m_pHistogram[iIndex]++;
+    UNREFERENCED_PARAMETER( iLoc );
+    UNREFERENCED_PARAMETER( iCont );
     pAHexpt->m_iDiscriminant += pAHexpt->m_pDelta[iIndex];
     pAHexpt->m_iDiscriminant1 += pAHexpt->m_pDelta1[iIndex];
     putBit16z(pOut, pAHexpt->m_pTable[iIndex * 2 + 1] * 2 + iSign, pAHexpt->m_pTable[iIndex * 2 + 2] + 1);
@@ -881,14 +757,13 @@ static Void EncodeIndex (Bool bChroma, Int iLoc, Int iCont, Int iIndex, Int  iSi
 
     if (iLoc < 15) {
         struct CAdaptiveHuffman *pAHexpt = ppAHexpt[iContext];
-        //pAHexpt->m_pHistogram[iIndex]++;
         pAHexpt->m_iDiscriminant += pAHexpt->m_pDelta[iIndex];
         pAHexpt->m_iDiscriminant1 += pAHexpt->m_pDelta1[iIndex];
         putBit16z(pOut, pAHexpt->m_pTable[iIndex * 2 + 1] * 2 + iSign, pAHexpt->m_pTable[iIndex * 2 + 2] + 1);
     }
     else if (iLoc == 15) {
-        static const gCode[] = { 0, 6, 2, 7 };
-        static const gLen[] = { 1, 3, 2, 3 };
+        static const U32 gCode[] = { 0, 6, 2, 7 };
+        static const U32 gLen[] = { 1, 3, 2, 3 };
         putBit16z(pOut, gCode[iIndex] * 2 + iSign, gLen[iIndex] + 1);
         return;
     }
@@ -973,7 +848,6 @@ static Int CodeCoeffs (CWMImageStrCodec * pSC, CCodingContext *pContext,
     const Int iPlanes = (cf == YUV_420 || cf == YUV_422) ? 1 : iChannels;
     CWMIMBInfo * pMBInfo = &pSC->MBInfo;
     CAdaptiveScan *pScan;
-    //Int  *pScan, *pTotals; /** normal order **/
     Int iBlock, iNBlocks = 4;
     Int iSubblock, iIndex = 0;
     Int i, k;
@@ -981,6 +855,9 @@ static Int CodeCoeffs (CWMImageStrCodec * pSC, CCodingContext *pContext,
     Int iModelBits = pContext->m_aModelAC.m_iFlcBits[0], iFlex = 0, iTrim = 0, iMask = 0;
     Int aLaplacianMean[2] = { 0, 0}, *pLM = aLaplacianMean;
     Bool bChroma = FALSE;
+
+    UNREFERENCED_PARAMETER( iMBX );
+    UNREFERENCED_PARAMETER( iMBY );
 
     assert (iModelBits < 16);
     if (pContext->m_iTrimFlexBits <= iModelBits && pSC->WMISCP.sbSubband != SB_NO_FLEXBITS) {
@@ -994,12 +871,10 @@ static Int CodeCoeffs (CWMImageStrCodec * pSC, CCodingContext *pContext,
 
     /** set scan arrays **/
     if (pMBInfo->iOrientation == 1) {
-        pScan = pContext->m_aScanVert;//m_rgiZigzagInvV;
-        //pTotals = pContext->m_rgiTotalsV;
+        pScan = pContext->m_aScanVert;
     }
     else {
-        pScan = pContext->m_aScanHoriz;//m_rgiZigzagInvH;
-        //pTotals = pContext->m_rgiTotalsH;
+        pScan = pContext->m_aScanHoriz;
     }
 
     /** write out coefficients **/
@@ -1021,7 +896,7 @@ static Int CodeCoeffs (CWMImageStrCodec * pSC, CCodingContext *pContext,
                 writeIS_L2(pSC, pIOFL);
             
             for (iSubblock = 0; iSubblock < 4; iSubblock++, iPattern >>= 1, iIndex ++) {
-                const PixelI *pCoeffs;
+                const PixelI *pCoeffs = NULL;
 
                 if(iBlock < 4){
                     pCoeffs = pSC->pPlane[i] + blkOffset[iIndex];
@@ -1058,7 +933,7 @@ static Int CodeCoeffs (CWMImageStrCodec * pSC, CCodingContext *pContext,
                     Int aResidual[16];
 
                     iNumNonzero = AdaptiveScan (pCoeffs, aResidual,
-                        pScan, /*pTotals,*/ iModelBits, iTrim, aLocalCoef, 16);
+                        pScan, iModelBits, iTrim, aLocalCoef, 16);
                     (*pLM) += iNumNonzero;
                     EncodeBlock (bChroma, aLocalCoef, iNumNonzero, pContext->m_pAHexpt, CTDC + CONTEXTX, pIO, 1);
 
@@ -1098,14 +973,17 @@ static Void CodeCBP (CWMImageStrCodec * pSC, CCodingContext *pContext,
                      Int iMBX, Int iMBY, BitIOInfo *pIO)
 {
     const COLORFORMAT cf = pSC->m_param.cfColorFormat;
-    const Int iChannel = (cf == N_CHANNEL || cf == CMYK) ? (Int) pSC->m_param.cNumChannels : 1;
+    const Int iChannel = (cf == NCOMPONENT || cf == CMYK) ? (Int) pSC->m_param.cNumChannels : 1;
     Int iDiffCBPCY, iDiffCBPCU = 0, iDiffCBPCV = 0, iDY;
     Int iBlock, i, k;
     static const Int aNumOnes[] = { 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 };
     static const Int aTabLen[] =  { 0, 2, 2, 2, 2, 2, 3, 2, 2, 3, 3, 2, 3, 2, 2, 0 };
     static const Int aTabCode[] = { 0, 0, 1, 0, 2, 1, 4, 3, 3, 5, 6, 2, 7, 1, 0, 0 };
     CAdaptiveHuffman *pAH;
-    Int iCount, iPattern, iCode, iCodeU, iCodeV;
+    Int iCount, iPattern, iCode, iCodeU = 0, iCodeV = 0;
+
+    UNREFERENCED_PARAMETER( iMBX );
+    UNREFERENCED_PARAMETER( iMBY );
 
     predCBPEnc(pSC, pContext);
     writeIS_L1(pSC, pIO);
@@ -1159,7 +1037,6 @@ static Void CodeCBP (CWMImageStrCodec * pSC, CCodingContext *pContext,
         pAH = pContext->m_pAdaptHuffCBPCY1;
         iCount = aNumOnes[iPattern];
         putBit16z(pIO, pAH->m_pTable[iCount * 2 + 1], pAH->m_pTable[iCount * 2 + 2]);
-        //pAH->m_pHistogram[iCount]++;
         pAH->m_iDiscriminant += pAH->m_pDelta[iCount];
         if (aTabLen[iPattern]) {
             putBit16z(pIO, aTabCode[iPattern], aTabLen[iPattern]);
@@ -1222,7 +1099,6 @@ static Void CodeCBP (CWMImageStrCodec * pSC, CCodingContext *pContext,
                 }
                 pAH = pContext->m_pAdaptHuffCBPCY;
                 putBit16z(pIO, pAH->m_pTable[val * 2 + 1], pAH->m_pTable[val * 2 + 2]);
-                //pAH->m_pHistogram[val]++;
                 pAH->m_iDiscriminant += pAH->m_pDelta[val];
 
                 if (iChroma) {
@@ -1284,7 +1160,7 @@ Int EncodeMacroblockHighpass(CWMImageStrCodec * pSC, CCodingContext *pContext, I
     BitIOInfo* pIO = pContext->m_pIOAC;
     BitIOInfo* pIOFL = pContext->m_pIOFL;
 
-    if(pSC->pTile[pSC->cTileColumn].cBitsHP > 0)  // MB-based HP QP index
+    if((pSC->WMISCP.bfBitstreamFormat != SPATIAL) && (pSC->pTile[pSC->cTileColumn].cBitsHP > 0))  // MB-based HP QP index
         encodeQPIndex(pIO, pSC->MBInfo.iQIndexHP, pSC->pTile[pSC->cTileColumn].cBitsHP);
 
     /** reset adaptive scan totals **/
@@ -1292,10 +1168,8 @@ Int EncodeMacroblockHighpass(CWMImageStrCodec * pSC, CCodingContext *pContext, I
         Int iScale = 2;
         Int iWeight = iScale * 16;
         Int k;
-        //pContext->m_rgiTotalsH[0] = pContext->m_rgiTotalsV[0] = MAXTOTAL;
         pContext->m_aScanHoriz[0].uTotal = pContext->m_aScanVert[0].uTotal = MAXTOTAL;
         for (k = 1; k < 16; k++) {
-            //pContext->m_rgiTotalsH[k] = pContext->m_rgiTotalsV[k] = iWeight;
             pContext->m_aScanHoriz[k].uTotal = pContext->m_aScanVert[k].uTotal = iWeight;
             iWeight -= iScale;
         }

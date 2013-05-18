@@ -13,9 +13,7 @@
 #include "FreeImage.h"
 #include "Utilities.h"
 
-#include "WMPGlue.h"
-#undef NULL
-#define NULL 0
+#include "JXRGlue.h"
 
 // ==========================================================
 // Plugin Interface

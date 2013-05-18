@@ -1,7 +1,28 @@
 //*@@@+++@@@@******************************************************************
 //
-// Microsoft Windows Media
-// Copyright (C) Microsoft Corporation. All rights reserved.
+// Copyright © Microsoft Corp.
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 
+// • Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// • Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //
 //*@@@---@@@@******************************************************************
 
@@ -30,17 +51,13 @@ typedef struct CWMDecoderParameters {
     size_t * pOffsetY;
 } CWMDecoderParameters;
 
-Int getHuff(struct Huffman *pHuffman, BitIOInfo* pIO);
-Int initHuff (struct Huffman *pHuffman, Int mode, const Int *huffArray, Int *maxBits);
-struct Huffman *allocHuff();
-Void CleanHuff(struct Huffman *pHuffman);
-
 Void predCBPDec(CWMImageStrCodec *, CCodingContext *);
 Void predDCACDec(CWMImageStrCodec *);
 Void predACDec(CWMImageStrCodec *);
 
 Int dequantizeMacroblock(CWMImageStrCodec *);
 Int invTransformMacroblock(CWMImageStrCodec * pSC);
+Int invTransformMacroblock_alteredOperators_hard(CWMImageStrCodec * pSC);
 
 Int DecodeMacroblockDC(CWMImageStrCodec * pSC, CCodingContext *pContext, Int iMBX, Int iMBY);
 Int DecodeMacroblockLowpass(CWMImageStrCodec * pSC, CCodingContext *pContext, Int iMBX, Int iMBY);
@@ -84,8 +101,10 @@ Void strIDCT4x4FirstStage420UV(PixelI *);
 
 /** 4x4 post filter for first stage **/
 Void strPost4x4FirstStage(PixelI *);
-Void strPost4x4Stage1Split(PixelI*, PixelI*,Int);
-Void strPost4x4Stage1(PixelI*,Int);
+Void strPost4x4Stage1Split(PixelI*, PixelI*, Int, Int, Bool);
+Void strPost4x4Stage1(PixelI*, Int, Int, Bool);
+Void strPost4x4Stage1Split_alternate(PixelI*, PixelI*, Int);
+Void strPost4x4Stage1_alternate(PixelI*, Int);
 //Void strPost4x4Stage1Split_420(PixelI*, PixelI*);
 //Void strPost4x4Stage1_420(PixelI*);
 
@@ -112,71 +131,13 @@ Void strDCT2x2dnDec(PixelI *, PixelI *, PixelI *, PixelI *);
 /** 4x4 post filter for second stage **/
 Void strPost4x4SecondStage(PixelI *);
 Void strPost4x4Stage2Split(PixelI*, PixelI*);
+Void strPost4x4Stage2Split_alternate(PixelI*, PixelI*);
 
 /** Huffman decode related defines **/
-#if !(defined(ARMOPT_HUFFMAN) || defined(X86OPT_HUFFMAN))
-#define HUFFMAN_DECODE_ROOT_BITS_LOG    4
-#else
 #define HUFFMAN_DECODE_ROOT_BITS_LOG    3
-#endif	// ARMOPT_HUFFMAN || X86OPT_HUFFMAN
-// returns dimension of decoding table (we suppose that prefix code is full)
-#define HUFFMAN_DECODE_TABLE_SIZE(iRootBits,iAlphabetSize) ((1 << (iRootBits)) + (2 * (iAlphabetSize)))
-// Default root table size
-#if !(defined(ARMOPT_HUFFMAN) || defined(X86OPT_HUFFMAN))
-#define HUFFMAN_DECODE_ROOT_BITS    (10)    // AKadatch: due to a number of reasons, don't set it below 10
-#else
-#define HUFFMAN_DECODE_ROOT_BITS    (5)    
-#endif	//ARMOPT_HUFFMAN || X86OPT_HUFFMAN
+#define HUFFMAN_DECODE_ROOT_BITS    (5)   
 
-#if !(defined(ARMOPT_HUFFMAN) || defined(X86OPT_HUFFMAN))
-typedef struct tagHuffEncInfo {
-  UInt code;
-  UInt length;
-} HuffEncInfo;
-
-typedef struct tagHuffDecInfo {
-
-#     define HUFFDEC_SYMBOL_BITS 12
-#     define HUFFDEC_LENGTH_BITS 4
-
-  U16 symbol : HUFFDEC_SYMBOL_BITS;
-  U16 length : HUFFDEC_LENGTH_BITS;
-
-} HuffDecInfo;
-
-typedef struct tagTableInfo {
-    Int bits;
-    HuffDecInfo *table;
-} TableInfo;
-
-typedef struct tagTableInitInfo {
-  Int prefix;     // the prefix that got you there
-  Int start, end; // start, end tableNums of children tables
-  Int bits;       // the bits for this table
-  Int maxBits;    // the maximum # of bits of things entering this table
-} TableInitInfo;
-
-#endif	// ARMOPT_HUFFMAN || X86OPT_HUFFMAN
-
-typedef struct Huffman {
-#ifdef X86OPT_PREBUILT_TABLE
-  const
-#endif // X86OPT_PREBUILT_TABLE
-        short *m_hufDecTable;     // this should be public and, preferably, first field
-
-  // It is critical that encTable be 32 bits and decTable be 16 bits for 
-  // the given huffman routines to work
-  Int m_alphabetSize;
-#if !(defined(ARMOPT_HUFFMAN) || defined(X86OPT_HUFFMAN))
-  Int m_maxCodeLength;
-  Int m_numDecEntries, m_allocDecEntries;
-  Int m_allocTables, m_allocAlphabet;
-  struct tagHuffDecInfo   *m_decInfo;
-  struct tagHuffEncInfo   *m_encInfo;
-  struct tagTableInfo     *m_tableInfo;
-  struct tagTableInitInfo *m_initInfo;
-#endif	// ARMOPT_HUFFMAN || X86OPT_HUFFMAN
-} HuffmanDef;
+Int getHuff(const short *pDecodeTable, BitIOInfo* pIO);
 
 #endif // WMI_DECODE_H
 

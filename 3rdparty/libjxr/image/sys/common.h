@@ -1,14 +1,33 @@
 //*@@@+++@@@@******************************************************************
 //
-// Microsoft Windows Media
-// Copyright (C) Microsoft Corporation. All rights reserved.
+// Copyright © Microsoft Corp.
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 
+// • Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// • Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //
 //*@@@---@@@@******************************************************************
 
 #ifndef WMI_COMMON_H
 #define WMI_COMMON_H
-
-#define _PHOTON_PK_
 
 /*************************************************************************
 // Common typedef's
@@ -30,13 +49,13 @@ typedef enum tagBand
 //#define SIGNATURE_BYTES 8   // Bytes for GDI+ signature
 #define CODEC_VERSION 1
 #define CODEC_SUBVERSION 0
+#define CODEC_SUBVERSION_NEWSCALING_SOFT_TILES 1
+#define CODEC_SUBVERSION_NEWSCALING_HARD_TILES 9
 
 #define CONTEXTX 8
 #define CTDC 5
 #define NUMVLCTABLES 21 // CONTEXTX * 2 + CTDC
 #define AVG_NDIFF 3
-
-//#define SCALEORDER
 
 #define MAXTOTAL 32767 // 511 should be enough
 
@@ -48,13 +67,10 @@ typedef enum tagBand
 typedef struct CAdaptiveHuffman
 {
     Int     m_iNSymbols;
-    Int     *m_pData;
-    Int     *m_pHistogram;
-    Int     *m_pHistogramAlt;
     const Int *m_pTable;
     const Int *m_pDelta, *m_pDelta1;
     Int     m_iTableIndex;
-    struct  Huffman *m_pHuffman;
+    const short *m_hufDecTable;
     Bool    m_bInitialize;
     //Char    m_pLabel[8]; // for debugging - label attached to constructor
 
@@ -98,7 +114,7 @@ CAdaptiveHuffman *Allocate (Int iNSymbols, CODINGMODE cm);
 /* Timing functions */
 void    reset_timing(double *time);
 void    report_timing(const char *s, double time);
-static double   timeperclock;
+// static double   timeperclock;
 
 /** adaptive model functions **/
 Void UpdateModelMB (COLORFORMAT cf, Int iChannels, Int iLaplacianMean[], CAdaptiveModel *m_pModel);
@@ -108,18 +124,8 @@ Void Adapt (CAdaptiveHuffman *pAdHuff, Bool bFixedTables);
 Void AdaptFixed (CAdaptiveHuffman *pAdHuff);
 Void AdaptDiscriminant (CAdaptiveHuffman *pAdHuff);
 
-//#ifdef X86OPT_PREBUILT_TABLE
-//Int conHuffLookupTables();
-//#endif // X86OPT_PREBUILT_TABLE
-
 #ifndef _PREFAST_
 #pragma warning(disable:4068)
-#endif
-
-#ifdef __GNUC__
-  #ifndef __forceinline
-    #define __forceinline __attribute__((__always_inline__)) inline
-  #endif
 #endif
 
 #endif  // WMI_COMMON_H

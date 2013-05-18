@@ -144,8 +144,7 @@ INCLUDE_DIRECTORIES(
 	${3RDPARTY_DIR}/libjxr/common/include/
 	${3RDPARTY_DIR}/libjxr/image/sys/
 	${3RDPARTY_DIR}/libjxr/image/x86/
-	${3RDPARTY_DIR}/libjxr/Systems/tools/WMPGlueLib/
-	${3RDPARTY_DIR}/libjxr/Systems/tools/WMPMetaLib/
+	${3RDPARTY_DIR}/libjxr/jxrgluelib/
 	${3RDPARTY_DIR}/libtiff/
 	${3RDPARTY_DIR}/libwebp/src/
 	${3RDPARTY_DIR}/openjpeg/

@@ -2,47 +2,40 @@ SET(SRC ${3RDPARTY_DIR}/libjxr)
 
 SET(SOURCE_FILES
 	${SRC}/image/decode/decode.c
-	${SRC}/image/decode/huffman.c
+	${SRC}/image/decode/JXRTranscode.c
 	${SRC}/image/decode/postprocess.c
 	${SRC}/image/decode/segdec.c
 	${SRC}/image/decode/strdec.c
+	${SRC}/image/decode/strdec_x86.c
 	${SRC}/image/decode/strInvTransform.c
 	${SRC}/image/decode/strPredQuantDec.c
-	${SRC}/image/decode/WMPTranscode.c
 	${SRC}/image/encode/encode.c
 	${SRC}/image/encode/segenc.c
 	${SRC}/image/encode/strenc.c
+	${SRC}/image/encode/strenc_x86.c
 	${SRC}/image/encode/strFwdTransform.c
 	${SRC}/image/encode/strPredQuantEnc.c
 	${SRC}/image/sys/adapthuff.c
 	${SRC}/image/sys/image.c
+	${SRC}/image/sys/perfTimerANSI.c
 	${SRC}/image/sys/strcodec.c
 	${SRC}/image/sys/strPredQuant.c
 	${SRC}/image/sys/strTransform.c
-	${SRC}/Systems/tools/WMPGlueLib/WMPGlue.c
-	${SRC}/Systems/tools/WMPGlueLib/WMPGluePFC.c
-	${SRC}/Systems/tools/WMPGlueLib/WMPGlueWmp.c
-	${SRC}/Systems/tools/WMPMetaLib/WMPMeta.c
+	${SRC}/jxrgluelib/JXRGlue.c
+	${SRC}/jxrgluelib/JXRGlueJxr.c
+	${SRC}/jxrgluelib/JXRGluePFC.c
+	${SRC}/jxrgluelib/JXRMeta.c
 )
-
-IF(NOT MSVC)
-	ADD_DEFINITIONS(-D__ANSI__)
-	SET(SOURCE_FILES
-		${SOURCE_FILES} ${SRC}/nonvc_helper.c)
-ENDIF()
 
 INCLUDE_DIRECTORIES(
 	${SRC}/common/include/
 	${SRC}/image/sys/
 	${SRC}/image/x86/
-	${SRC}/Systems/tools/WMPGlueLib/
-	${SRC}/Systems/tools/WMPMetaLib/
+	${SRC}/jxrgluelib/
 )
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
 
-ADD_DEFINITIONS(-DSTREAMING_PACKET_IO
-	-DX86OPT_HUFFMAN -DX86OPT_PREBUILT_TABLE
-	-DX86OPT_QUANT -DX86OPT_INLINE)
+ADD_DEFINITIONS(-DENABLE_OPTIMIZATIONS -DDISABLE_PERF_MEASUREMENT)
 
 ADD_LIBRARY(libjxr STATIC ${SOURCE_FILES})

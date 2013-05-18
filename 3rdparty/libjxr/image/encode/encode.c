@@ -1,7 +1,28 @@
 //*@@@+++@@@@******************************************************************
 //
-// Microsoft Windows Media
-// Copyright (C) Microsoft Corporation. All rights reserved.
+// Copyright © Microsoft Corp.
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 
+// • Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// • Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //
 //*@@@---@@@@******************************************************************
 
@@ -35,7 +56,7 @@ Int AllocateCodingContextEnc(CWMImageStrCodec *pSC, Int iNumContexts, Int iTrimF
         iTrimFlexBits = 15;    
     pSC->m_param.bTrimFlexbitsFlag = (iTrimFlexBits > 0);
 
-    if (iNumContexts < 1 || iNumContexts > 256)  // only between 1 and 256 allowed
+    if (iNumContexts < 1 || iNumContexts > MAX_TILES)  // only between 1 and 256 allowed
         return ICERR_ERROR;
 
     if (pSC == NULL)
@@ -49,7 +70,7 @@ Int AllocateCodingContextEnc(CWMImageStrCodec *pSC, Int iNumContexts, Int iTrimF
     memset (pSC->m_pCodingContext, 0, iNumContexts * sizeof (CCodingContext));
 
     pSC->cNumCodingContext = iNumContexts;
-    iCBPSize = (pSC->m_param.cfColorFormat == Y_ONLY || pSC->m_param.cfColorFormat == N_CHANNEL
+    iCBPSize = (pSC->m_param.cfColorFormat == Y_ONLY || pSC->m_param.cfColorFormat == NCOMPONENT
         || pSC->m_param.cfColorFormat == CMYK) ? 5 : 9;
 
     /** allocate / initialize members **/
@@ -75,8 +96,6 @@ Int AllocateCodingContextEnc(CWMImageStrCodec *pSC, Int iNumContexts, Int iTrimF
 
         ResetCodingContextEnc(pContext);
         pContext->m_iTrimFlexBits = iTrimFlexBits;
-        //pContext->m_iTrimFlexBits = rand() & 0xf;
-        //printf ("flex:%d \t", pContext->m_iTrimFlexBits);
     }
 
     return ICERR_OK;

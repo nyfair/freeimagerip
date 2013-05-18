@@ -1,12 +1,33 @@
 //*@@@+++@@@@******************************************************************
 //
-// Microsoft Windows Media
-// Copyright (C) Microsoft Corporation. All rights reserved.
+// Copyright © Microsoft Corp.
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 
+// • Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// • Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //
 //*@@@---@@@@******************************************************************
 
 #include "strcodec.h"
-#include "xplatform_image.h"
+// #include "xplatform_image.h"
 
 #ifdef MEM_TRACE
 #define TRACE_MALLOC    1
@@ -18,11 +39,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if !(defined(__ANSI__) || defined(__ADI__))
+#if !(defined(__ANSI__))
 // Desktop
 #include <windows.h>
 #else
-// ANSI or ADI
+// ANSI
 #include <time.h>
 #endif  
 
@@ -153,13 +174,10 @@ Void InitZigzagScan(CCodingContext * pContext)
 {
     if (NULL != pContext) {
         Int i;
-        //memcpy (pSC->m_rgiZigzagInvLowpass, grgiZigzagInv4x4_lowpass, sizeof (Int) * 16);
         for (i=0; i<16; i++) {
             pContext->m_aScanLowpass[i].uScan = grgiZigzagInv4x4_lowpass[i];
             pContext->m_aScanHoriz[i].uScan = dctIndex[0][grgiZigzagInv4x4H[i]];
             pContext->m_aScanVert[i].uScan  = dctIndex[0][grgiZigzagInv4x4V[i]];
-            //pSC->m_rgiZigzagInvH[i] = dctIndex[0][grgiZigzagInv4x4H[i]];
-            //pSC->m_rgiZigzagInvV[i] = dctIndex[0][grgiZigzagInv4x4V[i]];
         }
     }
 }

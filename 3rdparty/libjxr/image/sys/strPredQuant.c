@@ -1,7 +1,28 @@
 //*@@@+++@@@@******************************************************************
 //
-// Microsoft Windows Media
-// Copyright (C) Microsoft Corporation. All rights reserved.
+// Copyright © Microsoft Corp.
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 
+// • Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// • Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //
 //*@@@---@@@@******************************************************************
 
@@ -104,12 +125,13 @@ Void remapQP(CWMIQuantizer * pQP, I32 iShift, Bool bScaledArith)
 Int allocatePredInfo(CWMImageStrCodec *pSC)
 {
     size_t i, j;
-    COLORFORMAT cf = pSC->m_param.cfColorFormat;
+    // COLORFORMAT cf = pSC->m_param.cfColorFormat;
     const size_t mbWidth = pSC->cmbWidth;
     const size_t iChannels = pSC->m_param.cNumChannels;
     CWMIPredInfo* pMemory;
+    Bool b32Bit = sizeof(size_t) == 4;
     
-    if(sizeof(size_t) == 4) // integer overlow/underflow check for 32-bit system
+    if(b32Bit) // integer overlow/underflow check for 32-bit system
         if(((mbWidth >> 16) * iChannels * 2 * sizeof(CWMIPredInfo)) & 0xffff0000)
             return ICERR_ERROR;    
     pMemory = (CWMIPredInfo *)malloc(mbWidth * iChannels * 2 * sizeof(CWMIPredInfo));
@@ -148,7 +170,7 @@ Int getACPredMode(CWMIMBInfo * pMBInfo, COLORFORMAT cf)
     Int StrH = abs(pCoeffs[1]) + abs(pCoeffs[2]) + abs(pCoeffs[3]);
     Int StrV = abs(pCoeffs[4]) + abs(pCoeffs[8]) + abs(pCoeffs[12]);
 
-    if(cf != Y_ONLY && cf != N_CHANNEL){
+    if(cf != Y_ONLY && cf != NCOMPONENT){
         PixelI * pCoeffsU = pMBInfo->iBlockDC[1];
         PixelI * pCoeffsV = pMBInfo->iBlockDC[2];
 
@@ -188,7 +210,7 @@ Int getDCACPredMode(CWMImageStrCodec *pSC, size_t mbX)
         Int iL = pSC->PredInfo[0][mbX - 1].iDC, iT = pSC->PredInfoPrevRow[0][mbX].iDC, iTL = pSC->PredInfoPrevRow[0][mbX - 1].iDC;
         Int StrH, StrV;
 
-        if(cf == Y_ONLY || cf == N_CHANNEL){ // CMYK uses YUV metric
+        if(cf == Y_ONLY || cf == NCOMPONENT){ // CMYK uses YUV metric
             StrH = abs(iTL - iL);
             StrV = abs(iTL - iT);
         }

@@ -1,7 +1,28 @@
 //*@@@+++@@@@******************************************************************
 //
-// Microsoft Windows Media
-// Copyright (C) Microsoft Corporation. All rights reserved.
+// Copyright © Microsoft Corp.
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 
+// • Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// • Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //
 //*@@@---@@@@******************************************************************
 
@@ -10,7 +31,6 @@
 
 #if (!defined UNDER_CE && !defined NO_WINDOWS && !defined SPECSTRINGS_H)
 #define SPECSTRINGS_H
-
 /*************************************************************************
 * See specstrings_strict.h for documentation of all user visible macros.
 *************************************************************************/
@@ -135,53 +155,58 @@ extern "C" {
 /************************************************************************
  New extensions to sal.h follow here.
 *************************************************************************/
-/* Internal defintions */
+
 #if (_MSC_VER >= 1000) && !defined(__midl) && defined(_PREFAST_)
-#define __inner_control_entrypoint(category) __declspec("SAL_entrypoint(controlEntry, "SPECSTRINGIZE(category)")")
-#define __inner_data_entrypoint(category)   __declspec("SAL_entrypoint(dataEntry, "SPECSTRINGIZE(category)")")
-#define __inner_success(expr)               __declspec("SAL_success("SPECSTRINGIZE(expr)")")
-#define __inner_typefix(ctype)              __declspec("SAL_typefix("SPECSTRINGIZE(ctype)")")
-#define __inner_override                    __declspec("__override")
-#define __inner_callback                    __declspec("__callback")
-#define __inner_blocksOn(resource)          __declspec("SAL_blocksOn("SPECSTRINGIZE(resource)")")
-#define __inner_data_source(src)            __declspec("SAL_untrusted_data_source(" SPECSTRINGIZE(src) ")")
-#define __inner_out_validated(type)         __declspec("SAL_post") __declspec("SAL_validated(" SPECSTRINGIZE(type) ")")  
-#define __inner_assume_validated_dec        __inline __nothrow void __AssumeValidated(__inner_out_validated(BY_DESIGN) const void *p) {p;}
+#define __file_parser(typ)                  __declspec("SAL_file_parser(function, " #typ ")")    
+#define __file_parser_class(typ)            __declspec("SAL_file_parser(class, " #typ ")")
+#define __file_parser_library(typ)          extern int __declspec("SAL_file_parser(library, " #typ ")") __iSALFileParserLibrary##typ;
+#define __source_code_content(typ)          extern int __declspec("SAL_source_code_content(" #typ ")") __iSAL_Source_Code_Content##typ;
+#define __class_code_content(typ)           __declspec("SAL_class_code_content(" #typ ")")
+#define __analysis_assert(e)                __assume(e)
+#define __analysis_hint(hint)               __declspec("SAL_analysisHint(" #hint ")")   
+/* Internal defintions */
+#define __inner_data_source(src_raw)        __declspec("SAL_untrusted_data_source(" src_raw ")")
+#define __inner_this_data_source(src_raw)   __declspec("SAL_untrusted_data_source_this(" src_raw ")")
+#define __inner_out_validated(typ_raw)      __declspec("SAL_post") __declspec("SAL_validated(" typ_raw ")") 
+#define __inner_this_out_validated(typ_raw) __declspec("SAL_validated_this(" typ_raw ")") 
+#define __inner_assume_validated_dec        __inline __nothrow void __AssumeValidated(__inner_out_validated("BY_DESIGN") const void *p) {p;}
 #define __inner_assume_validated(p)         __AssumeValidated(p)
 #define __inner_transfer(formal)            __declspec("SAL_transfer_adt_property_from(" SPECSTRINGIZE(formal) ")")
-#define __inner_file_parser(type)           __declspec("SAL_file_parser(function, " SPECSTRINGIZE(type) ")")    
-#define __inner_file_parser_class(type)     __declspec("SAL_file_parser(class, " SPECSTRINGIZE(type) ")")
-#define __inner_file_parser_library(type)   extern int __declspec("SAL_file_parser(library, " SPECSTRINGIZE(type) ")") __iSALFileParserLibrary;
 #define __inner_encoded                     __declspec("SAL_encoded")
-#define __$adt_prop(adt,prop)  __declspec("SAL_adt("#adt","#prop")")
-#define __$adt_add_prop(adt,prop)  __declspec("SAL_add_adt_property("#adt","#prop")")
-#define __$adt_remove_prop(adt,prop)  __declspec("SAL_remove_adt_property("#adt","#prop")")
-#define __$adt_transfer_prop(arg)  __declspec("SAL_transfer_adt_property_from("#arg")")
-#define __$adt_type_props(typ)  __declspec("SAL_post_type("#typ")")
-#define __analysis_assert(e) __assume(e)
+
+#define __$adt_prop(adt,prop)               __declspec("SAL_adt("#adt","#prop")")
+#define __$adt_add_prop(adt,prop)           __declspec("SAL_add_adt_property("#adt","#prop")")
+#define __$adt_remove_prop(adt,prop)        __declspec("SAL_remove_adt_property("#adt","#prop")")
+#define __$adt_transfer_prop(arg)           __declspec("SAL_transfer_adt_property_from("#arg")")
+#define __$adt_type_props(typ)              __declspec("SAL_post_type("#typ")")
+#define __$volatile                         __declspec("SAL_volatile")
+#define __$nonvolatile                      __declspec("SAL_nonvolatile")
+#define __$possibly_notnulltermiated        __declspec("SAL_RequiresZeroTermination(sometimes)")
 #else
-#define __inner_control_entrypoint(category)
-#define __inner_data_entrypoint(category)
-#define __inner_success(expr)
-#define __inner_typefix(ctype)
-#define __inner_override
-#define __inner_callback
-#define __inner_blocksOn(resource)
-#define __inner_data_source(src)
-#define __inner_out_validated(type)
+#define __file_parser(typ)
+#define __file_parser_class(typ)
+#define __file_parser_library(typ)
+#define __source_code_content(typ)
+#define __class_code_content(typ)
+#define __analysis_assert(e)
+#define __analysis_hint(hint)
+/* Internal defintions */
+#define __inner_data_source(src_raw)
+#define __inner_this_data_source(src_raw)
+#define __inner_out_validated(typ_raw)
+#define __inner_this_out_validated(typ_raw)
 #define __inner_assume_validated_dec
 #define __inner_assume_validated(p)
 #define __inner_transfer(formal)
-#define __inner_file_parser(type)
-#define __inner_file_parser_class(type)
-#define __inner_file_parser_library(type)
 #define __inner_encoded
 #define __$adt_prop(adt,prop)   
 #define __$adt_add_prop(adt,prop)   
 #define __$adt_remove_prop(adt,prop)   
 #define __$adt_transfer_prop(arg)   
 #define __$adt_type_props(typ)   
-#define __analysis_assert(e)
+#define __$volatile 
+#define __$nonvolatile 
+#define __$possibly_notnulltermiated 
 #endif // #if (_MSC_VER >= 1000) && !defined(__midl) && defined(_PREFAST_)
 
 #define __field_ecount(size)                __notnull __elem_writableTo(size)
@@ -210,18 +235,19 @@ extern "C" {
 
 #define __struct_bcount(size)               __field_bcount(size)
 #define __struct_xcount(size)               __field_xcount(size)
-#if (defined(_MSC_VER) && (_MSC_VER < 1400))		// Using VC++ 7.1 or below
-// The macros __out_awcount() and __in_awcount() are already defined in
-// $VCInstallDir\PlatformSDK\include\specstrings.h for VC++ 8.0 or above.
+
+#if !defined(__out_awcount)
 #define __out_awcount(expr,size)            __pre __notnull \
-                                            __out_xcount("__precond(" #expr ") __byte_writableTo(" #size ")") \
-                                            __out_xcount("__precond(!(" #expr ")) __byte_writableTo((" #size ")*2)") \
+					    __byte_writableTo((expr) ? (size) : (size) * 2) \
                                             __post __valid __refparam
+#endif
+#if !defined(__in_awcount)
 #define __in_awcount(expr,size)             __pre __valid \
                                             __pre __deref __readonly \
-                                            __in_xcount("__precond(" #expr ") __byte_readableTo(" #size ")") \
-                                            __in_xcount("__precond(!(" #expr ")) __elem_readableTo(" #size ")")
-#endif // #if (defined(_MSC_VER) && (_MSC_VER < 1400))
+				            __byte_readableTo((expr) ? (size) : (size) * 2)
+#endif
+
+/* integer related macros */
 #define __allocator                         __inner_allocator
 #define __bound                             __inner_bound
 #define __range(lb,ub)                      __inner_range(lb,ub)
@@ -233,14 +259,15 @@ extern "C" {
 #define __deref_in_range(lb,ub)             __pre __deref __inner_range(lb,ub)
 #define __deref_out_range(lb,ub)            __post __deref __inner_range(lb,ub)
 #define __field_range(lb,ub)                __range(lb,ub)
-#define __field_data_source(src)            __inner_data_source(src)
-#define __in_data_source(src)               __pre __inner_data_source(src)
-#define __out_data_source(src)              __post __inner_data_source(src)
-#define __out_validated(type)               __inner_out_validated(type)
+#define __field_data_source(src_sym)        __inner_data_source(#src_sym)
+
+/* Pentraion review macros */
+#define __in_data_source(src_sym)           __pre __inner_data_source(#src_sym)
+#define __out_data_source(src_sym)          __post __inner_data_source(#src_sym)
+#define __out_validated(typ_sym)            __inner_out_validated(#typ_sym)
+#define __this_out_data_source(src_sym)     __inner_this_data_source(#src_sym)
+#define __this_out_validated(typ_sym)       __inner_this_out_validated(#typ_sym)
 #define __transfer(formal)                  __post __inner_transfer(formal)
-#define __file_parser(type)                 __inner_file_parser(type)
-#define __file_parser_class(type)           __inner_file_parser_class(type)
-#define __file_parser_library(type)         __inner_file_parser_library(type)
 #define __rpc_entry                         __inner_control_entrypoint(RPC)
 #define __kernel_entry                      __inner_control_entrypoint(UserToKernel)   
 #define __gdi_entry                         __inner_control_entrypoint(GDI)
@@ -253,6 +280,18 @@ extern "C" {
 #define __out_not_has_adt_prop(adt,prop)    __post __$adt_remove_prop(adt,prop)
 #define __out_transfer_adt_prop(arg)        __post __$adt_transfer_prop(arg)
 #define __out_has_type_adt_props(typ)       __post __$adt_type_props(typ)
+
+/* useful PFD related macros */
+#define __possibly_notnulltermiated         __post __$possibly_notnulltermiated
+
+#if defined(_WINDOWS_)
+/* Windows Internal */
+#define __volatile                          __$volatile
+#define __nonvolatile                       __$nonvolatile
+#define __deref_volatile                    __deref __volatile
+#define __deref_nonvolatile                 __deref __nonvolatile
+#endif
+
 /* declare stub functions for macros */
 __inner_assume_validated_dec 
 __inner_assume_bound_dec 
@@ -283,13 +322,14 @@ void __pfx_assume(int, const char *);
 #define __analysis_assume(e) (__pfx_assume(e,"pfx_assume"),__assume(e));
 #define __analysis_assert(e) (__pfx_assert(e,"pfx_assert"),__assume(e));
 #endif /* ifdef _PREFIX_ */
+
 /**************************************************************************
 * This include should always be the last thing in this file. 
 * Must avoid redfinitions of macros to workaround rc.exe issues. 
 ***************************************************************************/
-#ifndef RC_INVOKED
+#if !(defined(RC_INVOKED) || defined(SORTPP_PASS))
 #include <wmspecstrings_strict.h>
-#endif /* RC_INVOKED */
+#endif /* if !(defined(RC_INVOKED) || defined(SORTPP_PASS)) */
 #endif /* #ifndef SPECSTRINGS_H */
 
 // Some CE versions don't have specstrings.h, some have very old version without
@@ -299,3 +339,4 @@ void __pfx_assume(int, const char *);
 #endif
 
 #endif //_WMSPECSTRING_H_
+

@@ -1,7 +1,28 @@
 //*@@@+++@@@@******************************************************************
 //
-// Microsoft Windows Media
-// Copyright (C) Microsoft Corporation. All rights reserved.
+// Copyright © Microsoft Corp.
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 
+// • Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// • Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //
 //*@@@---@@@@******************************************************************
 
@@ -89,7 +110,7 @@ Void predMacroblockEnc(CWMImageStrCodec * pSC)
 {
     const COLORFORMAT cf = pSC->m_param.cfColorFormat;
     const Int iChannels = (cf == YUV_420 || cf == YUV_422) ? 1 : (Int) pSC->m_param.cNumChannels;
-    size_t mbX = pSC->cColumn - 1, mbY = pSC->cRow - 1;
+    size_t mbX = pSC->cColumn - 1;// mbY = pSC->cRow - 1;
     CWMIMBInfo *pMBInfo = &(pSC->MBInfo);
     Int iDCACPredMode = getDCACPredMode(pSC, mbX);
     Int iDCPredMode = (iDCACPredMode & 0x3);
@@ -275,6 +296,8 @@ static Int predCBPCEnc(CWMImageStrCodec *pSC, Int iCBP, size_t mbX, size_t mbY, 
     Int iPredCBP = 0, iRetval = 0;
     Int iNOrig = NumOnes(iCBP), iNDiff = AVG_NDIFF;//NumOnes(iPredCBP ^ iCBP);
 
+    UNREFERENCED_PARAMETER( mbY );
+
     /* only top left block pattern is predicted from neighbour */
     if(pSC->m_bCtxLeft) {
         if (pSC->m_bCtxTop) {
@@ -335,6 +358,8 @@ static Int predCBPC420Enc(CWMImageStrCodec *pSC, Int iCBP, size_t mbX, size_t mb
     Int iPredCBP = 0, iRetval = 0;
     Int iNOrig = NumOnes(iCBP) * 4, iNDiff = AVG_NDIFF;//NumOnes(iPredCBP ^ iCBP);
 
+    UNREFERENCED_PARAMETER( mbY );
+
     /* only top left block pattern is predicted from neighbour */
     if(pSC->m_bCtxLeft) {
         if (pSC->m_bCtxTop) {
@@ -390,6 +415,8 @@ static Int predCBPC422Enc(CWMImageStrCodec *pSC, Int iCBP, size_t mbX, size_t mb
 {
     Int iPredCBP = 0, iRetval = 0;
     Int iNOrig = NumOnes(iCBP) * 2, iNDiff = AVG_NDIFF;//NumOnes(iPredCBP ^ iCBP);
+
+    UNREFERENCED_PARAMETER( mbY );
 
     /* only top left block pattern is predicted from neighbour */
     if(pSC->m_bCtxLeft) {
@@ -452,7 +479,7 @@ Void predCBPEnc(CWMImageStrCodec* pSC, CCodingContext *pContext)
 
     for(iChannel = 0; iChannel < (int)pSC->m_param.cNumChannels; iChannel ++){
         const COLORFORMAT cf = pSC->m_param.cfColorFormat;
-        const Bool bUV = (iChannel > 0);// && (cf == YUV_444 || cf == YUV_422 || cf == YUV_420));
+        const Bool bUV = (iChannel > 0);
         const int iNumBlock = (bUV ? (cf == YUV_422 ? 8 : (cf == YUV_420 ? 4 : 16)) : 16);
         const int * pOffset = (iNumBlock == 4 ? blkOffsetUV : (iNumBlock == 8 ? blkOffsetUV_422 : blkOffset));
         const Int threshold = (1 << pContext->m_aModelAC.m_iFlcBits[bUV ? 1 : 0]) - 1, threshold2 = threshold * 2 + 1;

@@ -1,10 +1,32 @@
 //*@@@+++@@@@******************************************************************
 //
-// Microsoft Windows Media
-// Copyright (C) Microsoft Corporation. All rights reserved.
+// Copyright © Microsoft Corp.
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 
+// • Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// • Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //
 //*@@@---@@@@******************************************************************
 #include "strcodec.h"
+#include "perfTimer.h"
 
 #ifdef MEM_TRACE
 #define TRACE_MALLOC    1
@@ -12,11 +34,6 @@
 #define TRACE_HEAP      0
 #include "memtrace.h"
 #endif
-
-#ifdef ADI_BITIO_OPT
-extern U8 L1CirBuf[];
-#endif
-
 
 //================================================================
 // Quantization index tables
@@ -78,9 +95,12 @@ const Char gGDISignature[] = {'W', 'M', 'P', 'H', 'O', 'T', 'O', '\0'};
 // check if enough memory allocated for the image buffer
 Int checkImageBuffer(CWMImageStrCodec * pSC, size_t cWidth, size_t cRows)
 {
-    const BITDEPTH_BITS bd = pSC->WMII.bdBitDepth;
-    const COLORFORMAT cf = pSC->WMII.cfColorFormat;
+    const BITDEPTH_BITS bd = pSC->WMISCP.bYUVData ?
+        BD_32S : pSC->WMII.bdBitDepth;
+    const COLORFORMAT cf = pSC->WMISCP.bYUVData ?
+        pSC->m_param.cfColorFormat : pSC->WMII.cfColorFormat;
     size_t cBytes;
+    Bool bLessThan64Bit = sizeof(void *) < 8;
 
     if(cf == YUV_420)
         cRows = (cRows + 1) / 2;
@@ -90,13 +110,15 @@ Int checkImageBuffer(CWMImageStrCodec * pSC, size_t cWidth, size_t cRows)
     if(cf == YUV_422 || cf == YUV_420)
         cWidth = (cWidth + 1) / 2;
 
-    if (sizeof(void *) < 8 && (cWidth >> ((sizeof(size_t) * 8 - 5)))) {
+    if (bLessThan64Bit && (cWidth >> ((sizeof(size_t) * 8 - 5)))) {
         /** potential overflow - 32 bit pointers insufficient to address cache **/
         /** this uses 2 macroblock row constraint, which is tighter than ensuring rollover doesn't occur below **/
         return ICERR_ERROR;
     }
 
-    cBytes = (bd == BD_1 ? (pSC->WMII.cBitsPerUnit * cWidth + 7) / 8 : (pSC->WMII.cBitsPerUnit + 7) / 8 * cWidth);
+    cBytes = pSC->WMISCP.bYUVData ? cWidth * sizeof(PixelI) *
+        (cf == YUV_420 ? 6 : (cf == YUV_422 ? 4 : (cf == YUV_444 ? 3 : 1))) :
+        (bd == BD_1 ? (pSC->WMII.cBitsPerUnit * cWidth + 7) / 8 : (pSC->WMII.cBitsPerUnit + 7) / 8 * cWidth);
 
     return (cBytes > pSC->WMIBI.cbStride ? ICERR_ERROR : ICERR_OK);
 }
@@ -116,7 +138,7 @@ U8 readQPIndex(BitIOInfo * pIO, U32 cBits)
     if(getBit16(pIO, 1))
         return 0; // default QP
 
-    return getBit16(pIO, cBits) + 1;
+    return (U8) getBit16(pIO, cBits) + 1;
 }
 
 Void getTilePos(CWMImageStrCodec* pSC, size_t mbX, size_t mbY)
@@ -216,6 +238,8 @@ Void swapMRPtr(CWMImageStrCodec* pSC)
 //================================================================
 Int IDPEmpty(CWMImageStrCodec* pSC)
 {
+    UNREFERENCED_PARAMETER( pSC );
+
     return ICERR_OK;
 }
 
@@ -257,8 +281,12 @@ ERR CreateWS_File(struct WMPStream** ppWS, const char* szFilename, const char* s
     pWS->SetPos = SetPosWS_File;
     pWS->GetPos = GetPosWS_File;
 
+#ifdef WIN32
+    FailIf(0 != fopen_s(&pWS->state.file.pFile, szFilename, szMode), WMP_errFileIO);
+#else
     pWS->state.file.pFile = fopen(szFilename, szMode);
     FailIf(NULL == pWS->state.file.pFile, WMP_errFileIO);
+#endif
 
 Cleanup:    
     return err;
@@ -283,12 +311,9 @@ Bool EOSWS_File(struct WMPStream* pWS)
 
 ERR ReadWS_File(struct WMPStream* pWS, void* pv, size_t cb)
 {
-    ERR err = WMP_errSuccess;
+    // ERR err = WMP_errSuccess;
 
-    (void)fread(pv, cb, 1, pWS->state.file.pFile);
-
-//Cleanup:
-    return err;
+    return (fread(pv, cb, 1, pWS->state.file.pFile) == 1) ? WMP_errSuccess : WMP_errFileIO;
 }
 
 ERR WriteWS_File(struct WMPStream* pWS, const void* pv, size_t cb)
@@ -469,7 +494,7 @@ ERR CloseWS_List(struct WMPStream** ppWS)
             pBuf = pNext;
             pNext = (U8 *)(((void **)(pBuf))[0]);
 //printf ("delete buffer    %x\n", pBuf);
-            Call(WMPFree(&pBuf));
+            Call(WMPFree((void**)&pBuf));
         }
     }
     Call(WMPFree((void**)ppWS));
@@ -663,7 +688,7 @@ U32 load4BE(void* pv)
 #ifdef _BIG__ENDIAN_
     return (*(U32*)pv);
 #else // _BIG__ENDIAN_
-#ifdef _M_IA64
+#if defined(_M_IA64) || defined(_ARM_)
     U32  v;
     v = ((U16 *) pv)[0];
     v |= ((U32)((U16 *) pv)[1]) << 16;
@@ -709,7 +734,7 @@ Int allocateBitIOInfo(CWMImageStrCodec* pSC)
     if(cNumBitIO > 0){
         U32 i = 0;
         size_t cb = sizeof(BitIOInfo) * cNumBitIO + (PACKETLENGTH * 4 - 1) + PACKETLENGTH * 4 * cNumBitIO;
-        U8* pb = (char*)malloc(cb);
+        U8* pb = (U8*)malloc(cb);
 
         if (NULL == pb) return ICERR_ERROR;
         memset(pb, 0, cb);
@@ -738,7 +763,7 @@ Int allocateBitIOInfo(CWMImageStrCodec* pSC)
 Int setBitIOPointers(CWMImageStrCodec* pSC)
 {
     if(pSC->cNumBitIO > 0){
-        U8 i;
+        U32 i;
 
         for(i = 0; i <= pSC->WMISCP.cNumOfSliceMinus1V; i ++){
             CCodingContext * pContext = &pSC->m_pCodingContext[i];
@@ -884,30 +909,15 @@ U8 dquantBits(U8 cQP)
     return (cQP < 2 ? 0 : (cQP < 4 ? 1 : (cQP < 6 ? 2 : (cQP < 10 ? 3 : 4))));
 }
 
-#ifndef ADI_BITIO_OPT
 #ifndef ARMOPT_BITIO
 U32 peekBit16(BitIOInfo* pIO, U32 cBits)
 {
     PEEKBIT16(pIO, cBits);
-    //assert(0 <= (I32)cBits && cBits <= 16);
-    //return (pIO->uiAccumulator >> (32 - cBits - pIO->cBitsUsed));// & ~(-1 << cBits);
-    // masking is not needed here because shift of unsigned int is implemented as a logical shift (SHR)!
 }
 
 U32 flushBit16(BitIOInfo* pIO, U32 cBits)
 {
     FLUSHBIT16(pIO, cBits);
-    //assert(0 <= (I32)cBits && cBits <= 16);
-    //assert((pIO->iMask & 1) == 0);
-
-    //pIO->cBitsUsed += cBits;
-    //pIO->pbCurrent = MASKPTR(pIO->pbCurrent + ((pIO->cBitsUsed >> 3)/* & 2*/), pIO->iMask);//pIO->cBitsUsed/16 * 2
-
-    //pIO->cBitsUsed &= 16 - 1;
-    //pIO->uiAccumulator = load4UBE(pIO->pbCurrent) & ((U32)(-1) >> pIO->cBitsUsed);// << pIO->cBitsUsed;
-    //// this mask works here because shift of unsigned int is implemented as a logical shift (SHR)!
-
-    //return 0;
 }
 
 U32 getBit16(BitIOInfo* pIO, U32 cBits)
@@ -922,13 +932,6 @@ U32 getBool16(BitIOInfo* pIO)
 {
     U32 uiRet = peekBit16(pIO, 1);
     flushBit16(pIO, 1);
-/**
-    U32 uiRet = (pIO->uiAccumulator >> (31 - pIO->cBitsUsed));
-    pIO->cBitsUsed++;
-    pIO->pbCurrent = MASKPTR(pIO->pbCurrent + ((pIO->cBitsUsed >> 3) & 2), pIO->iMask);
-    pIO->cBitsUsed &= 16 - 1;
-    pIO->uiAccumulator = load4UBE(pIO->pbCurrent) & ((U32)(-1) >> pIO->cBitsUsed);
-**/
     return uiRet;
 }
 
@@ -1059,15 +1062,19 @@ U32 getPosRead(BitIOInfo* pIO)
 // Block I/O functions
 //================================================================
 #ifndef ARMOPT_BITIO
-ERR attachISRead(BitIOInfo* pIO, struct WMPStream* pWS)
+ERR attachISRead(BitIOInfo* pIO, struct WMPStream* pWS, CWMImageStrCodec* pSC)
 {
+    UNREFERENCED_PARAMETER( pSC );
+
     pWS->GetPos(pWS, &pIO->offRef);
 
     pIO->pbStart = (U8*)pIO - PACKETLENGTH * 2;
     pIO->pbCurrent = pIO->pbStart;
 
+    PERFTIMER_STOP(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
     pWS->SetPos(pWS, pIO->offRef);
     pWS->Read(pWS, pIO->pbStart, PACKETLENGTH * 2);
+    PERFTIMER_START(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
     pIO->offRef += PACKETLENGTH * 2;
 
     pIO->uiAccumulator = load4BE(pIO->pbStart);
@@ -1084,15 +1091,19 @@ ERR readIS(CWMImageStrCodec* pSC, BitIOInfo* pIO)
 {
     ERR err = WMP_errSuccess;
 
+    UNREFERENCED_PARAMETER( pSC );
+
     if (PACKET1(pIO->pbStart, pIO->pbCurrent, PACKETLENGTH))
     {
         struct WMPStream *pWS = pIO->pWS;
 
+        PERFTIMER_STOP(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
         //Call(0 != pIO->pWS->Read(pIO->pWS, pIO->pbStart, PACKETLENGTH));
         // TODO: add error checking code
         pWS->SetPos(pWS, pIO->offRef);
         pWS->Read(pWS, pIO->pbStart, PACKETLENGTH);
         pIO->offRef += PACKETLENGTH;
+        PERFTIMER_START(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
 
         // make shadow copy for first 4B
         pIO->uiShadow = *(U32*)pIO->pbStart;
@@ -1148,9 +1159,13 @@ ERR writeIS(CWMImageStrCodec* pSC, BitIOInfo* pIO)
 {
     ERR err = WMP_errSuccess;
 
+    UNREFERENCED_PARAMETER( pSC );
+
     if (PACKET1(pIO->pbStart, pIO->pbCurrent, PACKETLENGTH))
     {
+        PERFTIMER_STOP(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
         err = pIO->pWS->Write(pIO->pWS, pIO->pbStart, PACKETLENGTH);
+        PERFTIMER_START(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
         Call(err);
 
         // reposition pbStart pointer
@@ -1170,7 +1185,9 @@ ERR detachISWrite(CWMImageStrCodec* pSC, BitIOInfo* pIO)
     assert(0 == (pIO->cBitsUsed % 8));
     Call(writeIS_L1(pSC, pIO));
 
+    PERFTIMER_STOP(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
     err = pIO->pWS->Write(pIO->pWS, pIO->pbStart, pIO->pbCurrent + pIO->cBitsUsed / 8 - pIO->pbStart);
+    PERFTIMER_START(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
     Call(err);
 
     pIO->pWS = NULL;
@@ -1178,104 +1195,57 @@ Cleanup:
     return err;
 }
 
-#else   // ADI_BITIO_OPT
-// output 0 to byte boundary
-U32 fillToByte(BitIOInfo* pIO)
-{
-    putBit16(pIO, 0, pIO->cBitsUnused & 7);
-    return 0;
-}
+//=========================
+// Performance Measurement
+//=========================
+#ifndef DISABLE_PERF_MEASUREMENT
 
-// output 0 to dword boundary
-U32 fillToDWord(BitIOInfo* pIO)
+void OutputIndivPerfTimer(struct PERFTIMERSTATE *pPerfTimer,
+                          char *pszTimerName,
+                          char *pszDescription,
+                          float fltMegaPixels)
 {
-    fillToByte(pIO);
+    PERFTIMERRESULTS    rResults;
+    Bool                fResult;
 
-    while(32 != pIO->cBitsUnused || 0 != ((size_t)pIO->pbCurrent & 3))
+    fResult = FALSE;
+    printf("%s (%s): ", pszTimerName, pszDescription);
+    if (pPerfTimer)
     {
-        putBit16(pIO, 0, 8);
+        fResult = PerfTimerGetResults(pPerfTimer, &rResults);
+        if (fResult)
+        {
+            printf("%.3f milliseconds, %.6f MP/sec\n", (float)rResults.iElapsedTime / 1000000,
+                1000000000 * fltMegaPixels / rResults.iElapsedTime);
+            if (rResults.iZeroTimeIntervals > 0)
+            {
+                printf("   *** WARNING: %d time intervals were measured as zero. "
+                    "This perf timer has insufficient precision!\n\n",
+                    (int) rResults.iZeroTimeIntervals);
+            }
+        }
     }
-
-    return 0;
+    if (FALSE == fResult)
+        printf("Results not available!\n");
 }
 
-//----------------------------------------------------------------
-ERR initPacketIn(BitIOInfo* pIO, struct WMPStream* pWS)
+
+void OutputPerfTimerReport(CWMImageStrCodec *pState)
 {
-    pIO->pbStart = L1CirBuf;
-    pIO->pbCurrent = L1CirBuf;
-    pIO->pWS = pWS;
+    float               fltMegaPixels;
 
-    pWS->Read(pWS, pIO->pbStart, PACKETLENGTH * 2);
-    pIO->uiAccumulator = load4BE(pIO->pbStart);
+    assert(pState->m_fMeasurePerf);
 
-    pIO->pbCurrent += 4;	// increment by 4 bytes
-
-#ifdef USE_UNUSEDBITS
-    pIO->cBitsUnused = 32;
-#endif
-
-    return WMP_errSuccess;
-}
-
-ERR initPacketOut(BitIOInfo* pIO, struct WMPStream* pWS)
-{
-    pIO->pbStart = L1CirBuf;
-    pIO->pbCurrent = L1CirBuf;
-    pIO->pWS = pWS;
-    pIO->cBitsUnused = 32;
-
-    return WMP_errSuccess;
-}
-
-// initPacketOut
-ERR attachISWrite(BitIOInfo* pIO, struct WMPStream* pWS)
-{
-    pWS->GetPos(pWS, &pIO->offRef);
-
-    pIO->pbStart = L1CirBuf;
-    pIO->pbCurrent = L1CirBuf;
-
-    pIO->uiAccumulator = 0;
-    pIO->cBitsUnused = 32;
+    printf("***************************************************************************\n");
+    printf("* Perf Report\n");
+    printf("***************************************************************************\n\n");
     
-    pIO->pWS = pWS;
-    return WMP_errSuccess;
+    fltMegaPixels = (float)pState->WMII.cWidth * pState->WMII.cHeight / 1000000;
+    printf("Image Width = %d, Height = %d, total MegaPixels = %.1f MP\n",
+        (int) pState->WMII.cWidth, (int) pState->WMII.cHeight, fltMegaPixels);
+
+    OutputIndivPerfTimer(pState->m_ptEncDecPerf, "m_ptEncDecPerf", "excl I/O", fltMegaPixels);
+    OutputIndivPerfTimer(pState->m_ptEndToEndPerf, "m_ptEndToEndPerf", "incl I/O", fltMegaPixels);
 }
 
-// writeIS() - writePacket() shall be replaced by assembly code
-
-// finishPacket
-// write out partially filled buffer and detach bitIO from IStream
-ERR detachISWrite(CWMImageStrCodec* pSC, BitIOInfo* pIO)
-{
-    ERR err = WMP_errSuccess;
-
-    // we can ONLY detach IStream at byte boundary
-    assert(0 == (pIO->cBitsUnused % 8));
-//    Call(writeIS_L1(pSC, pIO));
-    writeIS_L1(pSC, pIO);
-
-    err = pIO->pWS->Write(pIO->pWS, pIO->pbStart, pIO->pbCurrent + pIO->cBitsUsed / 8 - pIO->pbStart);
-    Call(err);
-
-    pIO->pWS = NULL;
-Cleanup:
-    return err;
-}
-
-U32 putBit32(BitIOInfo* pIO, U32 uiBits, U32 cBits)
-{
-    assert(0 <= (I32)cBits && cBits <= 32);
-
-    if (16 < cBits)
-    {
-        putBit16(pIO, uiBits >> (cBits - 16), 16);
-        cBits -= 16;
-    }
-
-    putBit16(pIO, uiBits, cBits);
-
-    return 0;
-}
-#endif  // ADI_BITIO_OPT
+#endif // DISABLE_PERF_MEASUREMENT

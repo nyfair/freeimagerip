@@ -1,9 +1,31 @@
 //*@@@+++@@@@******************************************************************
 //
-// Microsoft Windows Media
-// Copyright (C) Microsoft Corporation. All rights reserved.
+// Copyright © Microsoft Corp.
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 
+// • Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// • Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //
 //*@@@---@@@@******************************************************************
+
 
 /************************************************************************* 
 *  This file documents all the macros approved for use in windows source
@@ -20,16 +42,16 @@
 *  There are several levels of strictness, each level includes the behavior of
 *  all previous levels.
 *
-*  0 - Disable strict checking (default)
+*  0 - Disable strict checking 
 *  1 - Break on unapproved macros and misuse of statement 
-*      macros such as __fallthrough
+*      macros such as __fallthrough (default)
 *  2 - Deprecated some old macros that should not be used
 *  3 - Use VS 2005 Source Annotation to make sure every macro 
 *      is used in the right context. For example placing __in on a return 
 *      parameter will result in an error.
 ************************************************************************/
 #ifndef __SPECSTRINGS_STRICT_LEVEL
-#define __SPECSTRINGS_STRICT_LEVEL 0
+#define __SPECSTRINGS_STRICT_LEVEL 1
 #endif
 /************************************************************************
 *  Introduction
@@ -188,7 +210,6 @@
 ************************************************************************/
 #if (_MSC_VER >= 1400) && !defined(__midl) && !defined(_PREFAST_) && (__SPECSTRINGS_STRICT_LEVEL > 0)
 #pragma once
-#pragma message("Strict Annotation Checking Enabled")
 #include <wmspecstrings_undef.h>
 #define __ecount(size)                                __allowed(on_return)
 #define __bcount(size)                                __allowed(on_return)
@@ -494,10 +515,10 @@
 *  but the exact range can't be specified at compile time.
 *  __deref_out_range should be used if the range can be explicitly stated.
 * 
-*  __assume_bound int i: Assume that the integer i is bound to some known
+*  __assume_bound(expr); : Assume that the expression is bound to some known
 *  range. This can be used to suppress integer overflow warnings on integral
 *  expressions that are known to be bound due to reasons not explicit in the
-*  code.
+*  code. Use as a statement in the body of a function.
 * 
 *  __allocator void f(): Function allocates memory using an integral size
 *  argument
@@ -542,7 +563,6 @@
 #define __deref_out_bound        __allowed(on_parameter) 
 #define __assume_bound(i)        __allowed(as_statement_with_arg(i))
 #define __allocator              __allowed(on_function) 
-
 /*************************************************************************** 
 * Expert Macros
 ***************************************************************************/
@@ -731,10 +751,10 @@
 * Pre-defined control point macros include:
 *  __rpc_entry, __kernel_entry, __gdi_entry.
 ***************************************************************************/
-#define __control_entrypoint(category) __allowed(on_function) 
-#define __rpc_entry                    __allowed(on_function) 
-#define __kernel_entry                 __allowed(on_function) 
-#define __gdi_entry                    __allowed(on_function)  
+#define __control_entrypoint(category)     __allowed(on_function) 
+#define __rpc_entry                        __allowed(on_function) 
+#define __kernel_entry                     __allowed(on_function) 
+#define __gdi_entry                        __allowed(on_function)  
 
 /*************************************************************************** 
 * Macros to track untrusted data and their validation. The list of untrusted
@@ -746,10 +766,12 @@
 * USER_REGISTRY            - HKCU portions of the registry
 * USER_MODE                - Parameters to kernel entry points
 * RPC                      - Parameters to RPC entry points 
+* DRIVER                   - Device driver 
 ***************************************************************************/
-#define __in_data_source(src)    __allowed(on_parameter) 
-#define __out_data_source(src)   __allowed(on_parameter) 
-#define __field_data_source(src) __allowed(on_field)
+#define __in_data_source(src_sym)       __allowed(on_parameter) 
+#define __out_data_source(src_sym)      __allowed(on_parameter) 
+#define __field_data_source(src_sym)    __allowed(on_field)
+#define __this_out_data_source(src_syn) __allowed(on_function)
 
 /************************************************************************** 
 * Macros to tag file parsing code. Predefined formats include:
@@ -765,11 +787,33 @@
 *  HTML                    - HyperText Markup Language
 *  WMPHOTO                 - Windows media photo
 *  OE_VCARD                - Outlook Express virtual card
+*  OE_CONTACT              - Outlook Express contact
+*  MIDI                    - Musical Instrument Digital Interface
+*  LDIF                    - LDAP Data Interchange Format
+*  AVI                     - Audio Visual Interchange
+*  ACM                     - Audio Compression Manager
 **************************************************************************/
-#define __out_validated(filetype)         __allowed(on_parameter) 
-#define __file_parser(filetype)           __allowed(on_parameter) 
-#define __file_parser_class(filetype)     __allowed(on_parameter)  
-#define __file_parser_library(filetype)   __allowed(on_parameter)    
+#define __out_validated(filetype_sym)         __allowed(on_parameter) 
+#define __this_out_validated(filetype_sym)    __allowed(on_function)   
+#define __file_parser(filetype_sym)           __allowed(on_function) 
+#define __file_parser_class(filetype_sym)     __allowed(on_struct)  
+#define __file_parser_library(filetype_sym)   __allowed(as_global_decl)  
+
+/*************************************************************************** 
+* Macros to track the code content in the file. The type of code
+* contents currently tracked:
+*
+* NDIS_DRIVER                   - NDIS Device driver 
+***************************************************************************/
+#define __source_code_content(codetype_sym)     __allowed(as_global_decl) 
+
+/*************************************************************************** 
+* Macros to track the code content in the class. The type of code
+* contents currently tracked:
+*
+* DCOM                          - Class implementing DCOM
+***************************************************************************/
+#define __class_code_content(codetype_sym)    __allowed(on_struct) 
 
 /*************************************************************************
 * Macros to tag encoded function pointers
@@ -798,6 +842,23 @@
 *************************************************************************/
 #define __analysis_assume(expr) __allowed(as_statement_with_arg(expr))
 #define __analysis_assert(expr) __allowed(as_statement_with_arg(expr))
+
+/************************************************************************* 
+* __analysis_hint(hint_sym) : Expert macro use only when
+* directed. Use this to influence certain analysis heuristics
+* used by the tools. These hints do not describe the semantics
+* of functions but simply direct the tools to act in a certain
+* way.
+*
+* Current hints that are supported are:
+*
+* INLINE   - inline this function during analysis overrides any
+*            default heuristics 
+* NOINLINE - do not inline this function during analysis overrides 
+*            and default heuristics
+*************************************************************************/
+#define __analysis_hint(hint) __allowed(on_function)
+
 /************************************************************************* 
 * Macros to encode abstract properties of values. Used by SALadt.h
 *************************************************************************/
@@ -808,11 +869,93 @@
 #define __out_has_type_adt_props(typ)     __allowed(on_parameter)
 #define __assume_ValidCompNameA(expr)     __allowed(as_statement_with_arg(expr))
 #define __assume_ValidCompNameW(expr)     __allowed(as_statement_with_arg(expr))
+
 /************************************************************************* 
-* Deprecate macros which will go away.
+* Macros used by Prefast for Drivers 
+* 
+*  __possibly_notnulltermiated :
+*
+*  Used for return values of parameters or functions that do not
+*  guarantee nullterimination in all cases.
+*
+*************************************************************************/
+#define __possibly_notnulltermiated     __allowed(on_parameter_or_return)
+
+/************************************************************************* 
+* Advanced macros
+* 
+*  __volatile 
+* The __volatile annotation identifies a global variable or
+* structure field that: 
+*   1) is not declared volatile; 
+*   2) is accessed concurrently by multiple threads.
+*
+* The __deref_volatile annotation identifies a global variable
+* or structure field that stores a pointer to some data that:
+*   1) is not declared volatile; 
+*   2) is accessed concurrently by multiple threads.
+*
+* Prefast uses these annotations to find patterns of code that
+* may result in unexpected re-fetching of the global variable
+* into a local variable.
+*
+* We also provide two complimentary annotations __nonvolatile
+* and __deref_nonvolatile that could be used to suppress Prefast
+*
+* re-fetching warnings on variables that are known either:
+*   1) not to be in danger of being re-fetched or,
+*   2) not to lead to incorrect results if they are re-fetched
+*
+*************************************************************************/
+#define __volatile                       __allowed(on_global_or_field)
+#define __deref_volatile                 __allowed(on_global_or_field)
+#define __nonvolatile                    __allowed(on_global_or_field)
+#define __deref_nonvolatile              __allowed(on_global_or_field)
+
+/************************************************************************* 
+* Macros deprecated with strict level greater then 1.
 **************************************************************************/
 #if (__SPECSTRINGS_STRICT_LEVEL > 1)
 /* Must come before macro defintions */
+#pragma deprecated(__in_nz)
+#pragma deprecated(__in_ecount_nz)
+#pragma deprecated(__in_bcount_nz)
+#pragma deprecated(__out_nz)
+#pragma deprecated(__out_nz_opt)
+#pragma deprecated(__out_ecount_nz)
+#pragma deprecated(__out_bcount_nz)
+#pragma deprecated(__inout_nz)
+#pragma deprecated(__inout_ecount_nz)
+#pragma deprecated(__inout_bcount_nz)
+#pragma deprecated(__in_nz_opt)          
+#pragma deprecated(__in_ecount_nz_opt)
+#pragma deprecated(__in_bcount_nz_opt)
+#pragma deprecated(__out_ecount_nz_opt)
+#pragma deprecated(__out_bcount_nz_opt)
+#pragma deprecated(__inout_nz_opt)       
+#pragma deprecated(__inout_ecount_nz_opt)
+#pragma deprecated(__inout_bcount_nz_opt)
+#pragma deprecated(__deref_out_nz)                 
+#pragma deprecated(__deref_out_ecount_nz)
+#pragma deprecated(__deref_out_bcount_nz)
+#pragma deprecated(__deref_inout_nz)               
+#pragma deprecated(__deref_inout_ecount_nz)
+#pragma deprecated(__deref_inout_bcount_nz)
+#pragma deprecated(__deref_out_nz_opt)             
+#pragma deprecated(__deref_out_ecount_nz_opt)
+#pragma deprecated(__deref_out_bcount_nz_opt)
+#pragma deprecated(__deref_inout_nz_opt)           
+#pragma deprecated(__deref_inout_ecount_nz_opt)
+#pragma deprecated(__deref_inout_bcount_nz_opt)
+#pragma deprecated(__deref_opt_inout_nz)           
+#pragma deprecated(__deref_opt_inout_ecount_nz)
+#pragma deprecated(__deref_opt_inout_bcount_nz)
+#pragma deprecated(__deref_opt_out_nz_opt)         
+#pragma deprecated(__deref_opt_out_ecount_nz_opt)
+#pragma deprecated(__deref_opt_out_bcount_nz_opt)
+#pragma deprecated(__deref_opt_inout_nz_opt)       
+#pragma deprecated(__deref_opt_inout_ecount_nz_opt)
+#pragma deprecated(__deref_opt_inout_bcount_nz_opt)
 #pragma deprecated(__deref)
 #pragma deprecated(__pre)
 #pragma deprecated(__post)
@@ -822,19 +965,55 @@
 #pragma deprecated(__data_entrypoint)
 #pragma deprecated(__inexpressible_readableTo)
 #pragma deprecated(__readonly)
-#pragma deprecated(__out_bcount_nz)
-#pragma deprecated(__in_bcount_nz)
-#pragma deprecated(__inout_bcount_nz_opt)
-#pragma deprecated(__inout_bcount_nz)
 #pragma deprecated(__byte_writableTo)
 #pragma deprecated(__byte_readableTo)
 #pragma deprecated(__elem_readableTo)
 #pragma deprecated(__elem_writableTo)
 #pragma deprecated(__valid)
+#pragma deprecated(__notvalid)
 #pragma deprecated(__refparam)
-// need to think more about __precond before we deprecate this
 #pragma deprecated(__precond)
 #endif
+/* Define soon to be deprecated macros to nops. */
+#define __in_nz                                       
+#define __in_ecount_nz(size)                          
+#define __in_bcount_nz(size)                          
+#define __out_nz                                      
+#define __out_nz_opt                                  
+#define __out_ecount_nz(size)                         
+#define __out_bcount_nz(size)                         
+#define __inout_nz                                    
+#define __inout_ecount_nz(size)                       
+#define __inout_bcount_nz(size)                       
+#define __in_nz_opt                                   
+#define __in_ecount_nz_opt(size)                      
+#define __in_bcount_nz_opt(size)                      
+#define __out_ecount_nz_opt(size)                     
+#define __out_bcount_nz_opt(size)                     
+#define __inout_nz_opt                                
+#define __inout_ecount_nz_opt(size)                   
+#define __inout_bcount_nz_opt(size)                   
+#define __deref_out_nz                                
+#define __deref_out_ecount_nz(size)                   
+#define __deref_out_bcount_nz(size)                   
+#define __deref_inout_nz                              
+#define __deref_inout_ecount_nz(size)                 
+#define __deref_inout_bcount_nz(size)                 
+#define __deref_out_nz_opt                            
+#define __deref_out_ecount_nz_opt(size)               
+#define __deref_out_bcount_nz_opt(size)               
+#define __deref_inout_nz_opt                          
+#define __deref_inout_ecount_nz_opt(size)             
+#define __deref_inout_bcount_nz_opt(size)             
+#define __deref_opt_inout_nz                          
+#define __deref_opt_inout_ecount_nz(size)             
+#define __deref_opt_inout_bcount_nz(size)             
+#define __deref_opt_out_nz_opt                        
+#define __deref_opt_out_ecount_nz_opt(size)           
+#define __deref_opt_out_bcount_nz_opt(size)           
+#define __deref_opt_inout_nz_opt                      
+#define __deref_opt_inout_ecount_nz_opt(size)         
+#define __deref_opt_inout_bcount_nz_opt(size)         
 #define __deref             
 #define __pre               
 #define __post              
@@ -844,17 +1023,13 @@
 #define __inexpressible_readableTo(string) 
 #define __data_entrypoint(category)
 #define __readonly
-#define __out_bcount_nz(count)
-#define __in_bcount_nz(count)
-#define __inout_bcount_nz_opt(count)
-#define __inout_bcount_nz(count)
 #define __byte_writableTo(count)
 #define __byte_readableTo(count)
 #define __elem_readableTo(count)
 #define __elem_writableTo(count)
 #define __valid
+#define __notvalid
 #define __refparam
-// need to think more about __precond before we deprecate this
 #define __precond(condition)
 
 /************************************************************************* 
@@ -862,6 +1037,7 @@
 * Relies on VS 2005 source annotations.
 *************************************************************************/
 #define __allowed(p) __$allowed_##p
+#define __$allowed_as_global_decl /* empty */
 #define __$allowed_as_statement_with_arg(x) \
     __pragma(warning(push)) __pragma(warning(disable : 4548)) \
         do {__noop(x);} while((0,0) __pragma(warning(pop)) )
@@ -880,6 +1056,7 @@
 #define __$allowed_on_struct /* empty */
 #define __$allowed_on_field /* empty */
 #define __$allowed_on_parameter_or_return /* empty */
+#define __$allowed_on_global_or_field /* empty */
 #elif __SPECSTRINGS_STRICT_LEVEL == 3
 #define __$allowed_on_typedecl /* empty */
 /* Define dummy source attributes. Still needs more testing */
@@ -889,6 +1066,7 @@
 #define __$allowed_on_struct [OnStructOnly]
 #define __$allowed_on_field [OnFieldOnly]
 #define __$allowed_on_parameter_or_return [OnParameterOrReturnOnly] 
+#define __$allowed_on_global_or_field /* empty */
 #pragma push_macro( "DECL_SA" )
 #pragma push_macro( "SA" )
 #ifdef __cplusplus

@@ -1,26 +1,41 @@
 //*@@@+++@@@@******************************************************************
 //
-// Microsoft Windows Media
-// Copyright (C) Microsoft Corporation. All rights reserved.
+// Copyright © Microsoft Corp.
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 
+// • Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// • Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //
 //*@@@---@@@@******************************************************************
 #include "strcodec.h"
 #include "decode.h"
 #include "strTransform.h"
 #include <math.h>
-#ifdef ADI_SYSMEM_OPT
-#include "xplatform_image.h"
-#endif
+#include "perfTimer.h"
 
 #ifdef MEM_TRACE
 #define TRACE_MALLOC    1
 #define TRACE_NEW       0
 #define TRACE_HEAP      0
 #include "memtrace.h"
-#endif
-
-#ifdef ADI_SYS_OPT
-extern char L1WW[];
 #endif
 
 #ifdef X86OPT_INLINE
@@ -86,15 +101,11 @@ U8 readQuantizer(CWMIQuantizer * pQuantizer[MAX_CHANNELS], BitIOInfo * pIO, size
 // ?????:         (iTileY * cNumOfSliceV + iTileX) % 32
 Int readPacketHeader(BitIOInfo * pIO, U8 ptPacketType, U8 pID)
 {
-//    U8 bar;
+    UNREFERENCED_PARAMETER( ptPacketType );
+    UNREFERENCED_PARAMETER( pID );
     if(getBit16(pIO, 8) != 0 || getBit16(pIO, 8) != 0 || getBit16(pIO, 8) != 1)
         return ICERR_ERROR;
     getBit16(pIO, 8);
-
-//    bar = (U8)getBit16(pIO, 8);
-//    if((bar & 7) != (ptPacketType & 7) || (bar & 0xF8) != (pID << 3))
-//        return ICERR_ERROR;
-
     return ICERR_OK;
 }
 
@@ -206,16 +217,34 @@ Int readPackets(CWMImageStrCodec * pSC)
         else {
             // get sizes of each packet and update index table
             for(k = 0; k < pSC->cNumBitIO; k ++){
-                if(pSC->cTileRow > 0)
-                    detachISRead(pSC, pSC->m_ppBitIO[k]);
-                pSC->WMISCP.pWStream->SetPos(pSC->WMISCP.pWStream, pSC->pIndexTable[pSC->cNumBitIO * pSC->cTileRow + k] + pSC->cHeaderSize);
-                attachISRead(pSC->m_ppBitIO[k], pSC->WMISCP.pWStream);
+                if(pSC->ppWStream != NULL){ // new API
+                    unsigned cBands = (pSC->WMISCP.bfBitstreamFormat == SPATIAL ? 1 : pSC->cSB);
+                    struct WMPStream ** ppWS = pSC->ppWStream + (pSC->WMISCP.cNumOfSliceMinus1V + 1) * pSC->cTileRow * cBands
+                        + k / cBands * cBands + (k % cBands);
+
+                    if(pSC->cTileRow > 0 && pSC->m_ppBitIO[k]->pWS != NULL)     // attached to the same packet of the tile on top
+                        detachISRead(pSC, pSC->m_ppBitIO[k]);    // detach it
+                    
+                    if(ppWS[0] != NULL)
+                        attachISRead(pSC->m_ppBitIO[k], ppWS[0], pSC); // need to attach it
+                }
+                else{
+                    if(pSC->cTileRow > 0)
+                        detachISRead(pSC, pSC->m_ppBitIO[k]);
+                    pSC->WMISCP.pWStream->SetPos(pSC->WMISCP.pWStream, pSC->pIndexTable[pSC->cNumBitIO * pSC->cTileRow + k] + pSC->cHeaderSize);
+                    attachISRead(pSC->m_ppBitIO[k], pSC->WMISCP.pWStream, pSC);
+                }
             }
             
             if(pSC->cNumBitIO == 0){
                 detachISRead(pSC, pSC->pIOHeader);
-                pSC->WMISCP.pWStream->SetPos(pSC->WMISCP.pWStream, pSC->cHeaderSize);
-                attachISRead(pSC->pIOHeader, pSC->WMISCP.pWStream);
+                if(pSC->ppWStream != NULL){// new API
+                    attachISRead(pSC->pIOHeader, pSC->ppWStream[0], pSC); // need to attach it
+                }
+                else{
+                    pSC->WMISCP.pWStream->SetPos(pSC->WMISCP.pWStream, pSC->cHeaderSize);
+                    attachISRead(pSC->pIOHeader, pSC->WMISCP.pWStream, pSC);
+                }
             }
             
             for(k = 0; k <= pSC->WMISCP.cNumOfSliceMinus1V; k ++){
@@ -225,23 +254,25 @@ Int readPackets(CWMImageStrCodec * pSC)
                 if(pSC->WMISCP.bfBitstreamFormat == SPATIAL){
                     BitIOInfo * pIO = (pSC->cNumBitIO == 0 ? pSC->pIOHeader : pSC->m_ppBitIO[k]);
 
-                    if(readPacketHeader(pIO, 0, pID) != ICERR_OK)
+                    if(pIO->pWS == NULL || readPacketHeader(pIO, 0, pID) != ICERR_OK)
                         return ICERR_ERROR;
                     pSC->m_pCodingContext[k].m_iTrimFlexBits = (pSC->m_param.bTrimFlexbitsFlag) ? getBit16(pIO, 4) : 0;
                 }
                 else{
-                    if(readPacketHeader(pSC->m_ppBitIO[k * pSC->cSB + 0], 1, pID) != ICERR_OK)
+                    if(pSC->m_ppBitIO[k * pSC->cSB + 0] == NULL || readPacketHeader(pSC->m_ppBitIO[k * pSC->cSB + 0], 1, pID) != ICERR_OK)
                         return ICERR_ERROR;
                     if(pSC->cSB > 1){
-                        if(readPacketHeader(pSC->m_ppBitIO[k * pSC->cSB + 1], 2, pID) != ICERR_OK)
+                        if(pSC->m_ppBitIO[k * pSC->cSB + 1] == NULL || readPacketHeader(pSC->m_ppBitIO[k * pSC->cSB + 1], 2, pID) != ICERR_OK)
                             return ICERR_ERROR;
                     }
                     if(pSC->cSB > 2){
-                        if(readPacketHeader(pSC->m_ppBitIO[k * pSC->cSB + 2], 3, pID) != ICERR_OK)
+                        if(pSC->m_ppBitIO[k * pSC->cSB + 2] == NULL || readPacketHeader(pSC->m_ppBitIO[k * pSC->cSB + 2], 3, pID) != ICERR_OK)
                             return ICERR_ERROR;
 //                        readTileHeaderHP(pSC, pSC->m_ppBitIO[k * pSC->cSB + 2]);
                     }
                     if(pSC->cSB > 3){
+                        if(pSC->m_ppBitIO[k * pSC->cSB + 3] == NULL)
+                            return ICERR_ERROR;
                         readPacketHeader(pSC->m_ppBitIO[k * pSC->cSB + 3], 4, pID);  // bad flexbits packet doesn't generate an error
                         pSC->m_pCodingContext[k].m_iTrimFlexBits = (pSC->m_param.bTrimFlexbitsFlag) ? getBit16(pSC->m_ppBitIO[k * pSC->cSB + 3], 4) : 0;
                     }
@@ -278,11 +309,11 @@ Int readPackets(CWMImageStrCodec * pSC)
 Int processMacroblockDec(CWMImageStrCodec * pSC)
 {
     const OVERLAP olOverlap = pSC->WMISCP.olOverlap;
-    const Bool left = (pSC->cColumn == 0);
-    const Bool top = (pSC->cRow == 0), bottom = (pSC->cRow == pSC->cmbHeight);
-    const bottomORright = (bottom || pSC->cColumn == pSC->cmbWidth);
-    const size_t mbWidth = pSC->cmbWidth, mbX = pSC->cColumn;
-    Int iQIndex = 0;
+    // const Bool left = (pSC->cColumn == 0);
+    const Bool /*top = (pSC->cRow == 0),*/ bottom = (pSC->cRow == pSC->cmbHeight);
+    const Bool bottomORright = (bottom || pSC->cColumn == pSC->cmbWidth);
+    // const size_t mbWidth = pSC->cmbWidth, mbX = pSC->cColumn;
+    // Int iQIndex = 0;
     ERR_CODE result = ICERR_OK;
     size_t j, jend = (pSC->m_pNextSC != NULL);
 
@@ -303,25 +334,20 @@ Int processMacroblockDec(CWMImageStrCodec * pSC)
                 return ICERR_ERROR;
          
             // check if we need to do entropy decode
-//            if (pSC->m_bSecondary) {
-                //pSC->bDecodeFullFrame = pSC->m_pNextSC->bDecodeFullFrame;
-//            }
-//            else {
-                if(!pSC->m_Dparam->bDecodeFullFrame){
-                    if(pSC->cColumn == pSC->WMISCP.uiTileX[pSC->cTileColumn]){ // switching to a new tile
-                        size_t rLeft = pSC->m_Dparam->cROILeftX, rRight = pSC->m_Dparam->cROIRightX;
-                        size_t rTop = pSC->m_Dparam->cROITopY, rBottom = pSC->m_Dparam->cROIBottomY;
-                        size_t rExt = (olOverlap == OL_NONE ? 0 : 16);
-                        size_t tLeft = pSC->cColumn * 16, tTop = pSC->WMISCP.uiTileY[pSC->cTileRow] * 16;
-                        size_t tRight = (pSC->cTileColumn != pSC->WMISCP.cNumOfSliceMinus1V ? pSC->WMISCP.uiTileX[pSC->cTileColumn + 1] : pSC->cmbWidth) * 16;
-                        size_t tBottom = (pSC->cTileRow != pSC->WMISCP.cNumOfSliceMinus1H ? pSC->WMISCP.uiTileY[pSC->cTileRow + 1] : pSC->cmbHeight) * 16;
+			if(!pSC->m_Dparam->bDecodeFullFrame){
+				if(pSC->cColumn == pSC->WMISCP.uiTileX[pSC->cTileColumn]){ // switching to a new tile
+					size_t rLeft = pSC->m_Dparam->cROILeftX, rRight = pSC->m_Dparam->cROIRightX;
+					size_t rTop = pSC->m_Dparam->cROITopY, rBottom = pSC->m_Dparam->cROIBottomY;
+					size_t rExt = (olOverlap == OL_NONE ? 0 : olOverlap == OL_ONE ? 2 : 10);
+					size_t tLeft = pSC->cColumn * 16, tTop = pSC->WMISCP.uiTileY[pSC->cTileRow] * 16;
+					size_t tRight = (pSC->cTileColumn != pSC->WMISCP.cNumOfSliceMinus1V ? pSC->WMISCP.uiTileX[pSC->cTileColumn + 1] : pSC->cmbWidth) * 16;
+					size_t tBottom = (pSC->cTileRow != pSC->WMISCP.cNumOfSliceMinus1H ? pSC->WMISCP.uiTileY[pSC->cTileRow + 1] : pSC->cmbHeight) * 16;
 
-                        // tile overlaps with ROI?
-                        pContext->m_bInROI = ((rLeft > tRight + rExt || rTop > tBottom + rExt || tLeft > rRight + rExt ||
-                            tTop > rBottom + rExt || pSC->cRow * 16 > rBottom + rExt) ? FALSE : TRUE);
-                    }
-                }
-//            }
+					// tile overlaps with ROI?
+					pContext->m_bInROI = ((rLeft >= tRight + rExt || rTop >= tBottom + rExt || tLeft > rRight + rExt ||
+						tTop > rBottom + rExt || pSC->cRow * 16 > rBottom + rExt) ? FALSE : TRUE);
+				}
+			}
 
             if(pSC->m_Dparam->bDecodeFullFrame || pContext->m_bInROI){                
                 if ((result = DecodeMacroblockDC(pSC, pContext, (Int)pSC->cColumn, (Int)pSC->cRow)) != ICERR_OK)
@@ -352,7 +378,6 @@ Int processMacroblockDec(CWMImageStrCodec * pSC)
             || (pSC->cRow * 16 > pSC->m_Dparam->cROIBottomY + 25) || (pSC->cRow * 16 + 25 < pSC->m_Dparam->cROITopY)))
         {
             // do nothing
-            //return result;
         }
         else {
             pSC->Transform(pSC);
@@ -394,7 +419,7 @@ static _FORCEINLINE void inverseConvert (PixelI iF, U8 *pRGB, U8 *pE)
     }
     else if ((iF >> 7) > 1) {
         /** normal form **/
-        *pE = (iF >> 7); //+ 1;
+        *pE = (U8) (iF >> 7); //+ 1;
         *pRGB = (iF & 0x7f) | 0x80;
     }
     else {  
@@ -446,7 +471,7 @@ static _FORCEINLINE float pixel2float(PixelI _h, const char _c, const unsigned c
 
     I32 s, iTempH, m, e, lmshift = (1 << _lm);
 
-    assert (_c <= 127);
+    // assert (_c <= 127);
 
     iTempH = (I32) _h ;
     s = (iTempH >> 31);
@@ -492,7 +517,7 @@ Void interpolateUV(CWMImageStrCodec * pSC)
     PixelI * pSrcU = pSC->a0MBbuffer[1], * pSrcV = pSC->a0MBbuffer[2];
     PixelI * pDstU = pSC->pResU, * pDstV = pSC->pResV;
     size_t iRow, iColumn;
-    size_t iIdxS, iIdxD;
+    size_t iIdxS = 0, iIdxD = 0;
 
     if(pSC->m_param.cfColorFormat == YUV_422){  // 422 => 444, interpolate horizontally
         for(iRow = 0; iRow < 16; iRow ++){
@@ -584,7 +609,7 @@ Void outputNChannel(CWMImageStrCodec * pSC, size_t iFirstRow, size_t iFirstColum
 {
     const CWMImageInfo* pII = &pSC->WMII;
     const size_t cChannel = pII->cfColorFormat == Y_ONLY ? 1 : pSC->WMISCP.cChannel;
-    const U8 cbChannels[BDB_MAX] = {-1, 1, 2, 2, 2, 4, 4, -1, -1, };
+    // const U8 cbChannels[BDB_MAX] = {-1, 1, 2, 2, 2, 4, 4, -1, -1, };
     const U8 nLen = pSC->WMISCP.nLenMantissaOrShift;
     const I8 nExpBias = pSC->WMISCP.nExpBias;
 
@@ -715,10 +740,9 @@ static void fixup_Y_ONLY_to_Others(
 {
     const CWMImageInfo* pII = &pSC->WMII;
     const CWMIStrCodecParam* pSCP = &pSC->WMISCP;
-
     size_t cWidth = 0, cHeight = 0;
     size_t idxY = 0, idxX = 0;
-    
+
     if (CF_RGB != pII->cfColorFormat || Y_ONLY != pSCP->cfColorFormat)
         return;
 
@@ -772,10 +796,9 @@ Int outputMBRowAlpha(CWMImageStrCodec * pSC)
     if(pSC->m_bSecondary == FALSE && pSC->m_pNextSC != NULL){ // with alpha channel
         const BITDEPTH_BITS bd = pSC->WMII.bdBitDepth;
         const PixelI iShift = (pSC->m_param.bScaledArith ? SHIFTZERO + QPFRACBITS : 0);
-        const size_t cHeight = min((pSC->m_Dparam->bDecodeFullFrame ? pSC->WMII.cHeight : pSC->m_Dparam->cROIBottomY + 1) - (pSC->cRow - 1) * 16, 16);
-        const size_t cWidth = (pSC->m_Dparam->bDecodeFullFrame ? pSC->WMII.cWidth : pSC->m_Dparam->cROIRightX + 1);
+        const size_t cHeight = min((pSC->m_Dparam->cROIBottomY + 1) - (pSC->cRow - 1) * 16, 16);
+        const size_t cWidth = (pSC->m_Dparam->cROIRightX + 1);
         const size_t iFirstRow = ((pSC->cRow - 1) * 16 > pSC->m_Dparam->cROITopY ? 0 : (pSC->m_Dparam->cROITopY & 0xf)), iFirstColumn = pSC->m_Dparam->cROILeftX;
-//        const size_t iAlphaPos = pSC->WMII.cLeadingPadding + pSC->WMISCP.cChannel;
         const size_t iAlphaPos = pSC->WMII.cLeadingPadding + (pSC->WMII.cfColorFormat == CMYK ? 4 : 3);//only RGB and CMYK may have interleaved alpha
         const PixelI * pA = pSC->m_pNextSC->a0MBbuffer[0];
         const U8 nLen = pSC->WMISCP.nLenMantissaOrShift;
@@ -783,6 +806,9 @@ Int outputMBRowAlpha(CWMImageStrCodec * pSC)
         size_t iRow, iColumn;
         size_t * pOffsetX = pSC->m_Dparam->pOffsetX, * pOffsetY = pSC->m_Dparam->pOffsetY + (pSC->cRow - 1) * 16, iY;
         
+        if (CF_RGB != pSC->WMII.cfColorFormat && CMYK != pSC->WMII.cfColorFormat)
+            return ICERR_ERROR;
+
         if(bd == BD_8){
             const PixelI iBias = (1 << (iShift + 7)) + (iShift == 0 ? 0 : (1 << (iShift - 1)));
             
@@ -844,41 +870,120 @@ Int outputMBRowAlpha(CWMImageStrCodec * pSC)
     return ICERR_OK;
 }
 
-#define _ICC_BAYER(g0, r, b, g1) _ICC(r, g0, b), g0 -= (g1 >> 1), g1 += g0
-
 Int outputMBRow(CWMImageStrCodec * pSC)
 {
     const COLORFORMAT cfExt = (pSC->m_param.cfColorFormat == Y_ONLY ? Y_ONLY : pSC->WMII.cfColorFormat);
     const BITDEPTH_BITS bd = pSC->WMII.bdBitDepth;
     const PixelI iShift = (pSC->m_param.bScaledArith ? SHIFTZERO + QPFRACBITS : 0);
-    const size_t cHeight = min((pSC->m_Dparam->bDecodeFullFrame ? pSC->WMII.cHeight : pSC->m_Dparam->cROIBottomY + 1) - (pSC->cRow - 1) * 16, 16);
-    const size_t cWidth = (pSC->m_Dparam->bDecodeFullFrame ? pSC->WMII.cWidth : pSC->m_Dparam->cROIRightX + 1);
+    const size_t cHeight = min((pSC->m_Dparam->cROIBottomY + 1) - (pSC->cRow - 1) * 16, 16);
+    const size_t cWidth = (pSC->m_Dparam->cROIRightX + 1);
     const size_t iFirstRow = ((pSC->cRow - 1) * 16 > pSC->m_Dparam->cROITopY ? 0 : (pSC->m_Dparam->cROITopY & 0xf)), iFirstColumn = pSC->m_Dparam->cROILeftX;
     const PixelI *pY = pSC->a0MBbuffer[0];
     const PixelI *pU = (pSC->m_bUVResolutionChange ? pSC->pResU : pSC->a0MBbuffer[1]);
     const PixelI *pV = (pSC->m_bUVResolutionChange ? pSC->pResV : pSC->a0MBbuffer[2]);
     const PixelI *pA = NULL;
-    const U8 cBP = pSC->WMII.bpBayerPattern;
-    const size_t iB = (cfExt == BAYER ? (1 + (cBP & 2) - (cBP & 1)) : (pSC->WMII.bRGB ? 2 : 0));
-    const size_t iR = (cfExt == BAYER ? 3 : 2) - iB;
-    const size_t iG0 = (cBP == 0 || cBP == 3 ? 0 : 3), iG1 = 3 - iG0;
+	const size_t iB = (pSC->WMII.bRGB ? 2 : 0);
+	const size_t iR = 2 - iB;
     const U8 nLen = pSC->WMISCP.nLenMantissaOrShift;
     const I8 nExpBias = pSC->WMISCP.nExpBias;
     size_t iRow, iColumn, iIdx;
     size_t * pOffsetX = pSC->m_Dparam->pOffsetX, * pOffsetY = pSC->m_Dparam->pOffsetY + (pSC->cRow - 1) * (cfExt == YUV_420 ? 8 : 16), iY;
+
 
     if (pSC->m_pNextSC) {
         assert (pSC->m_param.bScaledArith == pSC->m_pNextSC->m_param.bScaledArith);  // will be relaxed later
     }
 
     // guard output buffer
-    if(checkImageBuffer(pSC, pSC->WMII.oOrientation >= O_RCW ? pSC->WMII.cROIHeight : pSC->WMII.cROIWidth, cHeight) != ICERR_OK)
+    if(checkImageBuffer(pSC, pSC->WMII.oOrientation >= O_RCW ? pSC->WMII.cROIHeight : pSC->WMII.cROIWidth, cHeight - iFirstRow) != ICERR_OK)
         return ICERR_ERROR;
 
     if(pSC->m_bUVResolutionChange)
         interpolateUV(pSC);
 
-    if(bd == BD_8){
+    if(pSC->WMISCP.bYUVData){
+        I32 * pDst = (I32 *)pSC->WMIBI.pv + (pSC->cRow - 1) *
+            (pSC->m_param.cfColorFormat == YUV_420 ? 8 : 16) * pSC->WMIBI.cbStride / sizeof(I32);
+
+        switch(pSC->m_param.cfColorFormat){
+        case Y_ONLY:
+        case YUV_444:
+        case NCOMPONENT:
+            {
+                PixelI * pChannel[16];
+                size_t iChannel;
+
+                const size_t cChannel = pSC->WMII.cfColorFormat == Y_ONLY ? 1 : pSC->WMISCP.cChannel;
+                assert(cChannel <= 16);
+
+                for(iChannel = 0; iChannel < cChannel; iChannel ++)
+                    pChannel[iChannel & 15] = pSC->a0MBbuffer[iChannel];
+
+                for(iRow = iFirstRow; iRow < cHeight; iRow ++){
+                    I32 * pRow = pDst;
+                    for(iColumn = iFirstColumn; iColumn < cWidth; iColumn ++){
+                        for(iChannel = 0; iChannel < cChannel; iChannel ++){
+                            PixelI p = pChannel[iChannel & 15][((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 0xf]];
+
+                            *pRow++ = p;
+                        }
+                    }
+                    pDst += pSC->WMIBI.cbStride / sizeof(I32);
+                }
+            }
+            break;
+
+        case YUV_422:
+            {
+				PixelI y0, y1, u, v;
+	
+				for(iRow = iFirstRow; iRow < cHeight; iRow ++){
+                    I32 * pRow = pDst;
+					for(iColumn = iFirstColumn; iColumn < cWidth; iColumn += 2){
+						iIdx = ((iColumn >> 4) << 7) + idxCC[iRow][(iColumn >> 1) & 7];
+						u = pU[iIdx], v = pV[iIdx];
+	
+						y0 = pY[((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15]];
+						y1 = pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow][(iColumn + 1) & 15]];
+						
+						pRow[0] = u, pRow[1] = y0, pRow[2] = v, pRow[3] = y1;
+                        pRow += 4;
+					}
+                    pDst += pSC->WMIBI.cbStride / sizeof(I32);
+				}
+			}
+            break;
+
+        case YUV_420:
+			{
+				PixelI y0, y1, y2, y3, u, v;
+				// const size_t iS4[8][4] = {{0, 1, 2, 3}, {2, 3, 0, 1}, {1, 0, 3, 2}, {3, 2, 1, 0}, {1, 3, 0, 2}, {3, 1, 2, 0}, {0, 2, 1, 3}, {2, 0, 3, 1}};
+	
+				for(iRow = iFirstRow; iRow < cHeight; iRow += 2){
+                    I32 * pRow = pDst;
+					for(iColumn = iFirstColumn; iColumn < cWidth; iColumn += 2){
+						iIdx = ((iColumn >> 4) << 6) + idxCC_420[iRow >> 1][(iColumn >> 1) & 7];
+						u = pU[iIdx], v = pV[iIdx];
+	
+						y0 = pY[((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15]];
+						y1 = pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow][(iColumn + 1) & 15]];
+						y2 = pY[((iColumn >> 4) << 8) + idxCC[iRow + 1][iColumn & 15]];
+						y3 = pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow + 1][(iColumn + 1) & 15]];
+	
+						pRow[0] = y0, pRow[1] = y1, pRow[2] = y2, pRow[3] = y3, pRow[4] = u, pRow[5] = v;
+                        pRow += 6;
+					}
+                    pDst += pSC->WMIBI.cbStride / sizeof(I32);
+				}
+			}
+            break;
+
+        default:
+            assert(0);
+            break;
+        }
+    }
+    else if(bd == BD_8){
         U8 * pDst;
         const PixelI iBias1 = 128 << iShift;
         const PixelI iBias2 = pSC->m_param.bScaledArith ? ((1 << (SHIFTZERO + QPFRACBITS - 1)) - 1) : 0;
@@ -903,9 +1008,7 @@ Int outputMBRow(CWMImageStrCodec * pSC)
 
                             _ICC(r, g, b);
                             
-                            //assert(((g | b | r) & ~0xff) == 0);
                             pDst = (U8 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                            //pDst[iR] = (U8)r, pDst[1] = (U8)g, pDst[iB] = (U8)b;
                             if ((g | b | r | a) & ~0xff)
                                 pDst[iR] = _CLIP8(r), pDst[1] = _CLIP8(g), pDst[iB] = _CLIP8(b), pDst[3] = _CLIP8(a);
                             else
@@ -941,9 +1044,7 @@ Int outputMBRow(CWMImageStrCodec * pSC)
 
                             _ICC(r, g, b);
                             
-                            //assert(((g | b | r) & ~0xff) == 0);
                             pDst = (U8 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                            //pDst[iR] = (U8)r, pDst[1] = (U8)g, pDst[iB] = (U8)b;
                             if ((g | b | r) & ~0xff)
                                 pDst[iR] = _CLIP8(r), pDst[1] = _CLIP8(g), pDst[iB] = _CLIP8(b);
                             else
@@ -972,137 +1073,106 @@ Int outputMBRow(CWMImageStrCodec * pSC)
         }
 
         case Y_ONLY:
-#ifdef _PHOTON_PK_
         case YUV_444:
-#endif
-        case N_CHANNEL:
+        case NCOMPONENT:
             outputNChannel(pSC, iFirstRow, iFirstColumn, cWidth, cHeight, iShift, iBias);
             break;
 
-#ifdef _PHOTON_PK_
         case YUV_422:
-        {
-            PixelI y0, y1, u, v;
-            const ORIENTATION oO = pSC->WMII.oOrientation;
-            const size_t i0 = ((oO > O_FLIPV && oO <= O_RCW_FLIPVH) ? 1 : 0), i1 = 1 - i0;
-
-            for(iRow = iFirstRow; iRow < cHeight; iRow ++){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn += 2){
-                    iIdx = ((iColumn >> 4) << 7) + idxCC[iRow][(iColumn >> 1) & 7];
-                    u = ((pU[iIdx] + iBias) >> iShift), v = ((pV[iIdx] + iBias) >> iShift);
-
-                    y0 = ((pY[((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15]] + iBias) >> iShift);
-                    y1 = ((pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow][(iColumn + 1) & 15]] + iBias) >> iShift);
-                    
-                    pDst = (U8 *)pSC->WMIBI.pv + pOffsetX[iColumn >> 1] + iY;
-                    if ((y0 | y1 | u | v) & ~0xff)//UYVY
-                        pDst[0] = _CLIP8(u), pDst[1] = _CLIP8(y0), pDst[2] = _CLIP8(v), pDst[3] = _CLIP8(y1);
-                    else
-                        pDst[0] = (U8)u, pDst[1] = (U8)y0, pDst[2] = (U8)v, pDst[3] = (U8)y1;
-                }
-            }
-            break;
-        }
+			{
+				PixelI y0, y1, u, v;
+				// const ORIENTATION oO = pSC->WMII.oOrientation;
+				// const size_t i0 = ((oO > O_FLIPV && oO <= O_RCW_FLIPVH) ? 1 : 0), i1 = 1 - i0;
+	
+				for(iRow = iFirstRow; iRow < cHeight; iRow ++){
+					for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn += 2){
+						iIdx = ((iColumn >> 4) << 7) + idxCC[iRow][(iColumn >> 1) & 7];
+						u = ((pU[iIdx] + iBias) >> iShift), v = ((pV[iIdx] + iBias) >> iShift);
+	
+						y0 = ((pY[((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15]] + iBias) >> iShift);
+						y1 = ((pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow][(iColumn + 1) & 15]] + iBias) >> iShift);
+						
+						pDst = (U8 *)pSC->WMIBI.pv + pOffsetX[iColumn >> 1] + iY;
+						if ((y0 | y1 | u | v) & ~0xff)//UYVY
+							pDst[0] = _CLIP8(u), pDst[1] = _CLIP8(y0), pDst[2] = _CLIP8(v), pDst[3] = _CLIP8(y1);
+						else
+							pDst[0] = (U8)u, pDst[1] = (U8)y0, pDst[2] = (U8)v, pDst[3] = (U8)y1;
+					}
+				}
+			}
+			break;
 
         case YUV_420:
-        {
-            PixelI y0, y1, y2, y3, u, v;
-            const size_t iS4[8][4] = {{0, 1, 2, 3}, {2, 3, 0, 1}, {1, 0, 3, 2}, {3, 2, 1, 0}, {1, 3, 0, 2}, {3, 1, 2, 0}, {0, 2, 1, 3}, {2, 0, 3, 1}};
-            const ORIENTATION oO = pSC->WMII.oOrientation;
-            const size_t i0 = iS4[oO][0], i1 = iS4[oO][1], i2 = iS4[oO][2], i3 = iS4[oO][3];
-
-            for(iRow = iFirstRow; iRow < cHeight; iRow += 2){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow >> 1]; iColumn < cWidth; iColumn += 2){
-                    iIdx = ((iColumn >> 4) << 6) + idxCC_420[iRow >> 1][(iColumn >> 1) & 7];
-                    u = ((pU[iIdx] + iBias) >> iShift), v = ((pV[iIdx] + iBias) >> iShift);
-
-                    y0 = ((pY[((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15]] + iBias) >> iShift);
-                    y1 = ((pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow][(iColumn + 1) & 15]] + iBias) >> iShift);
-                    y2 = ((pY[((iColumn >> 4) << 8) + idxCC[iRow + 1][iColumn & 15]] + iBias) >> iShift);
-                    y3 = ((pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow + 1][(iColumn + 1) & 15]] + iBias) >> iShift);
-
-                    pDst = (U8 *)pSC->WMIBI.pv + pOffsetX[iColumn >> 1] + iY;
-                    if ((y0 | y1 | y2 | y3 | u | v) & ~0xff)
-                        pDst[i0] = _CLIP8(y0), pDst[i1] = _CLIP8(y1), pDst[i2] = _CLIP8(y2), pDst[i3] = _CLIP8(y3), pDst[4] = _CLIP8(u), pDst[5] = _CLIP8(v);
-                    else
-                        pDst[i0] = (U8)y0, pDst[i1] = (U8)y1, pDst[i2] = (U8)y2, pDst[i3] = (U8)y3, pDst[4] = (U8)u, pDst[5] = (U8)v;
-                }
-            }
-            break;
-        }
-#endif
+			{
+				PixelI y0, y1, y2, y3, u, v;
+				const size_t iS4[8][4] = {{0, 1, 2, 3}, {2, 3, 0, 1}, {1, 0, 3, 2}, {3, 2, 1, 0}, {1, 3, 0, 2}, {3, 1, 2, 0}, {0, 2, 1, 3}, {2, 0, 3, 1}};
+				const ORIENTATION oO = pSC->WMII.oOrientation;
+				const size_t i0 = iS4[oO][0], i1 = iS4[oO][1], i2 = iS4[oO][2], i3 = iS4[oO][3];
+	
+				for(iRow = iFirstRow; iRow < cHeight; iRow += 2){
+					for(iColumn = iFirstColumn, iY = pOffsetY[iRow >> 1]; iColumn < cWidth; iColumn += 2){
+						iIdx = ((iColumn >> 4) << 6) + idxCC_420[iRow >> 1][(iColumn >> 1) & 7];
+						u = ((pU[iIdx] + iBias) >> iShift), v = ((pV[iIdx] + iBias) >> iShift);
+	
+						y0 = ((pY[((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15]] + iBias) >> iShift);
+						y1 = ((pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow][(iColumn + 1) & 15]] + iBias) >> iShift);
+						y2 = ((pY[((iColumn >> 4) << 8) + idxCC[iRow + 1][iColumn & 15]] + iBias) >> iShift);
+						y3 = ((pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow + 1][(iColumn + 1) & 15]] + iBias) >> iShift);
+	
+						pDst = (U8 *)pSC->WMIBI.pv + pOffsetX[iColumn >> 1] + iY;
+						if ((y0 | y1 | y2 | y3 | u | v) & ~0xff)
+							pDst[i0] = _CLIP8(y0), pDst[i1] = _CLIP8(y1), pDst[i2] = _CLIP8(y2), pDst[i3] = _CLIP8(y3), pDst[4] = _CLIP8(u), pDst[5] = _CLIP8(v);
+						else
+							pDst[i0] = (U8)y0, pDst[i1] = (U8)y1, pDst[i2] = (U8)y2, pDst[i3] = (U8)y3, pDst[4] = (U8)u, pDst[5] = (U8)v;
+					}
+				}
+			}
+			break;
 
         case CMYK:
-        {
-            PixelI c, m, y, k;
-            PixelI * pK = pSC->a0MBbuffer[3];
-
-            for(iRow = iFirstRow; iRow < cHeight; iRow++){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn++){
-                    iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
-
-                    m = -pY[iIdx] + iBias1, c = pU[iIdx], y = -pV[iIdx], k = pK[iIdx] + iBias2;
-                    
-                    _ICC_CMYK(c, m, y, k); // color conversion
-
-                    c >>= iShift, m >>= iShift, y >>= iShift, k >>= iShift;
-
-                    pDst = (U8 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                    if ((c | m | y | k) & ~0xff)
-                        pDst[0] = _CLIP8(c), pDst[1] = _CLIP8(m), pDst[2] = _CLIP8(y), pDst[3] = _CLIP8(k);
-                    else
-                        pDst[0] = (U8)c, pDst[1] = (U8)m, pDst[2] = (U8)y, pDst[3] = (U8)k;
-                }
-            }
-            break;
-        }
-
-#ifdef _PHOTON_PK_
-        case BAYER:
-        {
-            PixelI * pD = pSC->a0MBbuffer[3], pQuad[4];
-            const size_t cW2 = (pSC->WMII.oOrientation < O_RCW ? pSC->WMII.cROIWidth : pSC->WMII.cROIHeight) * 2;
-
-            for(iRow = iFirstRow; iRow < cHeight; iRow ++){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn ++){
-                    iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
-
-                    pQuad[iG0] = pY[iIdx] + iBias, pQuad[iR] = -pU[iIdx], pQuad[iB] = pV[iIdx], pQuad[iG1] = pD[iIdx];
-                    
-                    _ICC_BAYER(pQuad[iG0], pQuad[iR], pQuad[iB], pQuad[iG1]); // color conversion
-
-                    pQuad[0] >>= iShift, pQuad[1] >>= iShift, pQuad[2] >>= iShift, pQuad[3] >>= iShift;
-
-                    pDst = (U8 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                    if ((pQuad[0] | pQuad[1] | pQuad[2] | pQuad[3]) & ~0xff)
-                        pDst[0] = _CLIP8(pQuad[0]), pDst[1] = _CLIP8(pQuad[1]), pDst[cW2] = _CLIP8(pQuad[2]), pDst[cW2 + 1] = _CLIP8(pQuad[3]);
-                    else
-                        pDst[0] = (U8)pQuad[0], pDst[1] = (U8)pQuad[1], pDst[cW2] = (U8)pQuad[2], pDst[cW2 + 1] = (U8)pQuad[3];
-                }
-            }
-            break;
-        }
-#endif
+			{
+				PixelI c, m, y, k;
+				PixelI * pK = pSC->a0MBbuffer[3];
+	
+				for(iRow = iFirstRow; iRow < cHeight; iRow++){
+					for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn++){
+						iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
+	
+						m = -pY[iIdx] + iBias1, c = pU[iIdx], y = -pV[iIdx], k = pK[iIdx] + iBias2;
+						
+						_ICC_CMYK(c, m, y, k); // color conversion
+	
+						c >>= iShift, m >>= iShift, y >>= iShift, k >>= iShift;
+	
+						pDst = (U8 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
+						if ((c | m | y | k) & ~0xff)
+							pDst[0] = _CLIP8(c), pDst[1] = _CLIP8(m), pDst[2] = _CLIP8(y), pDst[3] = _CLIP8(k);
+						else
+							pDst[0] = (U8)c, pDst[1] = (U8)m, pDst[2] = (U8)y, pDst[3] = (U8)k;
+					}
+				}
+			}
+			break;
 
         case CF_RGBE:
-        {
-            PixelI r, g, b;
-            
-            for(iRow = iFirstRow; iRow < cHeight; iRow ++){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn ++){
-                        iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
-                        
-                        g = pY[iIdx] + iBias2, r = -pU[iIdx], b = pV[iIdx];
-
-                        _ICC(r, g, b);
-
-                        pDst = (U8 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-
-                        inverseConvertRGBE (r >> iShift, g >> iShift, b >> iShift, pDst, pDst + 1, pDst + 2, pDst + 3);
-                    }
-            }
-            break;
-        }
+			{
+				PixelI r, g, b;
+				
+				for(iRow = iFirstRow; iRow < cHeight; iRow ++){
+					for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn ++){
+							iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
+							
+							g = pY[iIdx] + iBias2, r = -pU[iIdx], b = pV[iIdx];
+	
+							_ICC(r, g, b);
+	
+							pDst = (U8 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
+	
+							inverseConvertRGBE (r >> iShift, g >> iShift, b >> iShift, pDst, pDst + 1, pDst + 2, pDst + 3);
+						}
+				}
+			}
+			break;
 
         default:
             assert(0);
@@ -1116,245 +1186,153 @@ Int outputMBRow(CWMImageStrCodec * pSC)
         switch(cfExt){
         case CF_RGB:
         {
-            PixelI r, g, b;//, a;
+            PixelI r, g, b;
+			if (pSC->m_param.bScaledArith == FALSE) {
+				for(iRow = iFirstRow; iRow < cHeight; iRow ++)
+					for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn ++){
+						iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
+						
+						g = pY[iIdx] + iBias, r = -pU[iIdx], b = pV[iIdx];
 
-/*            if (pSC->m_pNextSC && pSC->WMII.cBitsPerUnit == 0x40) { // RGBA
+						_ICC(r, g, b);
 
-                pA = pSC->m_pNextSC->a0MBbuffer[0];
+						g <<= nLen, b <<= nLen, r <<= nLen;
+						
+						pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
+						
+						if ((g | b | r) & ~0xffff)
+							pDst[0] = _CLIPU16(r),  pDst[1] = _CLIPU16(g), pDst[2] = _CLIPU16(b);
+						else
+							pDst[0] = (U16)r, pDst[1] = (U16)g, pDst[2] = (U16)b;
+					}
+			}
+			else{
+				for(iRow = iFirstRow; iRow < cHeight; iRow ++)
+					for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn ++){
+						iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
+						
+						g = pY[iIdx] + iBias, r = -pU[iIdx], b = pV[iIdx];
 
-                if (pSC->m_param.bScaledArith == FALSE) {
-                    for(iRow = iFirstRow; iRow < cHeight; iRow ++)
-                        for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn ++){
-                            iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
-                            
-                            g = pY[iIdx] + iBias, r = -pU[iIdx], b = pV[iIdx];
-                            a = pA[iIdx] + iBias;
-                            
-                            _ICC(r, g, b);
+						_ICC(r, g, b);
 
-                            r <<= nLen, g <<= nLen, b <<= nLen, a <<= nLen;
-                            
-                            pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                            
-                            if ((g | b | r | a) & ~0xffff)
-                                pDst[0] = _CLIPU16(r), pDst[1] = _CLIPU16(g), pDst[2] = _CLIPU16(b), pDst[3] = _CLIPU16(a);
-                            else
-                                pDst[0] = (U16)r, pDst[1] = (U16)g, pDst[2] = (U16)b, pDst[3] = (U16)a;
-                        }
-                }
-                else{
-                    for(iRow = iFirstRow; iRow < cHeight; iRow ++)
-                        for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn ++){
-                            iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
-                            
-                            g = pY[iIdx] + iBias, r = -pU[iIdx], b = pV[iIdx];
-                            a = pA[iIdx] + iBias;
-
-                            _ICC(r, g, b);
-
-                            g = (g >> iShift) << nLen, b = (b >> iShift) << nLen, r = (r >> iShift) << nLen, a = (a >> iShift) << nLen;
-                            pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                            if ((g | b | r | a) & ~0xffff)
-                                pDst[0] = _CLIPU16(r), pDst[1] = _CLIPU16(g), pDst[2] = _CLIPU16(b), pDst[3] = _CLIPU16(a);
-                            else
-                                pDst[0] = (U16)r, pDst[1] = (U16)g, pDst[2] = (U16)b, pDst[3] = (U16)a;
-                        }
-                }
-            }
-            else {
-*/
-                if (pSC->m_param.bScaledArith == FALSE) {
-                    for(iRow = iFirstRow; iRow < cHeight; iRow ++)
-                        for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn ++){
-                            iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
-                            
-                            g = pY[iIdx] + iBias, r = -pU[iIdx], b = pV[iIdx];
-
-                            _ICC(r, g, b);
-
-                            g <<= nLen, b <<= nLen, r <<= nLen;
-                            
-                            pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                            
-                            if ((g | b | r) & ~0xffff)
-                                pDst[0] = _CLIPU16(r),  pDst[1] = _CLIPU16(g), pDst[2] = _CLIPU16(b);
-                            else
-                                pDst[0] = (U16)r, pDst[1] = (U16)g, pDst[2] = (U16)b;
-                        }
-                }
-                else{
-                    for(iRow = iFirstRow; iRow < cHeight; iRow ++)
-                        for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn ++){
-                            iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
-                            
-                            g = pY[iIdx] + iBias, r = -pU[iIdx], b = pV[iIdx];
-
-                            _ICC(r, g, b);
-
-                            g = (g >> iShift) << nLen, b = (b >> iShift) << nLen, r = (r >> iShift) << nLen;
-                            pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                            if ((g | b | r) & ~0xffff)
-                                pDst[0] = _CLIPU16(r),  pDst[1] = _CLIPU16(g), pDst[2] = _CLIPU16(b);
-                            else
-                                pDst[0] = (U16)r, pDst[1] = (U16)g, pDst[2] = (U16)b;
-                        }
-                }
-//            }
+						g = (g >> iShift) << nLen, b = (b >> iShift) << nLen, r = (r >> iShift) << nLen;
+						pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
+						if ((g | b | r) & ~0xffff)
+							pDst[0] = _CLIPU16(r),  pDst[1] = _CLIPU16(g), pDst[2] = _CLIPU16(b);
+						else
+							pDst[0] = (U16)r, pDst[1] = (U16)g, pDst[2] = (U16)b;
+					}
+			}
             break;
         }
 
         case Y_ONLY:
-#ifdef _PHOTON_PK_
         case YUV_444:
-#endif
-        case N_CHANNEL:
+        case NCOMPONENT:
             outputNChannel(pSC, iFirstRow, iFirstColumn, cWidth, cHeight, iShift, iBias);
             break;
 
-#ifdef _PHOTON_PK_
         case YUV_422:
-        {
-            PixelI y0, y1, u, v;
-            const ORIENTATION oO = pSC->WMII.oOrientation;
-            const size_t i0 = ((oO == O_FLIPH || oO == O_FLIPVH || oO == O_RCW_FLIPV || oO == O_RCW_FLIPVH) ? 1 : 0), i1 = 1 - i0;
-
-            for(iRow = iFirstRow; iRow < cHeight; iRow ++){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn += 2){
-                    iIdx = ((iColumn >> 4) << 7) + idxCC[iRow][(iColumn >> 1) & 7];
-                    u = ((pU[iIdx] + iBias) >> iShift) << nLen, v = ((pV[iIdx] + iBias) >> iShift) << nLen;
-
-                    y0 = ((pY[((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15]] + iBias) >> iShift) << nLen;
-                    y1 = ((pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow][(iColumn + 1) & 15]] + iBias) >> iShift) << nLen;
-                    
-                    pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn >> 1] + iY;
-                    if ((y0 | y1 | u | v) & ~0xffff)
-                        {
-                            pDst[i0] = _CLIPU16(u);
-                            pDst[i1] = _CLIPU16(y0); 
-                            pDst[2] = _CLIPU16(v); 
-                            pDst[3] = _CLIPU16(y1);
-                        }
-                    else
-                        {
-                            pDst[i0] = (U16)(u);
-                            pDst[i1] = (U16)(y0);
-                            pDst[2] = (U16)(v); 
-                            pDst[3] = (U16)(y1);
-                        }
-                }
-            }
-            break;
-        }
+			{
+				PixelI y0, y1, u, v;
+				const ORIENTATION oO = pSC->WMII.oOrientation;
+				const size_t i0 = ((oO == O_FLIPH || oO == O_FLIPVH || oO == O_RCW_FLIPV || oO == O_RCW_FLIPVH) ? 1 : 0), i1 = 1 - i0;
+	
+				for(iRow = iFirstRow; iRow < cHeight; iRow ++){
+					for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn += 2){
+						iIdx = ((iColumn >> 4) << 7) + idxCC[iRow][(iColumn >> 1) & 7];
+						u = ((pU[iIdx] + iBias) >> iShift) << nLen, v = ((pV[iIdx] + iBias) >> iShift) << nLen;
+	
+						y0 = ((pY[((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15]] + iBias) >> iShift) << nLen;
+						y1 = ((pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow][(iColumn + 1) & 15]] + iBias) >> iShift) << nLen;
+						
+						pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn >> 1] + iY;
+						if ((y0 | y1 | u | v) & ~0xffff)
+							{
+								pDst[i0] = _CLIPU16(u);
+								pDst[i1] = _CLIPU16(y0); 
+								pDst[2] = _CLIPU16(v); 
+								pDst[3] = _CLIPU16(y1);
+							}
+						else
+							{
+								pDst[i0] = (U16)(u);
+								pDst[i1] = (U16)(y0);
+								pDst[2] = (U16)(v); 
+								pDst[3] = (U16)(y1);
+							}
+					}
+				}
+			}
+			break;
 
         case YUV_420:
-        {
-            PixelI y0, y1, y2, y3, u, v;
-            const size_t iS4[8][4] = {{0, 1, 2, 3}, {2, 3, 0, 1}, {1, 0, 3, 2}, {3, 2, 1, 0}, {1, 3, 0, 2}, {3, 1, 2, 0}, {0, 2, 1, 3}, {2, 0, 3, 1}};
-            const ORIENTATION oO = pSC->WMII.oOrientation;
-            const size_t i0 = iS4[oO][0], i1 = iS4[oO][1], i2 = iS4[oO][2], i3 = iS4[oO][3];
-
-            for(iRow = iFirstRow; iRow < cHeight; iRow += 2){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow >> 1]; iColumn < cWidth; iColumn += 2){
-                    iIdx = ((iColumn >> 3) << 6) + idxCC[iRow][(iColumn >> 1) & 7];
-                    u = ((pU[iIdx] + iBias) >> iShift) << nLen, v = ((pV[iIdx] + iBias) >> iShift) << nLen;
-
-                    y0 = ((pY[((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15]] + iBias) >> iShift) << nLen;
-                    y1 = ((pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow][(iColumn + 1) & 15]] + iBias) >> iShift) << nLen;
-                    y2 = ((pY[((iColumn >> 4) << 8) + idxCC[iRow + 1][iColumn & 15]] + iBias) >> iShift) << nLen;
-                    y3 = ((pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow + 1][(iColumn + 1) & 15]] + iBias) >> iShift) << nLen;
-
-                    pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn >> 1] + iY;
-                    if ((y0 | y1 | y2 | y3 | u | v) & ~0xffff)
-                        {
-                            pDst[i0] = _CLIPU16(y0); 
-                            pDst[i1] = _CLIPU16(y1); 
-                            pDst[i2] = _CLIPU16(y2); 
-                            pDst[i3] = _CLIPU16(y3); 
-                            pDst[4] = _CLIPU16(u);
-                            pDst[5] = _CLIPU16(v);
-                        }
-                    else
-                        {
-                            pDst[i0] = (U16)(y0);
-                            pDst[i1] = (U16)(y1);
-                            pDst[i2] = (U16)(y2);
-                            pDst[i3] = (U16)(y3);
-                            pDst[4] = (U16)(u);
-                            pDst[5] = (U16)(v);
-                        }
-                }
-            }
-            break;
-        }
-#endif
+			{
+				PixelI y0, y1, y2, y3, u, v;
+				const size_t iS4[8][4] = {{0, 1, 2, 3}, {2, 3, 0, 1}, {1, 0, 3, 2}, {3, 2, 1, 0}, {1, 3, 0, 2}, {3, 1, 2, 0}, {0, 2, 1, 3}, {2, 0, 3, 1}};
+				const ORIENTATION oO = pSC->WMII.oOrientation;
+				const size_t i0 = iS4[oO][0], i1 = iS4[oO][1], i2 = iS4[oO][2], i3 = iS4[oO][3];
+	
+				for(iRow = iFirstRow; iRow < cHeight; iRow += 2){
+					for(iColumn = iFirstColumn, iY = pOffsetY[iRow >> 1]; iColumn < cWidth; iColumn += 2){
+						iIdx = ((iColumn >> 3) << 6) + idxCC[iRow][(iColumn >> 1) & 7];
+						u = ((pU[iIdx] + iBias) >> iShift) << nLen, v = ((pV[iIdx] + iBias) >> iShift) << nLen;
+	
+						y0 = ((pY[((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15]] + iBias) >> iShift) << nLen;
+						y1 = ((pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow][(iColumn + 1) & 15]] + iBias) >> iShift) << nLen;
+						y2 = ((pY[((iColumn >> 4) << 8) + idxCC[iRow + 1][iColumn & 15]] + iBias) >> iShift) << nLen;
+						y3 = ((pY[(((iColumn + 1) >> 4) << 8) + idxCC[iRow + 1][(iColumn + 1) & 15]] + iBias) >> iShift) << nLen;
+	
+						pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn >> 1] + iY;
+						if ((y0 | y1 | y2 | y3 | u | v) & ~0xffff)
+							{
+								pDst[i0] = _CLIPU16(y0); 
+								pDst[i1] = _CLIPU16(y1); 
+								pDst[i2] = _CLIPU16(y2); 
+								pDst[i3] = _CLIPU16(y3); 
+								pDst[4] = _CLIPU16(u);
+								pDst[5] = _CLIPU16(v);
+							}
+						else
+							{
+								pDst[i0] = (U16)(y0);
+								pDst[i1] = (U16)(y1);
+								pDst[i2] = (U16)(y2);
+								pDst[i3] = (U16)(y3);
+								pDst[4] = (U16)(u);
+								pDst[5] = (U16)(v);
+							}
+					}
+				}
+			}
+			break;
 
         case CMYK:
-        {
-            PixelI c, m, y, k;
-            PixelI * pK = pSC->a0MBbuffer[3];
-            const PixelI iBias1 = (32768 >> nLen) << iShift;
-            const PixelI iBias2 = iBias - iBias1;
-
-            for(iRow = iFirstRow; iRow < cHeight; iRow++){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn++){
-                    iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
-
-                    m = -pY[iIdx] + iBias1, c = pU[iIdx], y = -pV[iIdx], k = pK[iIdx] + iBias2;
-                    
-                    _ICC_CMYK(c, m, y, k); // color conversion
-
-                    c = (c >> iShift) << nLen, m = (m >> iShift) << nLen, y = (y >> iShift) << nLen, k = (k >> iShift) << nLen;
-
-                    pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                    if ((c | m | y | k) & ~0xffff)
-                        pDst[0] = _CLIPU16(c), pDst[1] = _CLIPU16(m), pDst[2] = _CLIPU16(y), pDst[3] = _CLIPU16(k);
-                    else
-                        pDst[0] = (U16)(c), pDst[1] = (U16)(m), pDst[2] = (U16)(y), pDst[3] = (U16)(k);
-                    }
-            }
-            break; 
-        }
-
-#ifdef _PHOTON_PK_
-        case BAYER:
-        {
-            PixelI * pD = pSC->a0MBbuffer[3], pQuad[4];
-            const size_t cW2 = (pSC->WMII.oOrientation < O_RCW ? pSC->WMII.cROIWidth : pSC->WMII.cROIHeight) * 2;
-
-            for(iRow = iFirstRow; iRow < cHeight; iRow ++){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn ++){
-                    iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
-
-                    pQuad[iG0] = pY[iIdx] + iBias, pQuad[iR] = -pU[iIdx], pQuad[iB] = pV[iIdx], pQuad[iG1] = pD[iIdx];
-                    
-                    _ICC_BAYER(pQuad[iG0], pQuad[iR], pQuad[iB], pQuad[iG1]); // color conversion
-
-                    pQuad[0] = (pQuad[0] >> iShift) << nLen; 
-                    pQuad[1] = (pQuad[1] >> iShift) << nLen; 
-                    pQuad[2] = (pQuad[2] >> iShift) << nLen; 
-                    pQuad[3] = (pQuad[3] >> iShift) << nLen;
-
-                    pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                    if ((pQuad[0] | pQuad[1] | pQuad[2] | pQuad[3]) & ~0xffff)
-                        {
-                            pDst[0] = _CLIPU16(pQuad[0]);
-                            pDst[1] = _CLIPU16(pQuad[1]);
-                            pDst[cW2] = _CLIPU16(pQuad[2]);
-                            pDst[cW2 + 1] = _CLIPU16(pQuad[3]);
-                        }
-                    else
-                        {
-                            pDst[0] = (U16)(pQuad[0]);
-                            pDst[1] = (U16)(pQuad[1]); 
-                            pDst[cW2] = (U16)(pQuad[2]); 
-                            pDst[cW2 + 1] = (U16)(pQuad[3]);
-                        }
-                }
-            }
-            break;
-        }
-#endif
-
+			{
+				PixelI c, m, y, k;
+				PixelI * pK = pSC->a0MBbuffer[3];
+				const PixelI iBias1 = (32768 >> nLen) << iShift;
+				const PixelI iBias2 = iBias - iBias1;
+	
+				for(iRow = iFirstRow; iRow < cHeight; iRow++){
+					for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn++){
+						iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
+	
+						m = -pY[iIdx] + iBias1, c = pU[iIdx], y = -pV[iIdx], k = pK[iIdx] + iBias2;
+						
+						_ICC_CMYK(c, m, y, k); // color conversion
+	
+						c = (c >> iShift) << nLen, m = (m >> iShift) << nLen, y = (y >> iShift) << nLen, k = (k >> iShift) << nLen;
+	
+						pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
+						if ((c | m | y | k) & ~0xffff)
+							pDst[0] = _CLIPU16(c), pDst[1] = _CLIPU16(m), pDst[2] = _CLIPU16(y), pDst[3] = _CLIPU16(k);
+						else
+							pDst[0] = (U16)(c), pDst[1] = (U16)(m), pDst[2] = (U16)(y), pDst[3] = (U16)(k);
+						}
+				}
+			}
+			break; 
         default:
             assert(0);
             break;
@@ -1386,64 +1364,32 @@ Int outputMBRow(CWMImageStrCodec * pSC)
         }
 
         case Y_ONLY:
-#ifdef _PHOTON_PK_
         case YUV_444:
-        case N_CHANNEL:
-#endif
+        case NCOMPONENT:
             outputNChannel(pSC, iFirstRow, iFirstColumn, cWidth, cHeight, iShift, iBias);
             break;
 
-#ifdef _PHOTON_PK_
         case CMYK:
-        {
-            PixelI c, m, y, k;
-            PixelI * pK = pSC->a0MBbuffer[3];
-
-            for(iRow = iFirstRow; iRow < cHeight; iRow++){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn++){
-                    iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
-
-                    m = -pY[iIdx], c = pU[iIdx], y = -pV[iIdx], k = pK[iIdx] + iBias;
-                    
-                    _ICC_CMYK(c, m, y, k); // color conversion
-
-                    c = (c >> iShift) << nLen, m = (m >> iShift) << nLen, y = (y >> iShift) << nLen, k = (k >> iShift) << nLen;
-
-                    pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                    pDst[0] = (I16)(c), pDst[1] = (I16)(m), pDst[2] = (I16)(y), pDst[3] = (I16)(k);
-                }
-            }
-            break;
-        }
-
-        case BAYER:
-        {
-            PixelI * pD = pSC->a0MBbuffer[3], pQuad[4];
-            const size_t cW2 = (pSC->WMII.oOrientation < O_RCW ? pSC->WMII.cROIWidth : pSC->WMII.cROIHeight) * 2;
-
-            for(iRow = iFirstRow; iRow < cHeight; iRow ++){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn ++){
-                    iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
-
-                    pQuad[iG0] = pY[iIdx] + iBias, pQuad[iR] = -pU[iIdx], pQuad[iB] = pV[iIdx], pQuad[iG1] = pD[iIdx];
-                    
-                    _ICC_BAYER(pQuad[iG0], pQuad[iR], pQuad[iB], pQuad[iG1]); // color conversion
-
-                    pQuad[0] = (pQuad[0] >> iShift) << nLen;
-                    pQuad[1] = (pQuad[1] >> iShift) << nLen,
-                    pQuad[2] = (pQuad[2] >> iShift) << nLen,
-                    pQuad[3] = (pQuad[3] >> iShift) << nLen,
-
-                    pDst = (I16 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                    pDst[0] = _CLIP16(pQuad[0]);
-                    pDst[1] = _CLIP16(pQuad[1]);
-                    pDst[cW2] = _CLIP16(pQuad[2]);
-                    pDst[cW2 + 1] = _CLIP16(pQuad[3]);
-                }
-            }
-            break;
-        }
-#endif
+			{
+				PixelI c, m, y, k;
+				PixelI * pK = pSC->a0MBbuffer[3];
+	
+				for(iRow = iFirstRow; iRow < cHeight; iRow++){
+					for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn++){
+						iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
+	
+						m = -pY[iIdx], c = pU[iIdx], y = -pV[iIdx], k = pK[iIdx] + iBias;
+						
+						_ICC_CMYK(c, m, y, k); // color conversion
+	
+						c = (c >> iShift) << nLen, m = (m >> iShift) << nLen, y = (y >> iShift) << nLen, k = (k >> iShift) << nLen;
+	
+						pDst = (I16 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
+						pDst[0] = (I16)(c), pDst[1] = (I16)(m), pDst[2] = (I16)(y), pDst[3] = (I16)(k);
+					}
+				}
+			}
+			break;
 
         default:
             assert(0);
@@ -1476,21 +1422,18 @@ Int outputMBRow(CWMImageStrCodec * pSC)
             }
             break;
         }
+
         case Y_ONLY:
-#ifdef _PHOTON_PK_
         case YUV_444:
-        case N_CHANNEL:
-#endif
-        {
+        case NCOMPONENT:
             outputNChannel(pSC, iFirstRow, iFirstColumn, cWidth, cHeight, iShift, iBias);
             break;
-        }
+
         default:
             assert(0);
             break;
         }
     }
-#ifdef _PHOTON_PK_
     else if(bd == BD_32){
         const PixelI iBias = (((1 << 31) >> nLen) << iShift) + (iShift == 0 ? 0 : (1 << (iShift - 1)));
         U32 * pDst;
@@ -1498,29 +1441,29 @@ Int outputMBRow(CWMImageStrCodec * pSC)
         switch (cfExt)
         {
         case CF_RGB:
-        {
-            PixelI r, g, b;
-            
-            for(iRow = iFirstRow; iRow < cHeight; iRow ++){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn ++){
-                    iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
-                    
-                    g = pY[iIdx] + iBias, r = -pU[iIdx], b = pV[iIdx];
-
-                    _ICC(r, g, b);
-                    
-                    pDst = (U32 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                    pDst[0] = ((r >> iShift) << nLen);
-                    pDst[1] = ((g >> iShift) << nLen);
-                    pDst[2] = ((b >> iShift) << nLen);
-                }
-            }
-            break;
-        }
+			{
+				PixelI r, g, b;
+				
+				for(iRow = iFirstRow; iRow < cHeight; iRow ++){
+					for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn ++){
+						iIdx = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15];
+						
+						g = pY[iIdx] + iBias, r = -pU[iIdx], b = pV[iIdx];
+	
+						_ICC(r, g, b);
+						
+						pDst = (U32 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
+						pDst[0] = ((r >> iShift) << nLen);
+						pDst[1] = ((g >> iShift) << nLen);
+						pDst[2] = ((b >> iShift) << nLen);
+					}
+				}
+			}
+			break;
 
         case Y_ONLY:
         case YUV_444:
-        case N_CHANNEL:
+        case NCOMPONENT:
         {
             outputNChannel(pSC, iFirstRow, iFirstColumn, cWidth, cHeight, iShift, iBias);
             break;    
@@ -1530,7 +1473,6 @@ Int outputMBRow(CWMImageStrCodec * pSC)
             break;
         }
     }
-#endif
     else if(bd == BD_32S){
         const PixelI iBias = pSC->m_param.bScaledArith ? ((1 << (SHIFTZERO + QPFRACBITS - 1)) - 1) : 0;
         int * pDst;
@@ -1559,15 +1501,12 @@ Int outputMBRow(CWMImageStrCodec * pSC)
         }
 
         case Y_ONLY:
-#ifdef _PHOTON_PK_
         case YUV_444:
-        case N_CHANNEL:
-#endif
-        {
+        case NCOMPONENT:
             outputNChannel(pSC, iFirstRow, iFirstColumn, cWidth, cHeight, iShift, iBias);
             break;    
-        }
-        default:
+
+		default:
             assert(0);
             break;
         }
@@ -1599,14 +1538,10 @@ Int outputMBRow(CWMImageStrCodec * pSC)
             break;
         }
         case Y_ONLY:
-#ifdef _PHOTON_PK_
         case YUV_444:
-        case N_CHANNEL:
-#endif
-        {
+        case NCOMPONENT:
             outputNChannel(pSC, iFirstRow, iFirstColumn, cWidth, cHeight, iShift, iBias);
             break;    
-        }
 
         default:
             assert(0);
@@ -1630,7 +1565,10 @@ Int outputMBRow(CWMImageStrCodec * pSC)
                 
                 g >>= iShift, b >>= iShift, r >>= iShift;
                 pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                pDst[0] = (U16)_CLIP2(0, r, 31) + (((U16)_CLIP2(0, g, 31)) << 5) + (((U16)_CLIP2(0, b, 31)) << 10);
+                if (pSC->m_param.bRBSwapped)
+                    pDst[0] = (U16)_CLIP2(0, b, 31) + (((U16)_CLIP2(0, g, 31)) << 5) + (((U16)_CLIP2(0, r, 31)) << 10);
+                else
+                    pDst[0] = (U16)_CLIP2(0, r, 31) + (((U16)_CLIP2(0, g, 31)) << 5) + (((U16)_CLIP2(0, b, 31)) << 10);
             }
     }
     else if(bd == BD_565){
@@ -1650,7 +1588,10 @@ Int outputMBRow(CWMImageStrCodec * pSC)
                 
                 g >>= iShift, b >>= iShift + 1, r >>= iShift + 1;
                 pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                pDst[0] = (U16)_CLIP2(0, r, 31) + (((U16)_CLIP2(0, g, 63)) << 5) + (((U16)_CLIP2(0, b, 31)) << 11);
+                if (pSC->m_param.bRBSwapped)
+                    pDst[0] = (U16)_CLIP2(0, b, 31) + (((U16)_CLIP2(0, g, 63)) << 5) + (((U16)_CLIP2(0, r, 31)) << 11);
+                else
+                    pDst[0] = (U16)_CLIP2(0, r, 31) + (((U16)_CLIP2(0, g, 63)) << 5) + (((U16)_CLIP2(0, b, 31)) << 11);
             }
     }
     else if(bd == BD_10){
@@ -1671,9 +1612,14 @@ Int outputMBRow(CWMImageStrCodec * pSC)
                 g >>= iShift, b >>= iShift, r >>= iShift;
 
                 pDst = (U32 *)pSC->WMIBI.pv + pOffsetX[iColumn] + iY;
-                pDst[0] = (U32)_CLIP2(0, r, 1023) + 
-                    (((U32)_CLIP2(0, g, 1023)) << 10) + 
-                    (((U32)_CLIP2(0, b, 1023)) << 20);
+                if (pSC->m_param.bRBSwapped)
+                    pDst[0] = (U32)_CLIP2(0, b, 1023) + 
+                        (((U32)_CLIP2(0, g, 1023)) << 10) + 
+                        (((U32)_CLIP2(0, r, 1023)) << 20);
+                else
+                    pDst[0] = (U32)_CLIP2(0, r, 1023) + 
+                        (((U32)_CLIP2(0, g, 1023)) << 10) + 
+                        (((U32)_CLIP2(0, b, 1023)) << 20);
             }
     }
     else if(bd == BD_1){
@@ -1688,7 +1634,6 @@ Int outputMBRow(CWMImageStrCodec * pSC)
                     U8 cByte = ((U8 *)pSC->WMIBI.pv + (pOffsetX[iColumn] >> 3) + iY)[0];
                     U8 cShift = (U8)(7 - (pOffsetX[iColumn] & 7));
                     ((U8 *)pSC->WMIBI.pv + (pOffsetX[iColumn] >> 3) + iY)[0] ^= // exor is used because we can't assume the byte was originally zero
-//                    ((pY[((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15]] >= iTh) << (7 - (pOffsetX[iColumn] & 7)));
                     (((pSC->WMISCP.bBlackWhite + (pY[((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15]] >= iTh)
                     + (cByte >> cShift)) & 0x1) << cShift);
                 }
@@ -1700,7 +1645,6 @@ Int outputMBRow(CWMImageStrCodec * pSC)
                     U8 cByte = ((U8 *)pSC->WMIBI.pv + pOffsetX[iColumn] + (iY >> 3))[0];
                     U8 cShift = (U8)(7 - (iY & 7));  // should be optimized out
                     ((U8 *)pSC->WMIBI.pv + pOffsetX[iColumn] + (iY >> 3))[0] ^= // exor is used because we can't assume the byte was originally zero
-//                    ((pY[((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15]] >= iTh) << (7 - (iY & 7)));
                     (((pSC->WMISCP.bBlackWhite + (pY[((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 15]] >= iTh)
                     + (cByte >> cShift)) & 0x1) << cShift);
                 }
@@ -1711,6 +1655,51 @@ Int outputMBRow(CWMImageStrCodec * pSC)
         if(outputMBRowAlpha(pSC) != ICERR_OK)
             return ICERR_ERROR;
 
+#ifdef REENTRANT_MODE
+    pSC->WMIBI.cLinesDecoded = cHeight - iFirstRow;
+
+    if (CF_RGB == pSC->WMII.cfColorFormat && Y_ONLY == pSC->WMISCP.cfColorFormat)
+    {
+        const CWMImageInfo* pII = &pSC->WMII;
+
+#define fixupFullSize(type, nCh) \
+for(iRow = iFirstRow; iRow < cHeight; iRow ++) {\
+    size_t iY;\
+    for(iColumn = iFirstColumn, iY = pOffsetY[iRow]; iColumn < cWidth; iColumn ++){\
+        type *pT = (type*)(U8 *)pSC->WMIBI.pv + iY + pOffsetX[iColumn];\
+        pT[2] = pT[1] = pT[0]; \
+        pT += nCh; \
+    } \
+} \
+break
+
+        switch (pII->bdBitDepth)
+        {
+            case BD_8:
+                fixupFullSize(U8, (pII->cBitsPerUnit >> 3));
+                break;
+
+            case BD_16:
+            case BD_16S:
+            case BD_16F:
+                fixupFullSize(U16, (pII->cBitsPerUnit >> 3) / sizeof(U16));
+                break;
+
+            case BD_32:
+            case BD_32S:
+            case BD_32F:
+                fixupFullSize(U32, (pII->cBitsPerUnit >> 3) / sizeof(float));
+                break;
+
+            case BD_5:
+            case BD_10:
+            case BD_565:
+            default:
+                break;
+        }
+    }
+#endif
+
     return ICERR_OK;
 }
 
@@ -1718,8 +1707,8 @@ Int outputMBRow(CWMImageStrCodec * pSC)
 Void outputNChannelThumbnail(CWMImageStrCodec * pSC, const PixelI cMul, const size_t rShiftY, size_t iFirstRow, size_t iFirstColumn)
 {
     const size_t tScale = pSC->m_Dparam->cThumbnailScale;
-    const size_t cWidth = pSC->WMII.cWidth;
-    const size_t cHeight = min(16, pSC->WMII.cHeight - (pSC->cRow - 1) * 16);
+    const size_t cWidth = (pSC->m_Dparam->cROIRightX + 1);
+    const size_t cHeight = min((pSC->m_Dparam->cROIBottomY + 1) - (pSC->cRow - 1) * 16, 16);
     const size_t cChannel = pSC->WMISCP.cChannel;
     const U8 nLen = pSC->WMISCP.nLenMantissaOrShift;
     const I8 nExpBias = pSC->WMISCP.nExpBias;
@@ -1847,9 +1836,10 @@ Int decodeThumbnailAlpha(CWMImageStrCodec * pSC, const size_t nBits, const Pixel
 {
     if(pSC->m_bSecondary == FALSE && pSC->m_pNextSC != NULL){ // with alpha channel
         const size_t tScale = (size_t)(1U << nBits);
-        const size_t cHeight = min((pSC->m_Dparam->bDecodeFullFrame ? pSC->WMII.cHeight : pSC->m_Dparam->cROIBottomY + 1) - (pSC->cRow - 1) * 16, 16);
-        const size_t cWidth = (pSC->m_Dparam->bDecodeFullFrame ? pSC->WMII.cWidth : pSC->m_Dparam->cROIRightX + 1);
-        const size_t iFirstRow = ((pSC->cRow - 1) * 16 > pSC->m_Dparam->cROITopY ? 0 : (pSC->m_Dparam->cROITopY & 0xf)), iFirstColumn = pSC->m_Dparam->cROILeftX;
+        const size_t cHeight = min((pSC->m_Dparam->cROIBottomY + 1) - (pSC->cRow - 1) * 16, 16);
+        const size_t cWidth = (pSC->m_Dparam->cROIRightX + 1);
+        const size_t iFirstRow = ((((pSC->cRow - 1) * 16 > pSC->m_Dparam->cROITopY ? 0 : (pSC->m_Dparam->cROITopY & 0xf)) + tScale - 1) / tScale * tScale);
+        const size_t iFirstColumn = (pSC->m_Dparam->cROILeftX + tScale - 1) / tScale * tScale;
         const size_t iAlphaPos = pSC->WMII.cLeadingPadding + (pSC->WMII.cfColorFormat == CMYK ? 4 : 3);//only RGB and CMYK may have interleaved alpha
         const BITDEPTH_BITS bd = pSC->WMII.bdBitDepth;
         const PixelI * pSrc = pSC->m_pNextSC->a0MBbuffer[0];
@@ -1858,6 +1848,9 @@ Int decodeThumbnailAlpha(CWMImageStrCodec * pSC, const size_t nBits, const Pixel
         size_t iRow, iColumn;
         size_t * pOffsetX = pSC->m_Dparam->pOffsetX, * pOffsetY = pSC->m_Dparam->pOffsetY + (pSC->cRow - 1) * 16 / tScale, iY;
         
+        if (CF_RGB != pSC->WMII.cfColorFormat && CMYK != pSC->WMII.cfColorFormat)
+            return ICERR_ERROR;
+
         if(bd == BD_8){
             const PixelI offset = (128 << rShiftY) / cMul;
 
@@ -1922,20 +1915,19 @@ Int decodeThumbnail(CWMImageStrCodec * pSC)
     const size_t tScale = pSC->m_Dparam->cThumbnailScale;
     const size_t cHeight = min((pSC->m_Dparam->bDecodeFullFrame ? pSC->WMII.cHeight : pSC->m_Dparam->cROIBottomY + 1) - (pSC->cRow - 1) * 16, 16);
     const size_t cWidth = (pSC->m_Dparam->bDecodeFullFrame ? pSC->WMII.cWidth : pSC->m_Dparam->cROIRightX + 1);
-    const size_t iFirstRow = (((pSC->cRow - 1) * 16 > pSC->m_Dparam->cROITopY ? 0 : (pSC->m_Dparam->cROITopY & 0xf)) / tScale * tScale);
-    const size_t iFirstColumn = pSC->m_Dparam->cROILeftX / tScale * tScale;
+    const size_t iFirstRow = ((((pSC->cRow - 1) * 16 > pSC->m_Dparam->cROITopY ? 0 : (pSC->m_Dparam->cROITopY & 0xf)) + tScale - 1) / tScale * tScale);
+    const size_t iFirstColumn = (pSC->m_Dparam->cROILeftX + tScale - 1) / tScale * tScale;
     const COLORFORMAT cfInt = pSC->m_param.cfColorFormat;
     const COLORFORMAT cfExt = (pSC->m_param.cfColorFormat == Y_ONLY ? Y_ONLY : pSC->WMII.cfColorFormat);
     const BITDEPTH_BITS bd = pSC->WMII.bdBitDepth;
     const OVERLAP ol = pSC->WMISCP.olOverlap;
-    const U8 cBP = pSC->WMII.bpBayerPattern;
-    const size_t iB = (cfExt == BAYER ? (1 + (cBP & 2) - (cBP & 1)) : (pSC->WMII.bRGB ? 2 : 0));
-    const size_t iR = (cfExt == BAYER ? 3 : 2) - iB;
-    const size_t iG0 = (cBP == 0 || cBP == 3 ? 0 : 3), iG1 = 3 - iG0;
+	const size_t iB = (pSC->WMII.bRGB ? 2 : 0);
+    const size_t iR = 2 - iB;
+
     const U8 nLen = pSC->WMISCP.nLenMantissaOrShift;
     const I8 nExpBias = pSC->WMISCP.nExpBias;
     PixelI offset;
-    size_t iRow, iColumn, iIdx1, iIdx2, iIdx3, nBits = 0;
+    size_t iRow, iColumn, iIdx1, iIdx2, iIdx3 = 0, nBits = 0;
     PixelI * pSrcY = pSC->a0MBbuffer[0];
     PixelI * pSrcU = pSC->a0MBbuffer[1], * pSrcV = pSC->a0MBbuffer[2];
     size_t * pOffsetX = pSC->m_Dparam->pOffsetX, * pOffsetY = pSC->m_Dparam->pOffsetY + (pSC->cRow - 1) * 16 / tScale, iY;
@@ -1949,7 +1941,7 @@ Int decodeThumbnail(CWMImageStrCodec * pSC)
     assert(tScale == (size_t)(1U << nBits));
 
     // guard output buffer
-    if(checkImageBuffer(pSC, pSC->WMII.oOrientation < O_RCW ? pSC->WMII.cROIWidth : pSC->WMII.cROIHeight, cHeight / pSC->m_Dparam->cThumbnailScale) != ICERR_OK)
+    if(checkImageBuffer(pSC, pSC->WMII.oOrientation < O_RCW ? pSC->WMII.cROIWidth : pSC->WMII.cROIHeight, (cHeight - iFirstRow) / pSC->m_Dparam->cThumbnailScale) != ICERR_OK)
         return ICERR_ERROR;
 
     if((((pSC->cRow - 1) * 16) % tScale) != 0)
@@ -2028,10 +2020,8 @@ Int decodeThumbnail(CWMImageStrCodec * pSC)
             break;
 
         case Y_ONLY:
-#ifdef _PHOTON_PK_
         case YUV_444:
-#endif
-        case N_CHANNEL:
+        case NCOMPONENT:
             outputNChannelThumbnail(pSC, cMul, rShiftY, iFirstRow, iFirstColumn);
             break;
 
@@ -2067,29 +2057,6 @@ Int decodeThumbnail(CWMImageStrCodec * pSC)
             }
             break;
         }
-
-#ifdef _PHOTON_PK_
-        case BAYER:
-        {
-            PixelI * pSrcD = pSC->a0MBbuffer[3], pQuad[4];
-            const size_t cW2 = (pSC->WMII.oOrientation < O_RCW ? pSC->WMII.cROIWidth : pSC->WMII.cROIHeight) * 2;
-
-            for(iRow = iFirstRow; iRow < cHeight; iRow += tScale){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow >> nBits]; iColumn < cWidth; iColumn += tScale){
-                    size_t iPos = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 0xf];
-
-                    pQuad[iG0] = ((pSrcY[iPos] + offset) * cMul) >> rShiftY, pQuad[iR] = -(pSrcU[iPos] * cMul) >> rShiftUV, pQuad[iB] = (pSrcV[iPos] * cMul) >> rShiftUV, pQuad[iG1] = (pSrcD[iPos] * cMul) >> rShiftUV;
-                    
-                    _ICC_BAYER(pQuad[iG0], pQuad[iR], pQuad[iB], pQuad[iG1]);
-
-                    pDst = (U8 *)pSC->WMIBI.pv + pOffsetX[iColumn >> nBits] + iY;
-                    pDst[0] = _CLIP8(pQuad[0]), pDst[1] = _CLIP8(pQuad[1]), pDst[cW2] = _CLIP8(pQuad[2]), pDst[cW2 + 1] = _CLIP8(pQuad[3]);
-                }
-            }
-            break;
-        }
-#endif
-
         default:
             assert(0);
             break;
@@ -2119,10 +2086,8 @@ Int decodeThumbnail(CWMImageStrCodec * pSC)
             break;
 
         case Y_ONLY:
-#ifdef _PHOTON_PK_
         case YUV_444:
-#endif
-        case N_CHANNEL:
+        case NCOMPONENT:
             outputNChannelThumbnail(pSC, cMul, rShiftY, iFirstRow, iFirstColumn);
             break;
 
@@ -2148,34 +2113,6 @@ Int decodeThumbnail(CWMImageStrCodec * pSC)
             }
             break;
         }
-
-#ifdef _PHOTON_PK_
-        case BAYER:
-        {
-            PixelI * pSrcD = pSC->a0MBbuffer[3], pQuad[4];
-            const size_t cW2 = (pSC->WMII.oOrientation < O_RCW ? pSC->WMII.cROIWidth : pSC->WMII.cROIHeight) * 2;
-
-            for(iRow = iFirstRow; iRow < cHeight; iRow += tScale){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow >> nBits]; iColumn < cWidth; iColumn += tScale){
-                    size_t iPos = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 0xf];
-
-                    pQuad[iG0] = ((pSrcY[iPos] + offset) * cMul) >> rShiftY, pQuad[iR] = -(pSrcU[iPos] * cMul) >> rShiftUV, pQuad[iB] = (pSrcV[iPos] * cMul) >> rShiftUV, pQuad[iG1] = (pSrcD[iPos] * cMul) >> rShiftUV;
-                    
-                    _ICC_BAYER(pQuad[iG0], pQuad[iR], pQuad[iB], pQuad[iG1]);
-                    
-                    pDst = (U16 *)pSC->WMIBI.pv + pOffsetX[iColumn >> nBits] + iY;
-
-                    pQuad[0] <<= nLen, pQuad[1] <<= nLen, pQuad[2] <<= nLen, pQuad[3] <<= nLen;
-                    pDst[0] = _CLIPU16(pQuad[0]);
-                    pDst[1] = _CLIPU16(pQuad[1]);
-                    pDst[cW2] = _CLIPU16(pQuad[2]);
-                    pDst[cW2 + 1] = _CLIPU16(pQuad[3]);
-                }
-            }
-            break;
-        }
-#endif
-
         default:
             assert(0);
             break;
@@ -2203,61 +2140,32 @@ Int decodeThumbnail(CWMImageStrCodec * pSC)
             break;
 
         case Y_ONLY:
-#ifdef _PHOTON_PK_
         case YUV_444:
-        case N_CHANNEL:
-#endif
+        case NCOMPONENT:
             outputNChannelThumbnail(pSC, cMul, rShiftY, iFirstRow, iFirstColumn);
             break;
 
-#ifdef _PHOTON_PK_
         case CMYK:
-        {
-            PixelI * pSrcK = pSC->a0MBbuffer[3];
-
-            for(iRow = iFirstRow; iRow < cHeight; iRow += tScale){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow >> nBits]; iColumn < cWidth; iColumn += tScale){
-                    size_t iPos = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 0xf];
-                    PixelI m = -(pSrcY[iPos] * cMul) >> rShiftY, c = (pSrcU[iPos] * cMul) >> rShiftUV, y = -(pSrcV[iPos] * cMul) >> rShiftUV, k = (pSrcK[iPos] * cMul) >> rShiftUV;
-                    
-                    _ICC_CMYK(c, m, y, k);
-
-                    pDst = (I16 *)pSC->WMIBI.pv + pOffsetX[iColumn >> nBits] + iY;
-                    c <<= nLen, m <<= nLen, y <<= nLen, k <<= nLen;
-                    pDst[0] = _CLIP16(c); 
-                    pDst[1] = _CLIP16(m);
-                    pDst[2] = _CLIP16(y);
-                    pDst[3] = _CLIP16(k);
-                }
-            }
-            break;
-        }
-
-        case BAYER:
-        {
-            PixelI * pSrcD = pSC->a0MBbuffer[3], pQuad[4];
-            const size_t cW2 = (pSC->WMII.oOrientation < O_RCW ? pSC->WMII.cROIWidth : pSC->WMII.cROIHeight) * 2;
-
-            for(iRow = iFirstRow; iRow < cHeight; iRow += tScale){
-                for(iColumn = iFirstColumn, iY = pOffsetY[iRow >> nBits]; iColumn < cWidth; iColumn += tScale){
-                    size_t iPos = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 0xf];
-                    
-                    pQuad[iG0] = (pSrcY[iPos] * cMul) >> rShiftY, pQuad[iR] = -(pSrcU[iPos] * cMul) >> rShiftUV, pQuad[iB] = (pSrcV[iPos] * cMul) >> rShiftUV, pQuad[iG1] = (pSrcD[iPos] * cMul) >> rShiftUV;
-                    
-                    _ICC_BAYER(pQuad[0], pQuad[1], pQuad[2], pQuad[3]);
-                    
-                    pDst = (I16 *)pSC->WMIBI.pv + pOffsetX[iColumn >> nBits] + iY;
-
-                    pQuad[0] <<= nLen, pQuad[1] <<= nLen, pQuad[2] <<= nLen, pQuad[3] <<= nLen;
-                    pDst[0] = _CLIP16(pQuad[0]);
-                    pDst[1] = _CLIP16(pQuad[1]);
-                    pDst[cW2] = _CLIP16(pQuad[2]);
-                    pDst[cW2 + 1] = _CLIP16(pQuad[3]);
-                }
-            }
-            break;
-        }
-#endif
+			{
+				PixelI * pSrcK = pSC->a0MBbuffer[3];
+	
+				for(iRow = iFirstRow; iRow < cHeight; iRow += tScale){
+					for(iColumn = iFirstColumn, iY = pOffsetY[iRow >> nBits]; iColumn < cWidth; iColumn += tScale){
+						size_t iPos = ((iColumn >> 4) << 8) + idxCC[iRow][iColumn & 0xf];
+						PixelI m = -(pSrcY[iPos] * cMul) >> rShiftY, c = (pSrcU[iPos] * cMul) >> rShiftUV, y = -(pSrcV[iPos] * cMul) >> rShiftUV, k = (pSrcK[iPos] * cMul) >> rShiftUV;
+						
+						_ICC_CMYK(c, m, y, k);
+	
+						pDst = (I16 *)pSC->WMIBI.pv + pOffsetX[iColumn >> nBits] + iY;
+						c <<= nLen, m <<= nLen, y <<= nLen, k <<= nLen;
+						pDst[0] = _CLIP16(c); 
+						pDst[1] = _CLIP16(m);
+						pDst[2] = _CLIP16(y);
+						pDst[3] = _CLIP16(k);
+					}
+				}
+			}
+			break;
 
         default:
             assert(0);
@@ -2285,10 +2193,8 @@ Int decodeThumbnail(CWMImageStrCodec * pSC)
                 break;
 
             case Y_ONLY:
-#ifdef _PHOTON_PK_
             case YUV_444:
-            case N_CHANNEL:
-#endif
+            case NCOMPONENT:
                 outputNChannelThumbnail(pSC, cMul, rShiftY, iFirstRow, iFirstColumn);
             break;
 
@@ -2297,7 +2203,6 @@ Int decodeThumbnail(CWMImageStrCodec * pSC)
                 break;
         }        
     }
-#ifdef _PHOTON_PK_
     else if(bd == BD_32){
         U32 * pDst;
 
@@ -2323,7 +2228,7 @@ Int decodeThumbnail(CWMImageStrCodec * pSC)
 
             case Y_ONLY:
             case YUV_444:
-            case N_CHANNEL:
+            case NCOMPONENT:
                 outputNChannelThumbnail(pSC, cMul, rShiftY, iFirstRow, iFirstColumn);
             break;
 
@@ -2332,7 +2237,6 @@ Int decodeThumbnail(CWMImageStrCodec * pSC)
                 break;
         }    
     }
-#endif
     else if(bd == BD_32S){
         I32 * pDst;
 
@@ -2354,10 +2258,8 @@ Int decodeThumbnail(CWMImageStrCodec * pSC)
                 break;
 
             case Y_ONLY:
-#ifdef _PHOTON_PK_
             case YUV_444:
-            case N_CHANNEL:
-#endif
+            case NCOMPONENT:
                 outputNChannelThumbnail(pSC, cMul, rShiftY, iFirstRow, iFirstColumn);
             break;
 
@@ -2388,10 +2290,8 @@ Int decodeThumbnail(CWMImageStrCodec * pSC)
                 break;
 
             case Y_ONLY:
-#ifdef _PHOTON_PK_
             case YUV_444:
-            case N_CHANNEL:
-#endif
+            case NCOMPONENT:
                 outputNChannelThumbnail(pSC, cMul, rShiftY, iFirstRow, iFirstColumn);
                 break;
 
@@ -2481,6 +2381,49 @@ Int decodeThumbnail(CWMImageStrCodec * pSC)
         if(decodeThumbnailAlpha(pSC, nBits, cMul, rShiftY) != ICERR_OK)
             return ICERR_ERROR;
 
+#ifdef REENTRANT_MODE
+    pSC->WMIBI.cLinesDecoded = ( cHeight - iFirstRow + tScale - 1 ) / tScale;
+    if (CF_RGB == pSC->WMII.cfColorFormat && Y_ONLY == pSC->WMISCP.cfColorFormat)
+    {
+        const CWMImageInfo* pII = &pSC->WMII;
+
+#define fixupThumb(type, nCh) \
+for(iRow = iFirstRow; iRow < cHeight; iRow += tScale) {\
+    size_t iY;\
+    for(iColumn = iFirstColumn, iY = pOffsetY[iRow >> nBits]; iColumn < cWidth; iColumn += tScale){\
+        type *pT = (type*)((U8 *)pSC->WMIBI.pv + pOffsetX[iColumn >> nBits] + iY);\
+        pT[iB] = pT[1] = pT[iR]; \
+    } \
+} \
+break
+
+        switch (pII->bdBitDepth)
+        {
+            case BD_8:
+                fixupThumb(U8, (pII->cBitsPerUnit >> 3));
+                break;
+
+            case BD_16:
+            case BD_16S:
+            case BD_16F:
+                fixupThumb(U16, (pII->cBitsPerUnit >> 3) / sizeof(U16));
+                break;
+
+            case BD_32:
+            case BD_32S:
+            case BD_32F:
+                fixupThumb(U32, (pII->cBitsPerUnit >> 3) / sizeof(float));
+                break;
+
+            case BD_5:
+            case BD_10:
+            case BD_565:
+            default:
+                break;
+        }
+    }
+#endif
+
     return ICERR_OK;
 }
 
@@ -2534,7 +2477,6 @@ Int readIndexTable(CWMImageStrCodec * pSC)
         for(i = 0; i < iEntry; i ++){
             readIS_L1(pSC, pIO);
             pTable[i] = GetVLWordEsc(pIO, NULL);  // escape handling is not important since the respective band is not accessed
-            //getBit32(pIO, iBits); // offset in the bitstream (excluding header)
         }
     }
 
@@ -2552,7 +2494,7 @@ Int StrIODecInit(CWMImageStrCodec* pSC)
         return ICERR_ERROR;
     }
     
-    attachISRead(pSC->pIOHeader, pSC->WMISCP.pWStream);
+    attachISRead(pSC->pIOHeader, pSC->WMISCP.pWStream, pSC);
 
     readIndexTable(pSC);
 
@@ -2584,7 +2526,7 @@ Int StrIODecInit(CWMImageStrCodec* pSC)
                 for(i = 0; i <= pSC->WMISCP.cNumOfSliceMinus1V; i ++){
                     size_t * p = &pSC->pIndexTable[j * (pSC->WMISCP.cNumOfSliceMinus1V + 1) + i];
                     if(i + j != pSC->WMISCP.cNumOfSliceMinus1H + pSC->WMISCP.cNumOfSliceMinus1V){
-                        printf("bitstream size for tile (%d, %d): %d.\n", j, i, p[1] - p[0]);
+                        printf("bitstream size for tile (%d, %d): %d.\n", j, i, (int) (p[1] - p[0]));
                     }
                     else{
                         printf("bitstream size for tile (%d, %d): unknown.\n", j, i);
@@ -2598,11 +2540,11 @@ Int StrIODecInit(CWMImageStrCodec* pSC)
                     size_t * p = &pSC->pIndexTable[(j * (pSC->WMISCP.cNumOfSliceMinus1V + 1) + i) * 4];
                     if(i + j != pSC->WMISCP.cNumOfSliceMinus1H + pSC->WMISCP.cNumOfSliceMinus1V){
                         printf("bitstream size of (DC, LP, AC, FL) for tile (%d, %d): %d %d %d %d.\n", j, i,
-                            p[1] - p[0], p[2] - p[1], p[3] - p[2], p[4] - p[3]);
+                            (int) (p[1] - p[0]), (int) (p[2] - p[1]), (int) (p[3] - p[2]), (int) (p[4] - p[3]));
                     }
                     else{
                         printf("bitstream size of (DC, LP, AC, FL) for tile (%d, %d): %d %d %d unknown.\n", j, i,
-                            p[1] - p[0], p[2] - p[1], p[3] - p[2]);
+                            (int) (p[1] - p[0]), (int) (p[2] - p[1]), (int) (p[3] - p[2]));
                     }
                 }
             }
@@ -2622,10 +2564,9 @@ Int StrIODecTerm(CWMImageStrCodec* pSC)
     return 0;
 }
 
-#ifndef EMBEDDED_BUILD
 Int initLookupTables(CWMImageStrCodec* pSC)
 {
-    static const U8 cbChannels[BDB_MAX] = {1, 1, 2, 2, 2, 4, 4, 4, -1, -1, -1 };
+    static const U8 cbChannels[BDB_MAX] = {1, 1, 2, 2, 2, 4, 4, 4, (U8) -1, (U8) -1, (U8) -1 };
 
     CWMImageInfo * pII = &pSC->WMII;
     size_t cStrideX, cStrideY;
@@ -2664,17 +2605,12 @@ Int initLookupTables(CWMImageStrCodec* pSC)
     switch(pII->cfColorFormat){
         case YUV_420:
             cStrideX = 6;
-//            cStrideY *= 2;
             w >>= 1, h >>= 1;
             break;
 
         case YUV_422:
             cStrideX = 4;
             w >>= 1;
-            break;
-
-        case BAYER:
-            cStrideX = 2;
             break;
 
         default:
@@ -2691,10 +2627,14 @@ Int initLookupTables(CWMImageStrCodec* pSC)
     pSC->m_Dparam->pOffsetX = (size_t *)malloc(w * sizeof(size_t));
     if(pSC->m_Dparam->pOffsetX == NULL || w * sizeof(size_t) < w)
         return ICERR_ERROR;
+    /*
+    consider a row in the source image. if it becomes a reversed row in the target, or a reversed (upside-down)column 
+    in the target, we have to reverse the offsets. bReverse here tells us when this happened.
+    */
     bReverse = (pII->oOrientation == O_FLIPH || pII->oOrientation == O_FLIPVH || 
         pII->oOrientation == O_RCW_FLIPV || pII->oOrientation == O_RCW_FLIPVH);
     if(!pSC->m_Dparam->bDecodeFullFrame) // take care of region decode here!
-        iFirst = pSC->m_Dparam->cROILeftX / pSC->m_Dparam->cThumbnailScale;
+        iFirst = (pSC->m_Dparam->cROILeftX + pSC->m_Dparam->cThumbnailScale - 1) / pSC->m_Dparam->cThumbnailScale;
     for(i = 0; i + iFirst < w; i ++){
         pSC->m_Dparam->pOffsetX[i + iFirst] = pII->cLeadingPadding + (bReverse ? (pSC->m_Dparam->bDecodeFullFrame ? w : 
     (pSC->m_Dparam->cROIRightX - pSC->m_Dparam->cROILeftX + pSC->m_Dparam->cThumbnailScale) / pSC->m_Dparam->cThumbnailScale / ((pII->cfColorFormat == YUV_420 || pII->cfColorFormat == YUV_422) ? 2 : 1)) - 1 - i : i) * cStrideX;
@@ -2703,10 +2643,14 @@ Int initLookupTables(CWMImageStrCodec* pSC)
     pSC->m_Dparam->pOffsetY = (size_t *)malloc(h * sizeof(size_t));
     if(pSC->m_Dparam->pOffsetY == NULL || h * sizeof(size_t) < h)
         return ICERR_ERROR;
+    /*
+    consider a column in the source image. if it becomes an upside-down column in the target, or a reversed row 
+    in the target, we have to reverse the offsets. bReverse here tells us when this happened.
+    */
     bReverse = (pII->oOrientation == O_FLIPV || pII->oOrientation == O_FLIPVH || 
         pII->oOrientation == O_RCW || pII->oOrientation == O_RCW_FLIPV);
     if(!pSC->m_Dparam->bDecodeFullFrame) // take care of region decode here!
-        iFirst = pSC->m_Dparam->cROITopY / pSC->m_Dparam->cThumbnailScale;
+        iFirst = (pSC->m_Dparam->cROITopY + pSC->m_Dparam->cThumbnailScale - 1) / pSC->m_Dparam->cThumbnailScale;
     for(i = 0; i + iFirst < h; i ++){
         pSC->m_Dparam->pOffsetY[i + iFirst] = (bReverse ? (pSC->m_Dparam->bDecodeFullFrame ? h : 
     (pSC->m_Dparam->cROIBottomY - pSC->m_Dparam->cROITopY + pSC->m_Dparam->cThumbnailScale) / pSC->m_Dparam->cThumbnailScale / (pII->cfColorFormat == YUV_420 ? 2 : 1)) - 1 - i : i) * cStrideY;
@@ -2714,115 +2658,6 @@ Int initLookupTables(CWMImageStrCodec* pSC)
 
     return ICERR_OK;
 }
-
-#else   // EMBEDDED_BUILD
-// OffsetY is remapped back to 16-scanline buffer
-Int initLookupTables(CWMImageStrCodec* pSC)
-{
-    static const U8 cbChannels[BDB_MAX] = {1, 1, 2, 2, 2, 4, 4, 4, -1, -1, };
-
-    CWMImageInfo * pII = &pSC->WMII;
-    size_t cStrideX, cStrideY;
-    size_t w, h, i, iFirst = 0;
-    Bool bReverse;
-
-    // lookup tables for rotation and flipping
-    if(pSC->cThumbnailScale > 1) // thumbnail
-        w = pII->cThumbnailWidth, h = pII->cThumbnailHeight;
-    else
-        w = pII->cWidth, h = pII->cHeight;
-
-    switch(pII->bdBitDepth){
-        case BD_16:
-        case BD_16S:
-        case BD_5:
-        case BD_565:
-        case BD_16F:
-            cStrideY = pSC->WMIBI.cbStride / 2;
-            break;
-
-        case BD_32:
-        case BD_32S:
-        case BD_32F:
-        case BD_10:
-            cStrideY = pSC->WMIBI.cbStride / 4;
-            break;
-
-        default: //BD_8, BD_1
-            cStrideY = pSC->WMIBI.cbStride;
-            break;
-    }
-
-    switch(pII->cfColorFormat){
-        case YUV_420:
-            cStrideX = 6;
-//            cStrideY *= 2;
-            w >>= 1, h >>= 1;
-            break;
-
-        case YUV_422:
-            cStrideX = 4;
-            w >>= 1;
-            break;
-
-        case BAYER:
-            cStrideX = 2;
-            break;
-
-        default:
-            cStrideX = (pII->cBitsPerUnit >> 3) / cbChannels[pII->bdBitDepth];
-            break;
-    }
-
-    if(pII->bdBitDepth == BD_1 || pII->bdBitDepth == BD_5 || pII->bdBitDepth == BD_10)
-        cStrideX = 1;
-
-    if(pII->oOrientation > O_FLIPVH) // rotated !!
-        i =cStrideX, cStrideX = cStrideY, cStrideY = i;
-
-    pSC->pOffsetX = (size_t *)malloc(w * sizeof(size_t));
-    if(pSC->pOffsetX == NULL) {
-        goto ErrorExit;
-    }
-    bReverse = (pII->oOrientation == O_FLIPH || pII->oOrientation == O_FLIPVH || 
-        pII->oOrientation == O_RCW_FLIPV || pII->oOrientation == O_RCW_FLIPVH);
-    if(!pSC->bDecodeFullFrame) {// take care of region decode here!
-        iFirst = (pSC->cROILeftX + pSC->cThumbnailScale - 1) / pSC->cThumbnailScale;
-    }
-    for(i = 0; i + iFirst < w; i ++){
-        pSC->pOffsetX[i + iFirst] = (bReverse ? (pSC->bDecodeFullFrame ? w : 
-    (pSC->cROIRightX - pSC->cROILeftX + pSC->cThumbnailScale) / pSC->cThumbnailScale / ((pII->cfColorFormat == YUV_420 || pII->cfColorFormat == YUV_422) ? 2 : 1)) - 1 - i : i) * cStrideX;
-    }
-
-    pSC->pOffsetY = (size_t *)malloc(h * sizeof(size_t));
-    if(pSC->pOffsetY == NULL) {
-        goto ErrorExit;
-    }
-    bReverse = (pII->oOrientation == O_FLIPV || pII->oOrientation == O_FLIPVH || 
-        pII->oOrientation == O_RCW || pII->oOrientation == O_RCW_FLIPV);
-    if(!pSC->bDecodeFullFrame) {// take care of region decode here!
-        iFirst = (pSC->cROITopY  + pSC->cThumbnailScale - 1) / pSC->cThumbnailScale;
-    }
-    for(i = 0; i + iFirst < h; i ++){
-        pSC->pOffsetY[i + iFirst] = (bReverse ? (pSC->bDecodeFullFrame ? h : 
-    (pSC->cROIBottomY - pSC->cROITopY + pSC->cThumbnailScale) / pSC->cThumbnailScale / (pII->cfColorFormat == YUV_420 ? 2 : 1)) - 1 - i : i%pSC->WMIBI.cLine) * cStrideY;   //OffsetY is remapped back to 16-scanline buffer
-    }
-
-    return ICERR_OK;
-
-ErrorExit:
-    if (NULL != pSC->pOffsetX) {
-        free(pSC->pOffsetX);
-        pSC->pOffsetX = NULL;
-    }
-
-    if (NULL != pSC->pOffsetY) {
-        free(pSC->pOffsetY);
-        pSC->pOffsetY = NULL;
-    }
-    return ICERR_ERROR;
-}
-#endif  // EMBEDDED_BUILD
 
 Void setROI(CWMImageStrCodec* pSC)
 {
@@ -2877,20 +2712,14 @@ Void setROI(CWMImageStrCodec* pSC)
 
 Int StrDecInit(CWMImageStrCodec* pSC)
 {
-    CWMImageInfo * pWMII = &pSC->WMII;
+    // CWMImageInfo * pWMII = &pSC->WMII;
     COLORFORMAT cfInt = pSC->m_param.cfColorFormat;
     COLORFORMAT cfExt = pSC->WMII.cfColorFormat;
     size_t i;
 
-//#ifdef X86OPT_PREBUILT_TABLE
-//    if (ICERR_OK != conHuffLookupTables()) {
-//        return ICERR_ERROR;
-//    }
-//#endif
-
     /** color transcoding with resolution change **/
     pSC->m_bUVResolutionChange = ((cfExt != Y_ONLY) && ((cfInt == YUV_420 && cfExt != YUV_420) || 
-        (cfInt == YUV_422 && cfExt != YUV_422)));
+        (cfInt == YUV_422 && cfExt != YUV_422))) && !pSC->WMISCP.bYUVData;
     if(pSC->m_bUVResolutionChange){
         pSC->pResU = (PixelI *)malloc((cfExt == YUV_422 ? 128 : 256) * pSC->cmbWidth * sizeof(PixelI));
         pSC->pResV = (PixelI *)malloc((cfExt == YUV_422 ? 128 : 256) * pSC->cmbWidth * sizeof(PixelI));
@@ -2979,13 +2808,9 @@ Int StrDecTerm(CWMImageStrCodec* pSC)
         freeTileInfo(pSC);
 
         FreeCodingContextDec(pSC);
-        //CleanAdaptiveModels(pSC);
 
         if (j == 0) {
             StrIODecTerm(pSC);
-
-            if(pSC->WMII.cPostProcStrength > 0)
-                termPostProc(pSC->pPostProcInfo, pSC->m_param.cNumChannels);
 
             // free lookup tables for rotation and flipping
             if(pSC->m_Dparam->pOffsetX != NULL)
@@ -3009,7 +2834,7 @@ Int ReadImagePlaneHeader(CWMImageInfo* pII, CWMIStrCodecParam *pSCP,
     ERR err = WMP_errSuccess;
 
     pSC->cfColorFormat = getBit32_SB(pSB, 3); // internal color format
-    FailIf((pSC->cfColorFormat < Y_ONLY || pSC->cfColorFormat > N_CHANNEL), WMP_errUnsupportedFormat);
+    FailIf((pSC->cfColorFormat < Y_ONLY || pSC->cfColorFormat > NCOMPONENT), WMP_errUnsupportedFormat);
     pSCP->cfColorFormat = pSC->cfColorFormat;  // this should be removed later
     pSC->bScaledArith = getBit32_SB(pSB, 1); // lossless mode
 
@@ -3022,29 +2847,31 @@ Int ReadImagePlaneHeader(CWMImageInfo* pII, CWMIStrCodecParam *pSCP,
             pSC->cNumChannels = 1;
             break;
         case YUV_420:
+            pSC->cNumChannels = 3;
+            getBit32_SB(pSB, 1);
+            pII->cChromaCenteringX = (U8) getBit32_SB(pSB, 3);
+            getBit32_SB(pSB, 1);
+            pII->cChromaCenteringY = (U8) getBit32_SB(pSB, 3);
+            break; 
         case YUV_422:
+            pSC->cNumChannels = 3;
+            getBit32_SB(pSB, 1);
+            pII->cChromaCenteringX = (U8) getBit32_SB(pSB, 3);
+            getBit32_SB(pSB, 4);
+            break; 
         case YUV_444:
             pSC->cNumChannels = 3;
-            pII->cChromaCentering = (U8) getBit32_SB(pSB, 4);
-            pII->cChromaInterpretation =  (U8) getBit32_SB(pSB, 4);
+            getBit32_SB(pSB, 4);
+            getBit32_SB(pSB, 4);
             break;
-        case N_CHANNEL:
+        case NCOMPONENT:
             pSC->cNumChannels = (Int) getBit32_SB(pSB, 4) + 1;
-            pII->cChromaInterpretation =  (U8) getBit32_SB(pSB, 4);
+            getBit32_SB(pSB, 4);
             break;
         case CMYK:
-        case BAYER:
             pSC->cNumChannels = 4;
             break;
-    }
-
-    switch (pII->cfColorFormat) {
-        case CF_PALLETIZED:
-            break;
-        case BAYER:
-            pII->bpBayerPattern = (U8)getBit32_SB(pSB, 2);
-            pII->cChromaCentering =  (U8) getBit32_SB(pSB, 2);
-            pII->cChromaInterpretation =  (U8) getBit32_SB(pSB, 4);
+        default:
             break;
     }
 
@@ -3059,6 +2886,8 @@ Int ReadImagePlaneHeader(CWMImageInfo* pII, CWMIStrCodecParam *pSCP,
         case BD_32F:
             pSCP->nLenMantissaOrShift = (U8) getBit32_SB(pSB, 8);//float conversion parameters
             pSCP->nExpBias = (I8) getBit32_SB(pSB, 8);
+            break;
+        default:
             break;
     }
 
@@ -3125,16 +2954,15 @@ Int ReadWMIHeader(
     U8 szMS[8] = {0};
     U32 cbStream = 0;
 
-    U32 bits = 0;
-    Int HEADERSIZE = 0;
-    Int BAYER_PATTERN = 0;
+    // U32 bits = 0;
+    // Int HEADERSIZE = 0;
 
     assert(pSC != NULL);
     //================================
 // 0
     /** signature **/
     Call(pWS->Read(pWS, szMS, sizeof(szMS)));
-    FailIf(szMS != strstr(szMS, "WMPHOTO"), WMP_errUnsupportedFormat);
+    FailIf(szMS != (U8 *) strstr((char *) szMS, "WMPHOTO"), WMP_errUnsupportedFormat);
     //================================
     Call(attach_SB(pSB, pWS));
 
@@ -3144,6 +2972,16 @@ Int ReadWMIHeader(
     FailIf((i != CODEC_VERSION), WMP_errIncorrectCodecVersion);
     pSC->cVersion = i;
     i = getBit32_SB(pSB, 4); // subversion
+    FailIf((i != CODEC_SUBVERSION &&
+        i != CODEC_SUBVERSION_NEWSCALING_SOFT_TILES && i != CODEC_SUBVERSION_NEWSCALING_HARD_TILES),
+        WMP_errIncorrectCodecSubVersion);
+    pSC->cSubVersion = i;
+
+    pSC->bUseHardTileBoundaries = FALSE;
+    if (pSC->cSubVersion == CODEC_SUBVERSION_NEWSCALING_HARD_TILES) 
+        pSC->bUseHardTileBoundaries = TRUE;
+
+    pSCP->bUseHardTileBoundaries = pSC->bUseHardTileBoundaries;
 
 // 9 primary parameters
     bTilingPresent = (Bool) getBit32_SB(pSB, 1); // tiling present
@@ -3161,7 +2999,8 @@ pSCP->bdBitDepth = BD_LONG; // remove when optimization is done
     bInscribed = (Bool) getBit32_SB(pSB, 1); // windowing
     pSC->bTrimFlexbitsFlag = (Bool) getBit32_SB(pSB, 1); // trim flexbits flag
     bTileStretch = (Bool) getBit32_SB(pSB, 1); // tile stretching flag
-    getBit32_SB(pSB, 2);  // padding / reserved bits
+    pSC->bRBSwapped = (Bool) getBit32_SB(pSB, 1); // red-blue swap flag
+    getBit32_SB(pSB, 1);  // padding / reserved bit
     pSC->bAlphaChannel = (Bool) getBit32_SB(pSB, 1); // alpha channel present
 
 // 10 - informational
@@ -3183,18 +3022,12 @@ pSCP->bdBitDepth = BD_LONG; // remove when optimization is done
         pSC->cExtraPixelsRight = 0x10 - (pII->cWidth & 0xF);
     if (bInscribed == FALSE && (pII->cHeight & 0xf) != 0)
         pSC->cExtraPixelsBottom = 0x10 - (pII->cHeight & 0xF);
-//    FailIf((pII->cWidth & 0xF) != 0 || (pII->cHeight & 0xF) != 0, WMP_errInvalidParameter); // must be multiples of 16!
-
-    //pII->cWidth  = GetVLWord(pSB);
-    //pII->cHeight = GetVLWord(pSB);
-    //pII->cWidth = ((pII->cWidth << 4) + getBit32_SB(pSB, 4) + 1) << 4;
-    //pII->cHeight = ((pII->cHeight << 4) + getBit32_SB(pSB, 4) + 1) << 4;
 
 // tiling
     pSCP->cNumOfSliceMinus1V = pSCP->cNumOfSliceMinus1H = 0;
     if (bTilingPresent) {
-        pSCP->cNumOfSliceMinus1V = (U8) getBit32_SB(pSB, LOG_MAX_TILES); // # of vertical slices along X axis
-        pSCP->cNumOfSliceMinus1H = (U8) getBit32_SB(pSB, LOG_MAX_TILES); // # of horizontal slices along Y axis
+        pSCP->cNumOfSliceMinus1V = getBit32_SB(pSB, LOG_MAX_TILES); // # of vertical slices along X axis
+        pSCP->cNumOfSliceMinus1H = getBit32_SB(pSB, LOG_MAX_TILES); // # of horizontal slices along Y axis
     }
     FailIf((pSC->bIndexTable == FALSE) && (pSCP->bfBitstreamFormat == FREQUENCY || pSCP->cNumOfSliceMinus1V + pSCP->cNumOfSliceMinus1H > 0),
         WMP_errUnsupportedFormat);
@@ -3202,11 +3035,9 @@ pSCP->bdBitDepth = BD_LONG; // remove when optimization is done
 // tile sizes
     pSCP->uiTileX[0] = pSCP->uiTileY[0] = 0;
     for(i = 0; i < pSCP->cNumOfSliceMinus1V; i ++){ // width in MB of vertical slices, not needed for last slice!
-        //pSCP->uiTileX[i + 1] = (U32) GetVLWord(pSB) + pSCP->uiTileX[i];
         pSCP->uiTileX[i + 1] = (U32) getBit32_SB(pSB, bAbbreviatedHeader ? 8 : 16) + pSCP->uiTileX[i];
     }
     for(i = 0; i < pSCP->cNumOfSliceMinus1H; i ++){ // width in MB of vertical slices, not needed for last slice!
-        //pSCP->uiTileY[i + 1] = (U32) GetVLWord(pSB) + pSCP->uiTileY[i];
         pSCP->uiTileY[i + 1] = (U32) getBit32_SB(pSB, bAbbreviatedHeader ? 8 : 16) + pSCP->uiTileY[i];
     }
     if (bTileStretch) {  // no handling of tile stretching enabled as of now
@@ -3240,12 +3071,10 @@ pSCP->bdBitDepth = BD_LONG; // remove when optimization is done
     pSCP->cbStream = cbStream - getByteRead_SB(pSB);
 
     pSCP->uAlphaMode = (pSC->bAlphaChannel ? pSCP->uAlphaMode : 0);
-    //if(pSCP->uAlphaMode > 1 && pSCP->cfColorFormat != N_CHANNEL)
-    //    pSC->cNumChannels ++;
     pSCP->cChannel = pSC->cNumChannels;
 
     if((pII->bdBitDepth == BD_5 || pII->bdBitDepth == BD_10 || pII->bdBitDepth == BD_565) && 
-        (pSCP->cfColorFormat != YUV_444 && pSCP->cfColorFormat != YUV_422 && pSCP->cfColorFormat != YUV_420))
+        (pSCP->cfColorFormat != YUV_444 && pSCP->cfColorFormat != YUV_422 && pSCP->cfColorFormat != YUV_420 && pSCP->cfColorFormat != Y_ONLY))
         return ICERR_ERROR;
     
 Cleanup:
@@ -3287,7 +3116,6 @@ EXTERN_C Int WMPhotoValidate(
     pII->bdBitDepth = cII.bdBitDepth;
     pII->cWidth = cII.cWidth;
     pII->cHeight = cII.cHeight;
-    pII->bpBayerPattern = cII.bpBayerPattern;
 
     if(pII->cWidth == 0 || pII->cHeight == 0)
         return ICERR_ERROR;
@@ -3300,10 +3128,8 @@ EXTERN_C Int WMPhotoValidate(
         pSCP->uAlphaMode = cSCP.uAlphaMode; // something + alpha to alpha or something transcoding!
 
     // validate color transcoding
-    if(pSCP->cfColorFormat == N_CHANNEL)
-        pII->cfColorFormat = N_CHANNEL;
-    if(pSCP->cfColorFormat == BAYER && (pII->cfColorFormat != Y_ONLY && pII->cfColorFormat != CF_RGB))
-        pII->cfColorFormat = BAYER;
+    if(pSCP->cfColorFormat == NCOMPONENT)
+        pII->cfColorFormat = NCOMPONENT;
     if(pSCP->cfColorFormat == CMYK && pII->cfColorFormat != Y_ONLY && pII->cfColorFormat != CF_RGB)
         pII->cfColorFormat = CMYK;
     if(pSCP->cfColorFormat == YUV_422 && pII->cfColorFormat == YUV_420)
@@ -3311,7 +3137,7 @@ EXTERN_C Int WMPhotoValidate(
     if(pSCP->cfColorFormat == YUV_444 && (pII->cfColorFormat == YUV_422 || pII->cfColorFormat == YUV_420))
         pII->cfColorFormat = YUV_444;
     if(cII.cfColorFormat == CF_RGB && pII->cfColorFormat != Y_ONLY && 
-        pII->cfColorFormat != N_CHANNEL)  // no guarantee that number of channels will be >= 3
+        pII->cfColorFormat != NCOMPONENT)  // no guarantee that number of channels will be >= 3
         pII->cfColorFormat = cII.cfColorFormat;
     if(cII.cfColorFormat == CF_RGBE)
         pII->cfColorFormat = CF_RGBE;
@@ -3372,8 +3198,9 @@ static Void InitializeStrDec(CWMImageStrCodec *pSC,
     pSC->cmbHeight = (pSC->WMII.cHeight + 15) / 16;
 
     pSC->Load = outputMBRow; // output decoding result (ICC, etc)
-    pSC->Transform = invTransformMacroblock;
-    pSC->TransformCenter = invTransformMacroblock;
+    pSC->Transform = pParams->cSubVersion == CODEC_SUBVERSION ?
+        invTransformMacroblock : invTransformMacroblock_alteredOperators_hard;
+    pSC->TransformCenter = pSC->Transform;
 
     pSC->ProcessTopLeft = processMacroblockDec;
     pSC->ProcessTop = processMacroblockDec;
@@ -3408,6 +3235,8 @@ Int ImageStrDecInit(
     char* pb = NULL;
     size_t cb = 0, i;
     Bool bLossyTranscoding = FALSE;
+    Bool bUseHardTileBoundaries = FALSE; //default is soft tile boundaries
+    Bool bLessThan64Bit = sizeof(void *) < 8;
 
     *pctxSC = NULL;
 
@@ -3418,20 +3247,15 @@ Int ImageStrDecInit(
         return ICERR_ERROR;
 
     //================================================
-#ifndef EMBEDDED_BUILD
     SC.WMISCP.pWStream = pSCP->pWStream;
     if (ReadWMIHeader(&SC.WMII, &SC.WMISCP, &SC.m_param) != ICERR_OK) {
         return ICERR_ERROR;
     }
-#else   // EMBEDDED_BUILD
-    if (ReadWMIHeader(pII, pSCP, &SC.m_param) != ICERR_OK) {
-        return ICERR_ERROR;
-    }
-#endif  // EMBEDDED_BUILD
 
+    bUseHardTileBoundaries = SC.WMISCP.bUseHardTileBoundaries;
     if(SC.WMII.cfColorFormat == CMYK && pII->cfColorFormat == CF_RGB)
         bLossyTranscoding = TRUE;
-    if(pSCP->cfColorFormat != CMYK && (pII->cfColorFormat == CMYK || pII->cfColorFormat == BAYER))
+    if(pSCP->cfColorFormat != CMYK && (pII->cfColorFormat == CMYK))
         return ICERR_ERROR;
 
     //================================================
@@ -3457,7 +3281,7 @@ Int ImageStrDecInit(
     cb += (PACKETLENGTH * 4 - 1) + (PACKETLENGTH * 2 ) + sizeof(*pSC->pIOHeader);
 
     i = (cbMacBlockStride + cbMacBlockChroma * (SC.m_param.cNumChannels - 1)) * 2; // i <= 2^15
-    if (sizeof(void *) < 8 && ((i * (cMacBlock >> 16)) & 0xffffc000)) {
+    if (bLessThan64Bit && ((i * (cMacBlock >> 16)) & 0xffffc000)) {
         /** potential overflow - 32 bit pointers insufficient to address cache **/
         return ICERR_ERROR;
     }
@@ -3473,9 +3297,18 @@ Int ImageStrDecInit(
     if(pSC == NULL)
         return ICERR_ERROR;
 
+    // Set up perf timers
+    PERFTIMER_ONLY(pSC->m_fMeasurePerf = pSCP->fMeasurePerf);
+    PERFTIMER_NEW(pSC->m_fMeasurePerf, &pSC->m_ptEndToEndPerf);
+    PERFTIMER_NEW(pSC->m_fMeasurePerf, &pSC->m_ptEncDecPerf);
+    PERFTIMER_START(pSC->m_fMeasurePerf, pSC->m_ptEndToEndPerf);
+    PERFTIMER_START(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
+    PERFTIMER_COPYSTARTTIME(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf, pSC->m_ptEndToEndPerf);
+
     pSC->m_Dparam = (CWMDecoderParameters*)pb; pb += sizeof(CWMDecoderParameters);
     pSC->cbChannel = cbChannel;
     //pSC->cNumChannels = SC.WMISCP.cChannel;
+    pSC->bUseHardTileBoundaries = bUseHardTileBoundaries;
 
     //================================================
     InitializeStrDec(pSC, &SC.m_param, &SC);
@@ -3491,7 +3324,7 @@ Int ImageStrDecInit(
 
     //================================================
     // lay 2 aligned IO buffers just below pIO struct
-    pb = (U8*)ALIGNUP(pb, PACKETLENGTH * 4) + PACKETLENGTH * 2;
+    pb = (char*)ALIGNUP(pb, PACKETLENGTH * 4) + PACKETLENGTH * 2;
     pSC->pIOHeader = (BitIOInfo*)pb; pb += sizeof(*pSC->pIOHeader);
 
     // if interleaved alpha is needed
@@ -3560,26 +3393,34 @@ Int ImageStrDecInit(
     *pSCP = pSC->WMISCP;
     *pctxSC = (CTXSTRCODEC)pSC;
 
+    // original image size
+    pII->cROILeftX += SC.m_param.cExtraPixelsLeft;
+    pII->cROITopY += SC.m_param.cExtraPixelsTop;
+
     if(pSC->WMII.cPostProcStrength){
         initPostProc(pSC->pPostProcInfo, pSC->cmbWidth, pSC->m_param.cNumChannels);
+        if (pSC->m_param.bAlphaChannel) 
+            initPostProc(pNextSC->pPostProcInfo, pNextSC->cmbWidth, pNextSC->m_param.cNumChannels);
     }
 
-//#if defined(WMP_OPT_SSE2) || defined(WMP_OPT_CC_DEC) || defined(WMP_OPT_TRFM_DEC)
-//    StrDecOpt(pSC); // too early to make this determination
-//#endif // OPT defined
+    PERFTIMER_STOP(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
 
 Cleanup:
     return WMP_errSuccess == err ? ICERR_OK : ICERR_ERROR;
 }
 
-#ifndef EMBEDDED_BUILD
 Int ImageStrDecDecode(
     CTXSTRCODEC ctxSC,
-    const CWMImageBufferInfo* pBI)
+    const CWMImageBufferInfo* pBI
+#ifdef REENTRANT_MODE
+    , size_t *pcDecodedLines
+#endif
+    )
 {
     CWMImageStrCodec* pSC = (CWMImageStrCodec*)ctxSC;
     CWMImageStrCodec* pNextSC = pSC->m_pNextSC;
     size_t cMBRow, k;
+
     ImageDataProc ProcessLeft, ProcessCenter, ProcessRight;
     ImageDataProc Transform = NULL;
     const size_t iChromaElements = (pSC->m_param.cfColorFormat == YUV_420) ? 8 * 8 
@@ -3591,45 +3432,108 @@ Int ImageStrDecDecode(
     }
 
     //================================
+    PERFTIMER_START(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
+
     pSC->WMIBI = *pBI;
+
+#ifdef REENTRANT_MODE
+    if (0 == pSC->WMIBI.uiFirstMBRow)
+    {
+        setROI(pSC);
+        if (pNextSC) {
+            pNextSC->WMIBI = pSC->WMIBI;
+            setROI(pNextSC);
+        }
+    }
+#else
     setROI(pSC);
     if (pNextSC) {
         pNextSC->WMIBI = pSC->WMIBI;
         setROI(pNextSC);
     }
+#endif // REENTRANT_MODE
 
 // optimization flags can be defined only after ROI is set!
 #if defined(WMP_OPT_SSE2) || defined(WMP_OPT_CC_DEC) || defined(WMP_OPT_TRFM_DEC)
     StrDecOpt(pSC);
 #endif // OPT defined
 
+
+
     cMBRow = (pSC->m_Dparam->bDecodeFullFrame ? pSC->cmbHeight : ((pSC->m_Dparam->cROIBottomY + 16) >> 4));
 
+#ifdef REENTRANT_MODE
+    if (0 == pSC->WMIBI.uiFirstMBRow)
+    {
+        if(initLookupTables(pSC) != ICERR_OK)
+            return ICERR_ERROR;
+        if (pNextSC && initLookupTables(pNextSC) != ICERR_OK)
+            return ICERR_ERROR;
+    }
+#else
     if(initLookupTables(pSC) != ICERR_OK)
         return ICERR_ERROR;
     if (pNextSC && initLookupTables(pNextSC) != ICERR_OK)
         return ICERR_ERROR;
+#endif // REENTRANT_MODE
 
+#ifndef REENTRANT_MODE
     if(pSC->WMII.bdBitDepth == BD_1){
         size_t i;
+
 
         for(i = 0; i < pSC->WMIBI.cLine; i ++)
             memset(pSC->WMIBI.pv, 0, pSC->WMIBI.cbStride);
     }
+#endif
 
     //================================
     // top row
+#ifdef REENTRANT_MODE
+#else
     pSC->cRow = 0;
-
     ProcessLeft = pSC->ProcessTopLeft;
     ProcessCenter = pSC->ProcessTop;
     ProcessRight = pSC->ProcessTopRight;
-    Transform = invTransformMacroblock;
+    Transform = pSC->m_param.cSubVersion == CODEC_SUBVERSION ?
+        invTransformMacroblock : invTransformMacroblock_alteredOperators_hard;
+#endif // REENTRANT_MODE
 
+#ifdef REENTRANT_MODE
+    for (pSC->cRow = pSC->WMIBI.uiFirstMBRow; pSC->cRow <= pSC->WMIBI.uiLastMBRow; pSC->cRow++)
+    {
+        // const COLORFORMAT cfExt = (pSC->m_param.cfColorFormat == Y_ONLY ? Y_ONLY : pSC->WMII.cfColorFormat);
+
+        if (0 == pSC->cRow)
+        {
+            ProcessLeft = pSC->ProcessTopLeft;
+            ProcessCenter = pSC->ProcessTop;
+            ProcessRight = pSC->ProcessTopRight;
+            Transform = pSC->m_param.cSubVersion == CODEC_SUBVERSION ?
+                invTransformMacroblock : invTransformMacroblock_alteredOperators_hard;
+        }
+        else if (cMBRow == pSC->cRow)
+        {
+            //================================
+            // bottom row
+            ProcessLeft = pSC->ProcessBottomLeft;
+            ProcessCenter = pSC->ProcessBottom;
+            ProcessRight = pSC->ProcessBottomRight;
+            Transform = pSC->m_param.cSubVersion == CODEC_SUBVERSION ?
+                invTransformMacroblock : invTransformMacroblock_alteredOperators_hard;
+        }
+        else { // middle rows
+            ProcessLeft = pSC->ProcessLeft;
+            ProcessCenter = pSC->ProcessCenter;
+            ProcessRight = pSC->ProcessRight;
+            Transform = pSC->TransformCenter;
+        }
+#else
     //================================
     // central rows
     for(pSC->cRow = 0; pSC->cRow <= cMBRow; pSC->cRow++)
     {
+#endif // REENTRANT_MODE
         pSC->cColumn = 0;
         initMRPtr(pSC);
         /** zero out the transform coefficients (pull this out to once per MB row) **/
@@ -3652,7 +3556,8 @@ Int ImageStrDecDecode(
                 return ICERR_ERROR;
             advanceMRPtr(pSC);
         }
-        pSC->Transform = invTransformMacroblock;
+        pSC->Transform = pSC->m_param.cSubVersion == CODEC_SUBVERSION ?
+            invTransformMacroblock : invTransformMacroblock_alteredOperators_hard;
 
         if(ProcessRight(pSC) != ICERR_OK)
             return ICERR_ERROR;
@@ -3668,14 +3573,17 @@ Int ImageStrDecDecode(
 
         advanceOneMBRow(pSC);
         swapMRPtr(pSC);
-
+#ifdef REENTRANT_MODE
+        *pcDecodedLines = pSC->WMIBI.cLinesDecoded;
+#else
         if (pSC->cRow == cMBRow - 1) {
         //================================
         // bottom row
             ProcessLeft = pSC->ProcessBottomLeft;
             ProcessCenter = pSC->ProcessBottom;
             ProcessRight = pSC->ProcessBottomRight;
-            Transform = invTransformMacroblock;
+            Transform = pSC->m_param.cSubVersion == CODEC_SUBVERSION ?
+                invTransformMacroblock : invTransformMacroblock_alteredOperators_hard;
         }
         else {
             ProcessLeft = pSC->ProcessLeft;
@@ -3683,70 +3591,16 @@ Int ImageStrDecDecode(
             ProcessRight = pSC->ProcessRight;
             Transform = pSC->TransformCenter;
         }
+#endif // REENTRANT_MODE
     }
 
+#ifndef REENTRANT_MODE
     fixup_Y_ONLY_to_Others(pSC, pBI);
+#endif // REENTRANT_MODE
 
-#ifdef VERIFY_16BIT
-    VERIFY_REPORT();
-#endif // VERIFY_16BIT
+    PERFTIMER_STOP(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
     return ICERR_OK;
 }
-#else   // EMBEDDED_BUILD
-Int ImageStrDecDecode(
-    CTXSTRCODEC ctxSC,
-    const CWMImageBufferInfo* pBI)
-{
-    CWMImageStrCodec* pSC = (CWMImageStrCodec*)ctxSC;
-//    size_t cMBRow = (pSC->bDecodeFullFrame ? pSC->cmbHeight : ((pSC->cROIBottomY + 16) >> 4));
-
-    if (sizeof(*pSC) != pSC->cbStruct)
-    {
-        return ICERR_ERROR;
-    }
-
-    //================================
-    pSC->WMIBI = *pBI;
-
-    if (0 == pSC->cRow) { // only init lookup table at the begining once
-        if(initLookupTables(pSC) != ICERR_OK) {
-            return ICERR_ERROR;
-        }
-    }
-
-    if(pSC->WMII.bdBitDepth == BD_1){
-        size_t i;
-
-        for(i = 0; i < pSC->WMIBI.cLine; i ++)
-            memset(pSC->WMIBI.pv, 0, pSC->WMIBI.cbStride);
-    }
-
-    pSC->cColumn = 0;
-    initMRPtr(pSC);
-    processMacroblockDec(pSC);        // left most MB
-    advanceMRPtr(pSC);
-    for (pSC->cColumn = 1; pSC->cColumn < pSC->cmbWidth; ++pSC->cColumn)
-    {   
-        processMacroblockDec(pSC);    // center MB
-        advanceMRPtr(pSC);
-    }
-    processMacroblockDec(pSC);        // right most MB
-
-    if (0 != pSC->cRow) { // only do output and decode thumbnail if not top MB row
-        if(pSC->cThumbnailScale < 2 && (pSC->bDecodeFullFrame || (pSC->cRow * 16 > pSC->cROITopY)))
-            pSC->Load(pSC); // bypass CC for thumbnail decode
-
-        if(pSC->cThumbnailScale >= 2) // decode thumbnail
-            decodeThumbnail(pSC);
-    }    
-
-    advanceOneMBRow(pSC);
-    swapMRPtr(pSC);
-    ++pSC->cRow;
-
-    return ICERR_OK;
-}
-#endif  // EMBEDDED_BUILD
 
 Int ImageStrDecTerm(
     CTXSTRCODEC ctxSC)
@@ -3761,7 +3615,14 @@ Int ImageStrDecTerm(
         return ICERR_ERROR;
     }
 
+    PERFTIMER_START(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
+
     StrDecTerm(pSC);
+    PERFTIMER_STOP(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
+    PERFTIMER_REPORT(pSC->m_fMeasurePerf, pSC);
+    PERFTIMER_DELETE(pSC->m_fMeasurePerf, pSC->m_ptEncDecPerf);
+    PERFTIMER_DELETE(pSC->m_fMeasurePerf, pSC->m_ptEndToEndPerf);
+
     free(pSC);
 
     return ICERR_OK;

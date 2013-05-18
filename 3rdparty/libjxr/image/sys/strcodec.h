@@ -1,7 +1,28 @@
 //*@@@+++@@@@******************************************************************
 //
-// Microsoft Windows Media
-// Copyright (C) Microsoft Corporation. All rights reserved.
+// Copyright © Microsoft Corp.
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 
+// • Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// • Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //
 //*@@@---@@@@******************************************************************
 #pragma once
@@ -10,8 +31,12 @@
 
 #include "windowsmediaphoto.h"
 #include "common.h"
-#include "xplatform_image.h"
+// #include "xplatform_image.h"
 
+// added for Xcode PK universal binary
+#ifdef __ppc__
+#define _BIG__ENDIAN_
+#endif
 
 //================================================================
 #ifdef ENABLE_OPTIMIZATIONS
@@ -25,7 +50,8 @@
 #define WMP_OPT_CC_DEC
 #define WMP_OPT_TRFM_DEC
 
-#define X86OPT_HUFFMAN
+#define X86OPT_INLINE
+
 #endif
 #endif // ENABLE_OPTIMIZATIONS
 
@@ -33,8 +59,12 @@
 //#ifdef WIN32
 #if defined(WIN32) && !defined(UNDER_CE)   // WIN32 seems to be defined always in VS2005 for ARM platform
 #define PLATFORM_X86
-#include "x86.h"
+#include "..\x86\x86.h"
 #endif
+
+#ifndef UNREFERENCED_PARAMETER
+#define UNREFERENCED_PARAMETER(P) { (P) = (P); }
+#endif UNREFERENCED_PARAMETER
 
 #ifdef UNDER_CE
 #define PLATFORM_WCE
@@ -57,6 +87,11 @@ typedef unsigned __int64 U64;
 //================================================================
 #define MARKERCOUNT (PACKETLENGTH * 2)
 
+// The following macros depend on UINTPTR_T and INTPTR_T being properly defined
+// so that they are equal to pointer width. Confirm and fail if our assumptions are wrong.
+CT_ASSERT(sizeof(UINTPTR_T) == sizeof(void*), strcodec1);
+CT_ASSERT(sizeof(INTPTR_T) == sizeof(void*), strcodec2);
+
 // wrap around pointer, s=pow(2,n), p wraps aligned to s
 #define WRAPPTR(p, s) ((void*)((UINTPTR_T)(p) & ~(UINTPTR_T)(s)))
 
@@ -64,14 +99,14 @@ typedef unsigned __int64 U64;
 #define MASKPTR(p, m) ((void*)((UINTPTR_T)(p) & (INTPTR_T)(m)))
 
 // test for more than 1 packet data
-#define PACKET1(ps, pc, s) (((INTPTR_T)(ps) ^ (INTPTR_T)(pc)) & (s))
+#define PACKET1(ps, pc, s) (((INTPTR_T)(ps) ^ (INTPTR_T)(pc)) & ((UINTPTR_T)(s)))
 
 // alternate pointer p between 2 values aligned to s, s=pow(2,n)
 //#define ALTPTR(p, s) ((void*)((uintptr_t)(p) ^ (s)))
 
 // align point, s=pow(2,n), p aligns to s
-#define ALIGNUP(p, s) ((void*)(((UINTPTR_T)(p) + ((s) - 1)) & ~((s) - 1)))
-#define ALIGNDOWN(p, s) ((void*)((UINTPTR_T)(p) & ~((s) - 1)))
+#define ALIGNUP(p, s) ((void*)(((UINTPTR_T)(p) + ((UINTPTR_T)(s) - 1)) & ~((UINTPTR_T)(s) - 1)))
+#define ALIGNDOWN(p, s) ((void*)((UINTPTR_T)(p) & ~((UINTPTR_T)(s) - 1)))
 
 //================================================================
 // timer support
@@ -120,8 +155,6 @@ typedef struct tagIOContext
     U8 P3[PACKETLENGTH];    // index packet buffer
 } IOContext;
 
-#ifndef ADI_BITIO_OPT
-
 typedef struct tagMemReadState
 {    
     U8* pbBuf;
@@ -153,7 +186,6 @@ typedef struct tagBitIOInfo
                             // for read, it moves along the stream
                             // for write, it stays at the attach point
 } BitIOInfo;
-#endif  // ADI_BITIO_OPT
 
 //================================================================
 typedef struct tagCWMIQuantizer {
@@ -201,12 +233,6 @@ typedef struct CCodingContext {
     CAdaptiveHuffman *m_pAHexpt[NUMVLCTABLES];
 
     /** 4x4 zigzag patterns */
-    //Int     m_rgiZigzagInvLowpass[16];
-    //Int     m_rgiZigzagInvH[16];
-    //Int     m_rgiZigzagInvV[16];
-    //Int     m_rgiTotalsLowpass[16];
-    //Int     m_rgiTotalsH[16];
-    //Int     m_rgiTotalsV[16];
     CAdaptiveScan m_aScanLowpass[16];
     CAdaptiveScan m_aScanHoriz[16];
     CAdaptiveScan m_aScanVert[16];
@@ -242,11 +268,14 @@ typedef struct tagCWMIPredInfo {
 // the following is used on decode side while reading image info
 typedef struct CWMImageStrCodecParameters {
     size_t cVersion;
+    size_t cSubVersion;
     COLORFORMAT cfColorFormat; // color format
+    Bool bRBSwapped; // blue and red shall be swapped in BGR555,565,101010
     Bool bAlphaChannel; // alpha channel present
     Bool bScaledArith; // lossless mode
     Bool bIndexTable; // index table present
     Bool bTrimFlexbitsFlag; // trimmed flexbits indicated in packet header
+    Bool bUseHardTileBoundaries; //default is soft tile boundaries
     size_t cNumChannels;
     size_t cExtraPixelsTop;
     size_t cExtraPixelsLeft;
@@ -312,6 +341,11 @@ typedef struct CWMImageStrCodec {
 
     BitIOInfo * pIOHeader;
 
+    Bool bUseHardTileBoundaries; //default is soft tile boundaries
+
+    PixelI * pInterU;
+    PixelI * pInterV;
+
     //============== tile related info begins here ===========
     // index table
     size_t *pIndexTable;
@@ -351,6 +385,14 @@ typedef struct CWMImageStrCodec {
 
     size_t cbChannel;   // byte/channel
 
+    size_t mbX, mbY;
+    size_t tileX, tileY;
+    Bool bVertTileBoundary, bHoriTileBoundary;
+    Bool bOneMBLeftVertTB, bOneMBRightVertTB; //Macroblock to the left and to the right of tile boundaries
+
+    PixelI iPredBefore[2][2];
+    PixelI iPredAfter[2][2];
+
     //================================
     // input data into
     // macro block 3 of 2x2 working widow
@@ -388,10 +430,10 @@ typedef struct CWMImageStrCodec {
     //================================
     // 2 rows of MB buffer
     //================================
-    PixelI *a0MBbuffer[MAX_CHANNELS];
-    PixelI *p0MBbuffer[MAX_CHANNELS];
-    PixelI *a1MBbuffer[MAX_CHANNELS];
-    PixelI *p1MBbuffer[MAX_CHANNELS];
+    PixelI *a0MBbuffer[MAX_CHANNELS];  // pointer to start of previous MB row
+    PixelI *a1MBbuffer[MAX_CHANNELS];  // pointer to start of current MB row
+    PixelI *p0MBbuffer[MAX_CHANNELS];  // working pointer to start of previous row MB
+    PixelI *p1MBbuffer[MAX_CHANNELS];  // working pointer to start of current row MB
 
     //================================
     // downsampling buffer for UV
@@ -400,7 +442,7 @@ typedef struct CWMImageStrCodec {
     PixelI * pResV;
 
     //================================
-    // circulant buffer for 2 MB rows: current row and previous row
+    // circular buffer for 2 MB rows: current row and previous row
     //================================
     CWMIPredInfo *PredInfo[MAX_CHANNELS];
     CWMIPredInfo *PredInfoPrevRow[MAX_CHANNELS];
@@ -408,9 +450,24 @@ typedef struct CWMImageStrCodec {
 
     struct WMPStream ** ppWStream;
 
+#ifdef WIN32
+    TCHAR **ppTempFile;
+#else
+    char **ppTempFile;
+#endif
+
     // interleaved alpha support - linked structure for Alpha channel
     struct CWMImageStrCodec *m_pNextSC;
     Bool   m_bSecondary;
+
+    //================================
+    // Perf Timers
+    //================================
+#ifndef DISABLE_PERF_MEASUREMENT
+    Bool            m_fMeasurePerf;
+    struct PERFTIMERSTATE *m_ptEndToEndPerf;   // Measures from Init to Term, including I/O
+    struct PERFTIMERSTATE *m_ptEncDecPerf;     // Measures time spent in ImageStrEncEncode/ImageStrDecDecode, excluding I/O
+#endif // DISABLE_PERF_MEASUREMENT
 
     // postproc information for 2 MB rows: 0(previous row) 1(current row)
     struct tagPostProcInfo * pPostProcInfo[MAX_CHANNELS][2];
@@ -444,7 +501,6 @@ Int allocatePredInfo(CWMImageStrCodec*);
 Void freePredInfo(CWMImageStrCodec*);
 Void advanceOneMBRow(CWMImageStrCodec*);
 
-#ifndef ADI_BITIO_OPT
 //================================================================
 // bit I/O
 //================================================================
@@ -475,14 +531,11 @@ U32 getPosRead(BitIOInfo* pIO);
 #ifndef ARMOPT_BITIO
 U32 getBit16_S(CWMImageStrCodec* pSC, BitIOInfo* pIO, U32 cBits);
 #endif  // ARMOPT_BITIO
-U32 putBit16_S(CWMImageStrCodec* pSC, BitIOInfo* pIO, U32 uiBits, U32 cBits);
-#endif  
-
 
 //================================================================
 // packet I/O
 //================================================================
-ERR attachISRead(BitIOInfo* pIO, struct WMPStream* pWS);
+ERR attachISRead(BitIOInfo* pIO, struct WMPStream* pWS, CWMImageStrCodec* pSC);
 ERR readIS(CWMImageStrCodec* pSC, BitIOInfo* pIO);
 ERR detachISRead(CWMImageStrCodec* pSC, BitIOInfo* pIO);
 
@@ -579,7 +632,7 @@ Int checkImageBuffer(CWMImageStrCodec *, size_t, size_t);
 //U32 log2(U32);
 
 //DQUANT stuff
-Void remapQP(CWMIQuantizer *, I32, Bool);
+EXTERN_C Void remapQP(CWMIQuantizer *, I32, Bool);
 Int allocateTileInfo(CWMImageStrCodec *);
 Void freeTileInfo(CWMImageStrCodec *);
 Int allocateQuantizer(CWMIQuantizer * pQuantizer[MAX_CHANNELS], size_t, size_t);
@@ -621,3 +674,5 @@ void flushToByte(BitIOInfo* pIO);
     pIO->uiAccumulator = LOAD16(pIO->pbCurrent) << pIO->cBitsUsed;\
     return 0;
 //    pIO->uiAccumulator = LOAD16(pIO->pbCurrent) & ((U32)(-1) >> pIO->cBitsUsed);\
+
+void OutputPerfTimerReport(CWMImageStrCodec *pState);
