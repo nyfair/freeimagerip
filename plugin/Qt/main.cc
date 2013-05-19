@@ -1,24 +1,23 @@
+#include <QImageIOHandler>
+
 #include "FreeImage.h"
 #include "fihandler.h"
 
 QT_BEGIN_NAMESPACE
 
 class QfiPlugin : public QImageIOPlugin {
+	Q_OBJECT
+	Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QImageIOHandlerFactoryInterface" FILE "fi.json")
 public:
 	QStringList keys() const;
-	Capabilities capabilities(QIODevice *device, const QByteArray &format) const;
-	QImageIOHandler *create(QIODevice *device,
-							const QByteArray &format = QByteArray()) const;
+	QImageIOPlugin::Capabilities capabilities(QIODevice *device, const QByteArray &format) const;
+	QImageIOHandler *create(QIODevice *device, const QByteArray &format = QByteArray()) const;
 };
-
-QStringList QfiPlugin::keys() const {
-	return QStringList() << QLatin1String("FreeImage");
-}
 
 QImageIOPlugin::Capabilities QfiPlugin::capabilities(
 				QIODevice *device, const QByteArray &format) const {
 	Capabilities cap;
-	FREE_IMAGE_FORMAT fmt = fiHandler::GetFIF(device, format);
+	FREE_IMAGE_FORMAT fmt = FIHandler::GetFIF(device, format);
 	if (FreeImage_FIFSupportsReading(fmt))
 		cap |= CanRead;
 	if (FreeImage_FIFSupportsWriting(fmt))
@@ -28,13 +27,15 @@ QImageIOPlugin::Capabilities QfiPlugin::capabilities(
 
 QImageIOHandler *QfiPlugin::create(
 				QIODevice *device, const QByteArray &format) const {
-	fiHandler *hand = new fiHandler();
-	hand->setDevice(device);
+	FIHandler *hand = new FIHandler(device);
 	hand->setFormat(format);
 	return hand;
 }
 
-Q_EXPORT_STATIC_PLUGIN(QfiPlugin)
-Q_EXPORT_PLUGIN2(qfi, QfiPlugin)
+QStringList QfiPlugin::keys() const {
+	return QStringList() << QLatin1String("FreeImage");
+}
 
 QT_END_NAMESPACE
+
+#include "main.moc"

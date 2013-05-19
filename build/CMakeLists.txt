@@ -1,7 +1,6 @@
 PROJECT(FreeImage)
 
-# ASM file handling was fixed in cmake2.8.4
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.4)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8.10)
 
 IF(MSVC)
 # More MSVC specific compilation flags

@@ -1,26 +1,22 @@
 #ifndef FIHANDLER_H
 #define FIHANDLER_H
 
-#include <QtGui/qimageiohandler.h>
+#include <qimageiohandler.h>
 
 QT_BEGIN_NAMESPACE
 
-class QImage;
-class QByteArray;
-class QIODevice;
-class QVariant;
-class fiHandlerPrivate;
-
-class fiHandler : public QImageIOHandler {
+class FIHandler : public QImageIOHandler {
 public:
-	fiHandler();
-	~fiHandler();
-	virtual bool canRead() const;
-	virtual QByteArray name() const;
-	virtual bool read(QImage *image);
-	//virtual bool write(const QImage &image);
-	virtual QVariant option(ImageOption option) const;
-	virtual bool supportsOption(ImageOption option) const;
+	FIHandler(QIODevice *device);
+	virtual ~FIHandler();
+
+    bool canRead() const;
+    bool read(QImage *image);
+
+    QVariant option(ImageOption option) const;
+    bool supportsOption(ImageOption option) const;
+
+    static bool canRead(QIODevice *device);
 
 	static FreeImageIO& fiio();
 	static FREE_IMAGE_FORMAT GetFIF(QIODevice *device, const QByteArray &fmt);

@@ -40,22 +40,18 @@ TellProc(fi_handle handle) {
 	return static_cast<QIODevice*>(handle)->pos();
 }
 
-fiHandler::fiHandler() {}
+FIHandler::FIHandler(QIODevice *device) {}
 
-fiHandler::~fiHandler() {
+FIHandler::~FIHandler() {
 	FreeImage_Unload(dib);
 }
 
-bool fiHandler::canRead() const {
+bool FIHandler::canRead() const {
 	FREE_IMAGE_FORMAT fmt = GetFIF(device(), format());
 	return FreeImage_FIFSupportsReading(fmt);
 }
 
-QByteArray fiHandler::name() const {
-	return "FreeImage";
-}
-
-bool fiHandler::read(QImage *image) {
+bool FIHandler::read(QImage *image) {
 	fmt = GetFIF(device(), format());
 	dib = FreeImage_LoadFromHandle((FREE_IMAGE_FORMAT)fmt, &fiio(), (fi_handle)device());
 	if(!dib) {
@@ -106,7 +102,7 @@ bool fiHandler::read(QImage *image) {
 	return true;
 }
 
-QVariant fiHandler::option(ImageOption option) const {
+QVariant FIHandler::option(ImageOption option) const {
 	switch(option) {
 	case ImageFormat:
 		return qtfmt;
@@ -120,7 +116,7 @@ QVariant fiHandler::option(ImageOption option) const {
 	return QVariant();
 }
 
-bool fiHandler::supportsOption(ImageOption option) const {
+bool FIHandler::supportsOption(ImageOption option) const {
 	switch(option) {
 	case Size:
 	case ImageFormat:
@@ -131,12 +127,12 @@ bool fiHandler::supportsOption(ImageOption option) const {
 	return false;
 }
 
-FreeImageIO& fiHandler::fiio() {
+FreeImageIO& FIHandler::fiio() {
 	static FreeImageIO io = {ReadProc, WriteProc, SeekProc, TellProc};
 	return io;
 }
 
-FREE_IMAGE_FORMAT fiHandler::GetFIF(
+FREE_IMAGE_FORMAT FIHandler::GetFIF(
 		QIODevice *device, const QByteArray &format) {
 	FREE_IMAGE_FORMAT fmt = 
 		FreeImage_GetFileTypeFromHandle(&fiio(), (fi_handle)device);
