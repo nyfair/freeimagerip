@@ -6,13 +6,11 @@ SET(SOURCE_FILES
 	${SRC}/image/decode/postprocess.c
 	${SRC}/image/decode/segdec.c
 	${SRC}/image/decode/strdec.c
-	${SRC}/image/decode/strdec_x86.c
 	${SRC}/image/decode/strInvTransform.c
 	${SRC}/image/decode/strPredQuantDec.c
 	${SRC}/image/encode/encode.c
 	${SRC}/image/encode/segenc.c
 	${SRC}/image/encode/strenc.c
-	${SRC}/image/encode/strenc_x86.c
 	${SRC}/image/encode/strFwdTransform.c
 	${SRC}/image/encode/strPredQuantEnc.c
 	${SRC}/image/sys/adapthuff.c
@@ -36,6 +34,14 @@ INCLUDE_DIRECTORIES(
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
 
-ADD_DEFINITIONS(-DENABLE_OPTIMIZATIONS -DDISABLE_PERF_MEASUREMENT)
+IF(MSVC)
+	SET(SOURCE_FILES ${SOURCE_FILES} ${SRC}/image/decode/strdec_x86.c ${SRC}/image/encode/strenc_x86.c)
+	ADD_DEFINITIONS(-DENABLE_OPTIMIZATIONS)
+ELSE()
+	SET(SOURCE_FILES ${SOURCE_FILES} ${SRC}/strlcpy.c)
+	ADD_DEFINITIONS(-D__ANSI__)
+ENDIF()
+
+ADD_DEFINITIONS(-DDISABLE_PERF_MEASUREMENT)
 
 ADD_LIBRARY(libjxr STATIC ${SOURCE_FILES})

@@ -250,7 +250,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 	if((dib != NULL) && (handle != NULL)) {
 		if(flags == 0) flags = 80;
 		try {
-			int width	= FreeImage_GetWidth(dib);
+			int width = FreeImage_GetWidth(dib);
 			int height = FreeImage_GetHeight(dib);
 			// JPEG-XR's decoder doesn't support too small image although it may be valid when encodes
 			if(width < 16 || height < 16) return FALSE;
