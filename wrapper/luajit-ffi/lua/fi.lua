@@ -48,7 +48,7 @@ ffi.cdef[[
 -- Image IO
 -- get format id from image's filename
 function getfmt(name)
-	fmt = filua.FreeImage_GetFileType(name, 0)
+	local fmt = filua.FreeImage_GetFileType(name, 0)
 	if fmt > -1 then
 		return fmt
 	else
@@ -75,7 +75,7 @@ function free(img)
 end
 
 function color(r, g, b, a)
-	color = ffi.new('RGBA[?]', 1)
+	local color = ffi.new('RGBA[?]', 1)
 	color[0].b= b or 0
 	color[0].g= g or 0
 	color[0].r= r or 0
@@ -140,12 +140,13 @@ function invert(img)
 end
 
 function greyalpha(back, front, channel)
+	local b
 	if getbpp(back) == 32 then
 		b = clone(back)
 	else
 		b = to32(back)
 	end
-	local f = getchannel(front, channel or 1)
+	local f = getchannel(front, channel or 2)
 	invert(f)
 	setchannel(b, f, 4)
 	free(f)
@@ -155,7 +156,7 @@ end
 function imggreyalpha(img)
 	local l = copy(img, 0, 0, getw(img)/2, geth(img))
 	local r = copy(img, getw(img)/2, 0, getw(img), geth(img))
-	b = greyalpha(l, r, 1)
+	local b = greyalpha(l, r, 2)
 	free(l)
 	free(r)
 	return b
