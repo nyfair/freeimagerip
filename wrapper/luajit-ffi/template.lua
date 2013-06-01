@@ -3,7 +3,7 @@ require 'fi'
 out='out/'
 md(out)
 for k,v in ipairs(ls('*.bmp')) do
-	print v
+	print(v)
 	i=open(v)
 	
 	--[[

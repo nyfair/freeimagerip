@@ -48,7 +48,7 @@ ffi.cdef[[
 -- Image IO
 -- get format id from image's filename
 function getfmt(name)
-	fmt = filua.FreeImage_GetFileType(name, 0)
+	local fmt = filua.FreeImage_GetFileType(name, 0)
 	if fmt > -1 then
 		return fmt
 	else
@@ -141,15 +141,24 @@ end
 
 function greyalpha(back, front, channel)
 	if getbpp(back) == 32 then
-		b = clone(back)
+		local b = clone(back)
 	else
-		b = to32(back)
+		local b = to32(back)
 	end
-	f = getchannel(front, channel or 1)
+	local f = getchannel(front, channel or 1)
 	invert(f)
 	setchannel(b, f, 4)
 	free(f)
 	return b
+end
+
+function imggreyalpha(img, channel)
+	local l = copy(img, 0, 0, getw(img)/2, geth(w))
+	local r = copy(img, getw(img)/2, 0, getw(img), geth(w))
+	local out = greyalpha(back, front, channel)
+	free(l)
+	free(r)
+	return out
 end
 
 -- Composite

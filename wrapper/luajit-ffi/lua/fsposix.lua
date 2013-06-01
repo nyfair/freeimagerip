@@ -7,8 +7,8 @@ ffi.cdef[[
 ]]
 
 function ls(pattern)
-	files = {}
-	output = assert(io.popen('ls '..pattern:gsub(' ', '\\ ')))
+	local files = {}
+	local output = assert(io.popen('ls '..pattern:gsub(' ', '\\ ')))
 	for line in output:lines() do
 		table.insert(files, line)
 	end
