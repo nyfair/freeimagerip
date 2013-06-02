@@ -74,7 +74,6 @@ SET(SOURCE_FILES
 	${PROJECT_DIR}/FreeImage/PixelAccess.cpp
 	${PROJECT_DIR}/FreeImage/Plugin.cpp
 	${PROJECT_DIR}/FreeImage/PluginBMP.cpp
-	${PROJECT_DIR}/FreeImage/PluginDDS.cpp
 	${PROJECT_DIR}/FreeImage/PluginGIF.cpp
 	${PROJECT_DIR}/FreeImage/PluginHDR.cpp
 	${PROJECT_DIR}/FreeImage/PluginICO.cpp

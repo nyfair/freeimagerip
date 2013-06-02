@@ -369,8 +369,7 @@ FI_ENUM(FREE_IMAGE_FORMAT) {
 	FIF_JP2			= 8,
 	FIF_PSD			= 9,
 	FIF_ICO			= 10,
-	FIF_DDS			= 11,
-	FIF_HDR			= 12
+	FIF_HDR			= 11
 };
 
 /** Image type used in FreeImage.
@@ -556,7 +555,6 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 
 #define BMP_DEFAULT			0
 #define BMP_SAVE_RLE		1
-#define DDS_DEFAULT			0
 #define GIF_DEFAULT			0
 #define GIF_LOAD256			1			// Load the image as a 256 color image with ununsed palette entries, if it's 16 or 2 color
 #define HDR_DEFAULT			0
