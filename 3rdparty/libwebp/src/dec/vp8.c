@@ -1,8 +1,10 @@
 // Copyright 2010 Google Inc. All Rights Reserved.
 //
-// This code is licensed under the same terms as WebM:
-//  Software License Agreement:  http://www.webmproject.org/license/software/
-//  Additional IP Rights Grant:  http://www.webmproject.org/license/additional/
+// Use of this source code is governed by a BSD-style license
+// that can be found in the COPYING file in the root of the source
+// tree. An additional intellectual property rights grant can be found
+// in the file PATENTS. All contributing project authors may
+// be found in the AUTHORS file in the root of the source tree.
 // -----------------------------------------------------------------------------
 //
 // main entry for the decoder
@@ -120,9 +122,6 @@ int VP8GetInfo(const uint8_t* data, size_t data_size, size_t chunk_size,
     }
     if (((bits >> 5)) >= chunk_size) {  // partition_length
       return 0;         // inconsistent size information.
-    }
-    if (w == 0 || h == 0) {
-      return 0;         // We don't support both width and height to be zero.
     }
 
     if (width) {
@@ -250,6 +249,7 @@ int VP8GetHeaders(VP8Decoder* const dec, VP8Io* const io) {
   VP8PictureHeader* pic_hdr;
   VP8BitReader* br;
   VP8StatusCode status;
+  WebPHeaderStructure headers;
 
   if (dec == NULL) {
     return 0;
@@ -259,8 +259,33 @@ int VP8GetHeaders(VP8Decoder* const dec, VP8Io* const io) {
     return VP8SetError(dec, VP8_STATUS_INVALID_PARAM,
                        "null VP8Io passed to VP8GetHeaders()");
   }
-  buf = io->data;
-  buf_size = io->data_size;
+
+  // Process Pre-VP8 chunks.
+  headers.data = io->data;
+  headers.data_size = io->data_size;
+  status = WebPParseHeaders(&headers);
+  if (status != VP8_STATUS_OK) {
+    return VP8SetError(dec, status, "Incorrect/incomplete header.");
+  }
+  if (headers.is_lossless) {
+    return VP8SetError(dec, VP8_STATUS_BITSTREAM_ERROR,
+                       "Unexpected lossless format encountered.");
+  }
+
+  if (dec->alpha_data_ == NULL) {
+    assert(dec->alpha_data_size_ == 0);
+    // We have NOT set alpha data yet. Set it now.
+    // (This is to ensure that dec->alpha_data_ is NOT reset to NULL if
+    // WebPParseHeaders() is called more than once, as in incremental decoding
+    // case.)
+    dec->alpha_data_ = headers.alpha_data;
+    dec->alpha_data_size_ = headers.alpha_data_size;
+  }
+
+  // Process the VP8 frame header.
+  buf = headers.data + headers.offset;
+  buf_size = headers.data_size - headers.offset;
+  assert(headers.data_size >= headers.offset);  // WebPParseHeaders' guarantee
   if (buf_size < 4) {
     return VP8SetError(dec, VP8_STATUS_NOT_ENOUGH_DATA,
                        "Truncated header.");
@@ -743,7 +768,9 @@ void VP8Clear(VP8Decoder* const dec) {
   if (dec->use_threads_) {
     WebPWorkerEnd(&dec->worker_);
   }
-  free(dec->mem_);
+  if (dec->mem_) {
+    free(dec->mem_);
+  }
   dec->mem_ = NULL;
   dec->mem_size_ = 0;
   memset(&dec->br_, 0, sizeof(dec->br_));

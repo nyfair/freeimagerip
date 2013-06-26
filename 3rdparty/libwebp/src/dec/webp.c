@@ -1,8 +1,10 @@
 // Copyright 2010 Google Inc. All Rights Reserved.
 //
-// This code is licensed under the same terms as WebM:
-//  Software License Agreement:  http://www.webmproject.org/license/software/
-//  Additional IP Rights Grant:  http://www.webmproject.org/license/additional/
+// Use of this source code is governed by a BSD-style license
+// that can be found in the COPYING file in the root of the source
+// tree. An additional intellectual property rights grant can be found
+// in the file PATENTS. All contributing project authors may
+// be found in the AUTHORS file in the root of the source tree.
 // -----------------------------------------------------------------------------
 //
 // Main decoding functions for WEBP images.
@@ -397,7 +399,7 @@ VP8StatusCode WebPParseHeaders(WebPHeaderStructure* const headers) {
 // WebPDecParams
 
 void WebPResetDecParams(WebPDecParams* const params) {
-  if (params != NULL) {
+  if (params) {
     memset(params, 0, sizeof(*params));
   }
 }

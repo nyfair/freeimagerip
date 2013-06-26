@@ -1,8 +1,10 @@
 // Copyright 2010 Google Inc. All Rights Reserved.
 //
-// This code is licensed under the same terms as WebM:
-//  Software License Agreement:  http://www.webmproject.org/license/software/
-//  Additional IP Rights Grant:  http://www.webmproject.org/license/additional/
+// Use of this source code is governed by a BSD-style license
+// that can be found in the COPYING file in the root of the source
+// tree. An additional intellectual property rights grant can be found
+// in the file PATENTS. All contributing project authors may
+// be found in the AUTHORS file in the root of the source tree.
 // -----------------------------------------------------------------------------
 //
 // Frame-reconstruction function. Memory allocation.
@@ -179,7 +181,7 @@ static int FinishRow(VP8Decoder* const dec, VP8Io* const io) {
     FilterRow(dec);
   }
 
-  if (io->put != NULL) {
+  if (io->put) {
     if (!first_row) {
       y_start -= extra_y_rows;
       io->y = ydst;
@@ -288,7 +290,7 @@ int VP8ProcessRow(VP8Decoder* const dec, VP8Io* const io) {
 VP8StatusCode VP8EnterCritical(VP8Decoder* const dec, VP8Io* const io) {
   // Call setup() first. This may trigger additional decoding features on 'io'.
   // Note: Afterward, we must call teardown() not matter what.
-  if (io->setup != NULL && !io->setup(io)) {
+  if (io->setup && !io->setup(io)) {
     VP8SetError(dec, VP8_STATUS_USER_ABORT, "Frame setup failed");
     return dec->status_;
   }
@@ -346,7 +348,7 @@ int VP8ExitCritical(VP8Decoder* const dec, VP8Io* const io) {
     ok = WebPWorkerSync(&dec->worker_);
   }
 
-  if (io->teardown != NULL) {
+  if (io->teardown) {
     io->teardown(io);
   }
   return ok;
@@ -534,12 +536,12 @@ static const int kScan[16] = {
   0 + 12 * BPS,  4 + 12 * BPS, 8 + 12 * BPS, 12 + 12 * BPS
 };
 
-static WEBP_INLINE int CheckMode(int mb_x, int mb_y, int mode) {
+static WEBP_INLINE int CheckMode(VP8Decoder* const dec, int mode) {
   if (mode == B_DC_PRED) {
-    if (mb_x == 0) {
-      return (mb_y == 0) ? B_DC_PRED_NOTOPLEFT : B_DC_PRED_NOLEFT;
+    if (dec->mb_x_ == 0) {
+      return (dec->mb_y_ == 0) ? B_DC_PRED_NOTOPLEFT : B_DC_PRED_NOLEFT;
     } else {
-      return (mb_y == 0) ? B_DC_PRED_NOTOP : B_DC_PRED;
+      return (dec->mb_y_ == 0) ? B_DC_PRED_NOTOP : B_DC_PRED;
     }
   }
   return mode;
@@ -624,9 +626,9 @@ void VP8ReconstructBlock(VP8Decoder* const dec) {
         }
       }
     } else {    // 16x16
-      const int pred_func = CheckMode(dec->mb_x_, dec->mb_y_, dec->imodes_[0]);
+      const int pred_func = CheckMode(dec, dec->imodes_[0]);
       VP8PredLuma16[pred_func](y_dst);
-      if (dec->non_zero_ & 0xffff) {
+      if (dec->non_zero_) {
         for (n = 0; n < 16; n++) {
           uint8_t* const dst = y_dst + kScan[n];
           if (dec->non_zero_ac_ & (1 << n)) {
@@ -639,7 +641,7 @@ void VP8ReconstructBlock(VP8Decoder* const dec) {
     }
     {
       // Chroma
-      const int pred_func = CheckMode(dec->mb_x_, dec->mb_y_, dec->uvmode_);
+      const int pred_func = CheckMode(dec, dec->uvmode_);
       VP8PredChroma8[pred_func](u_dst);
       VP8PredChroma8[pred_func](v_dst);
 

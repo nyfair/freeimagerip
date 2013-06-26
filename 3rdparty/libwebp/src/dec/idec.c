@@ -1,8 +1,10 @@
 // Copyright 2011 Google Inc. All Rights Reserved.
 //
-// This code is licensed under the same terms as WebM:
-//  Software License Agreement:  http://www.webmproject.org/license/software/
-//  Additional IP Rights Grant:  http://www.webmproject.org/license/additional/
+// Use of this source code is governed by a BSD-style license
+// that can be found in the COPYING file in the root of the source
+// tree. An additional intellectual property rights grant can be found
+// in the file PATENTS. All contributing project authors may
+// be found in the AUTHORS file in the root of the source tree.
 // -----------------------------------------------------------------------------
 //
 // Incremental decoding
@@ -29,13 +31,11 @@ extern "C" {
 //------------------------------------------------------------------------------
 // Data structures for memory and states
 
-// Decoding states. State normally flows as:
-// WEBP_HEADER->VP8_HEADER->VP8_PARTS0->VP8_DATA->DONE for a lossy image, and
-// WEBP_HEADER->VP8L_HEADER->VP8L_DATA->DONE for a lossless image.
+// Decoding states. State normally flows like HEADER->PARTS0->DATA->DONE.
 // If there is any error the decoder goes into state ERROR.
 typedef enum {
-  STATE_WEBP_HEADER,  // All the data before that of the VP8/VP8L chunk.
-  STATE_VP8_HEADER,   // The VP8 Frame header (within the VP8 chunk).
+  STATE_PRE_VP8,  // All data before that of the first VP8 chunk.
+  STATE_VP8_FRAME_HEADER,  // For VP8 Frame header (within VP8 chunk).
   STATE_VP8_PARTS0,
   STATE_VP8_DATA,
   STATE_VP8L_HEADER,
@@ -102,7 +102,7 @@ static WEBP_INLINE size_t MemDataSize(const MemBuffer* mem) {
 // Check if we need to preserve the compressed alpha data, as it may not have
 // been decoded yet.
 static int NeedCompressedAlpha(const WebPIDecoder* const idec) {
-  if (idec->state_ == STATE_WEBP_HEADER) {
+  if (idec->state_ == STATE_PRE_VP8) {
     // We haven't parsed the headers yet, so we don't know whether the image is
     // lossy or lossless. This also means that we haven't parsed the ALPH chunk.
     return 0;
@@ -111,7 +111,7 @@ static int NeedCompressedAlpha(const WebPIDecoder* const idec) {
     return 0;  // ALPH chunk is not present for lossless images.
   } else {
     const VP8Decoder* const dec = (VP8Decoder*)idec->dec_;
-    assert(dec != NULL);  // Must be true as idec->state_ != STATE_WEBP_HEADER.
+    assert(dec != NULL);  // Must be true as idec->state_ != STATE_PRE_VP8.
     return (dec->alpha_data_ != NULL) && !dec->is_alpha_decoded_;
   }
 }
@@ -268,7 +268,7 @@ static void RestoreContext(const MBContext* context, VP8Decoder* const dec,
 static VP8StatusCode IDecError(WebPIDecoder* const idec, VP8StatusCode error) {
   if (idec->state_ == STATE_VP8_DATA) {
     VP8Io* const io = &idec->io_;
-    if (io->teardown != NULL) {
+    if (io->teardown) {
       io->teardown(io);
     }
   }
@@ -319,7 +319,7 @@ static VP8StatusCode DecodeWebPHeaders(WebPIDecoder* const idec) {
 #endif
     dec->alpha_data_ = headers.alpha_data;
     dec->alpha_data_size_ = headers.alpha_data_size;
-    ChangeState(idec, STATE_VP8_HEADER, headers.offset);
+    ChangeState(idec, STATE_VP8_FRAME_HEADER, headers.offset);
   } else {
     VP8LDecoder* const dec = VP8LNew();
     if (dec == NULL) {
@@ -532,14 +532,14 @@ static VP8StatusCode DecodeVP8LData(WebPIDecoder* const idec) {
 static VP8StatusCode IDecode(WebPIDecoder* idec) {
   VP8StatusCode status = VP8_STATUS_SUSPENDED;
 
-  if (idec->state_ == STATE_WEBP_HEADER) {
+  if (idec->state_ == STATE_PRE_VP8) {
     status = DecodeWebPHeaders(idec);
   } else {
     if (idec->dec_ == NULL) {
       return VP8_STATUS_SUSPENDED;    // can't continue if we have no decoder.
     }
   }
-  if (idec->state_ == STATE_VP8_HEADER) {
+  if (idec->state_ == STATE_VP8_FRAME_HEADER) {
     status = DecodeVP8FrameHeader(idec);
   }
   if (idec->state_ == STATE_VP8_PARTS0) {
@@ -566,7 +566,7 @@ WebPIDecoder* WebPINewDecoder(WebPDecBuffer* output_buffer) {
     return NULL;
   }
 
-  idec->state_ = STATE_WEBP_HEADER;
+  idec->state_ = STATE_PRE_VP8;
   idec->chunk_size_ = 0;
 
   InitMemBuffer(&idec->mem_);
@@ -574,8 +574,7 @@ WebPIDecoder* WebPINewDecoder(WebPDecBuffer* output_buffer) {
   VP8InitIo(&idec->io_);
 
   WebPResetDecParams(&idec->params_);
-  idec->params_.output = (output_buffer != NULL) ? output_buffer
-                                                 : &idec->output_;
+  idec->params_.output = output_buffer ? output_buffer : &idec->output_;
   WebPInitCustomIo(&idec->params_, &idec->io_);  // Plug the I/O functions.
 
   return idec;
@@ -824,7 +823,7 @@ int WebPISetIOHooks(WebPIDecoder* const idec,
                     VP8IoSetupHook setup,
                     VP8IoTeardownHook teardown,
                     void* user_data) {
-  if (idec == NULL || idec->state_ > STATE_WEBP_HEADER) {
+  if (idec == NULL || idec->state_ > STATE_PRE_VP8) {
     return 0;
   }
 

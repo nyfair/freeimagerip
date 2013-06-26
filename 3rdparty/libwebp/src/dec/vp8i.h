@@ -1,8 +1,10 @@
 // Copyright 2010 Google Inc. All Rights Reserved.
 //
-// This code is licensed under the same terms as WebM:
-//  Software License Agreement:  http://www.webmproject.org/license/software/
-//  Additional IP Rights Grant:  http://www.webmproject.org/license/additional/
+// Use of this source code is governed by a BSD-style license
+// that can be found in the COPYING file in the root of the source
+// tree. An additional intellectual property rights grant can be found
+// in the file PATENTS. All contributing project authors may
+// be found in the AUTHORS file in the root of the source tree.
 // -----------------------------------------------------------------------------
 //
 // VP8 decoder: internal header.
@@ -28,7 +30,7 @@ extern "C" {
 // version numbers
 #define DEC_MAJ_VERSION 0
 #define DEC_MIN_VERSION 3
-#define DEC_REV_VERSION 0
+#define DEC_REV_VERSION 1
 
 #define ONLY_KEYFRAME_CODE      // to remove any code related to P-Frames
 
@@ -154,14 +156,12 @@ typedef struct {  // filter specs
   unsigned int f_level_:6;      // filter strength: 0..63
   unsigned int f_ilevel_:6;     // inner limit: 1..63
   unsigned int f_inner_:1;      // do inner filtering?
-  unsigned int pad_:19;
 } VP8FInfo;
 
 typedef struct {  // used for syntax-parsing
   unsigned int nz_:24;       // non-zero AC/DC coeffs (24bit)
   unsigned int dc_nz_:1;     // non-zero DC coeffs
   unsigned int skip_:1;      // block type
-  unsigned int pad_:6;
 } VP8MB;
 
 // Dequantization matrices

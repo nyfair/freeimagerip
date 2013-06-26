@@ -1,8 +1,10 @@
 // Copyright 2012 Google Inc. All Rights Reserved.
 //
-// This code is licensed under the same terms as WebM:
-//  Software License Agreement:  http://www.webmproject.org/license/software/
-//  Additional IP Rights Grant:  http://www.webmproject.org/license/additional/
+// Use of this source code is governed by a BSD-style license
+// that can be found in the COPYING file in the root of the source
+// tree. An additional intellectual property rights grant can be found
+// in the file PATENTS. All contributing project authors may
+// be found in the AUTHORS file in the root of the source tree.
 // -----------------------------------------------------------------------------
 //
 // Image transforms and color space conversion methods for lossless decoder.
@@ -32,6 +34,13 @@ struct VP8LTransform;  // Defined in dec/vp8li.h.
 void VP8LInverseTransform(const struct VP8LTransform* const transform,
                           int row_start, int row_end,
                           const uint32_t* const in, uint32_t* const out);
+
+// Similar to the static method ColorIndexInverseTransform() that is part of
+// lossless.c, but used only for alpha decoding. It takes uint8_t (rather than
+// uint32_t) arguments for 'src' and 'dst'.
+void VP8LColorIndexInverseTransformAlpha(
+    const struct VP8LTransform* const transform, int y_start, int y_end,
+    const uint8_t* src, uint8_t* dst);
 
 // Subtracts green from blue and red channels.
 void VP8LSubtractGreenFromBlueAndRed(uint32_t* argb_data, int num_pixs);
