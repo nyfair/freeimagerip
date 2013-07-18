@@ -48,11 +48,11 @@ ffi.cdef[[
 -- Image IO
 -- get format id from image's filename
 function getfmt(name)
-	local fmt = filua.FreeImage_GetFileType(name, 0)
+	local fmt = filua.FreeImage_GetFIFFromFilename(name)
 	if fmt > -1 then
 		return fmt
 	else
-		return filua.FreeImage_GetFIFFromFilename(name)
+		return filua.FreeImage_GetFileType(name, 0)
 	end
 end
 
@@ -146,17 +146,21 @@ function greyalpha(back, front, channel)
 	else
 		b = to32(back)
 	end
-	local f = getchannel(front, channel or 2)
-	invert(f)
-	setchannel(b, f, 4)
-	free(f)
+	if getbpp(front) == 8 then
+		setchannel(b, front, 4)
+	else
+		local f = getchannel(front, channel)
+		invert(f)
+		setchannel(b, f, 4)
+		free(f)
+	end
 	return b
 end
 
 function imggreyalpha(img)
 	local l = copy(img, 0, 0, getw(img)/2, geth(img))
 	local r = copy(img, getw(img)/2, 0, getw(img), geth(img))
-	local b = greyalpha(l, r, 2)
+	local b = greyalpha(l, r)
 	free(l)
 	free(r)
 	return b
@@ -312,6 +316,82 @@ function jpgtran(src, func, dst, perfect)
 		dst = stripext(src)..'_tran.jpg'
 	end
 	filua.FreeImage_JPEGTransform(src, dst, func, perfect or 0)
+end
+
+function splitw(src, num)
+	local img = open(src)
+	local width = getw(img) / num
+	local height = geth(img)
+	local bpp = getbpp(img)
+	for x = 1, num do
+		local imgx = newimg(width, height, bpp)
+		local tmp = copy(img, width*(x-1), 0, width*x, height)
+		paste(imgx, tmp, 0, 0)
+		save(imgx, stripext(src)..'_'..tostring(x)..'.bmp')
+		free(tmp)
+		free(imgx)
+	end
+	free(img)
+end
+
+function splith(src, num)
+	local img = open(src)
+	local width = getw(img)
+	local height = geth(img) / num
+	local bpp = getbpp(img)
+	for y = 1, num do
+		local imgy = newimg(width, height, bpp)
+		local tmp = copy(img, 0, height*(y-1), width, height*y)
+		paste(imgy, tmp, 0, 0)
+		save(imgy, stripext(src)..'_'..tostring(y)..'.bmp')
+		free(tmp)
+		free(imgy)
+	end
+	free(img)
+end
+
+function mergew(x1, x2)
+	local img1 = open(x1)
+	local img2 = open(x2)
+	local height = geth(img1)
+	local width = getw(img1) + getw(img2) - offset or 0
+	local img = newimg(width, height, getbpp(img1))
+	paste(img, img1, 0, 0)
+	paste(img, img2, getw(img1) - offset or 0, 0)
+	save(img, stripext(x1)..'_'..stripext(x2)..'.bmp')
+	free(img)
+	free(img1)
+	free(img2)
+end
+
+function mergews(x1, x2, offset)
+	for k1,v1 in ipairs(ls(x1)) do
+		for k2,v2 in ipairs(ls(x2)) do
+			mergew(v1, v2, offset)
+		end
+	end
+end
+
+function mergeh(y1, y2, offset)
+	local img1 = open(y1)
+	local img2 = open(y2)
+	local height = geth(img1) + geth(img2) - offset or 0
+	local width = getw(img1)
+	local img = newimg(width, height, getbpp(img1))
+	paste(img, img1, 0, 0)
+	paste(img, img2, 0, geth(img1) - offset or 0)
+	save(img, stripext(y1)..'_'..stripext(y2)..'.bmp')
+	free(img)
+	free(img1)
+	free(img2)
+end
+
+function mergehs(y1, y2, offset)
+	for k1,v1 in ipairs(ls(y1)) do
+		for k2,v2 in ipairs(ls(y2)) do
+			mergeh(v1, v2, offset)
+		end
+	end
 end
 
 -- helper
