@@ -22,6 +22,8 @@ ffi.cdef[[
 	void __stdcall FreeImage_SetDotsPerMeterY(void*, unsigned);
 	int __stdcall FreeImage_GetFIFFromFilename(const char*);
 	int __stdcall FreeImage_GetFileType(const char*, int);
+	RGBA* __stdcall FreeImage_GetPalette(void*);
+	void* __stdcall FreeImage_SetTransparentIndex(void*, int);
 	
 	void* __stdcall FreeImage_ConvertToGreyscale(void*);
 	void* __stdcall FreeImage_ConvertTo24Bits(void*);
@@ -149,7 +151,7 @@ function greyalpha(back, front, channel)
 	if getbpp(front) == 8 then
 		setchannel(b, front, 4)
 	else
-		local f = getchannel(front, channel)
+		local f = getchannel(front, channel or 2)
 		invert(f)
 		setchannel(b, f, 4)
 		free(f)
@@ -164,6 +166,30 @@ function imggreyalpha(img)
 	free(l)
 	free(r)
 	return b
+end
+
+function coloralpha(img, r, g, b)
+	local a
+	local bpp = getbpp(img)
+	if bpp == 32 or bpp == 8 then
+		a = clone(img)
+	else
+		a = to32(img)
+	end
+	bpp = getbpp(a)
+	if bpp == 32 then
+		swapcolor(a, color(r,g,b,0), color(r,g,b,255))
+	else
+		local c = filua.FreeImage_GetPalette(img)
+		for i = 0, 255 do
+			if c[i].r == r and c[i].g == g and c[i].b == b then
+				filua.FreeImage_SetTransparentIndex(a, i)
+				break
+			end
+		end
+		
+	end
+	return a
 end
 
 -- Composite

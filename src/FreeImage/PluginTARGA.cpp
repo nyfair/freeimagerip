@@ -100,31 +100,6 @@ static const char *FI_MSG_ERROR_CORRUPTED = "Image data corrupted";
 #define TGA_CMPCMAP		32	// compressed (Huffman/Delta/RLE) color-mapped image (e.g., VDA/D) - Obsolete
 #define TGA_CMPCMAP4	33	// compressed (Huffman/Delta/RLE) color-mapped four pass image (e.g., VDA/D) - Obsolete
 
-#ifdef FREEIMAGE_BIGENDIAN
-static void 
-swapShortPixels(FIBITMAP* dib) {
-	if(FreeImage_GetImageType(dib) != FIT_BITMAP) {
-		return;
-	}
-		
-	const unsigned Bpp = FreeImage_GetBPP(dib)/8;
-	if(Bpp != 2) {
-		return;
-	}
-		
-	BYTE* bits = FreeImage_GetBits(dib);
-	const unsigned height = FreeImage_GetHeight(dib);
-	const unsigned pitch = FreeImage_GetPitch(dib);
-	
-	BYTE* line = bits;
-	for(unsigned y = 0; y < height; y++, line += pitch) {
-		for(BYTE* pixel = line; pixel < line + pitch ; pixel += Bpp) {
-			SwapShort((WORD*)pixel);
-		}
-	}
-}
-#endif // FREEIMAGE_BIGENDIAN
-
 // ==========================================================
 // Internal functions
 // ==========================================================
@@ -651,8 +626,12 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 					// calculate the color map size
 					csize = header.cm_length * header.cm_size / 8;
+					
+					// read the color map
 					BYTE *cmap = (BYTE*)malloc(csize * sizeof(BYTE));
-
+					if (cmap == NULL) {
+						throw FI_MSG_ERROR_DIB_MEMORY;
+					}
 					io->read_proc(cmap, sizeof(BYTE), csize, handle);
 
 					// build the palette
@@ -660,8 +639,10 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 					switch (header.cm_size) {
 						case 16: {
 							WORD *rgb555 = (WORD*)&cmap[0];
+							unsigned start = (unsigned)header.cm_first_entry;
+							unsigned stop = MIN((unsigned)256, (unsigned)header.cm_length);
 
-							for (count = header.cm_first_entry; count < header.cm_length; count++) {
+							for (count = start; count < stop; count++) {
 								palette[count].rgbRed   = (BYTE)((((*rgb555 & FI16_555_RED_MASK) >> FI16_555_RED_SHIFT) * 0xFF) / 0x1F);
 								palette[count].rgbGreen = (BYTE)((((*rgb555 & FI16_555_GREEN_MASK) >> FI16_555_GREEN_SHIFT) * 0xFF) / 0x1F);
 								palette[count].rgbBlue  = (BYTE)((((*rgb555 & FI16_555_BLUE_MASK) >> FI16_555_BLUE_SHIFT) * 0xFF) / 0x1F);
@@ -672,8 +653,10 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 						case 24: {
 							FILE_BGR *bgr = (FILE_BGR*)&cmap[0];
+							unsigned start = (unsigned)header.cm_first_entry;
+							unsigned stop = MIN((unsigned)256, (unsigned)header.cm_length);
 
-							for (count = header.cm_first_entry; count < header.cm_length; count++) {
+							for (count = start; count < stop; count++) {
 								palette[count].rgbBlue  = bgr->b;
 								palette[count].rgbGreen = bgr->g;
 								palette[count].rgbRed   = bgr->r;
@@ -689,8 +672,10 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 							memset(trns, 0xFF, 256);
 
 							FILE_BGRA *bgra = (FILE_BGRA*)&cmap[0];
+							unsigned start = (unsigned)header.cm_first_entry;
+							unsigned stop = MIN((unsigned)256, (unsigned)header.cm_length);
 
-							for (count = header.cm_first_entry; count < header.cm_length; count++) {
+							for (count = start; count < stop; count++) {
 								palette[count].rgbBlue  = bgra->b;
 								palette[count].rgbGreen = bgra->g;
 								palette[count].rgbRed   = bgra->r;
@@ -708,7 +693,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 					free(cmap);
 				}
-				
+
 				if(header_only) {
 					return dib;
 				}
@@ -758,8 +743,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 				if (dib == NULL) {
 					throw FI_MSG_ERROR_DIB_MEMORY;
 				}
-				
-						
+
 				if(header_only) {
 					return dib;
 				}
@@ -833,7 +817,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 				if (dib == NULL) {
 					throw FI_MSG_ERROR_DIB_MEMORY;
 				}
-				
+
 				if(header_only) {
 					return dib;
 				}
@@ -1322,6 +1306,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 
 		free(line_begin);
 	}
+
 	
 	long extension_offset = 0 ;
 	
