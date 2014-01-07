@@ -609,9 +609,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 			int zlib_level = flags & 0x0F;
 			if((zlib_level >= 1) && (zlib_level <= 9)) {
 				png_set_compression_level(png_ptr, zlib_level);
-			} else if((flags & PNG_Z_NO_COMPRESSION) == PNG_Z_NO_COMPRESSION) {
-				png_set_compression_level(png_ptr, Z_NO_COMPRESSION);
-			} else png_set_compression_level(png_ptr, 9);
+			} else png_set_compression_level(png_ptr, PNG_DEFAULT);
 
 			// filtered strategy works better for high color images
 			if(pixel_depth >= 16){

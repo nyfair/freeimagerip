@@ -1,11 +1,20 @@
 // ==========================================================
-// Microsoft HD Photo Loader
+// JPEG XR Loader & Writer
 //
 // Design and implementation by
-// - nyfair (nyfair2012@gmail.com)
+// - Herve Drolon (drolon@infonie.fr)
 //
-// Note: this file is not under the FreeImage license
-// the license can be found at http://en.wikipedia.org/wiki/HD_Photo
+// This file is part of FreeImage 3
+//
+// COVERED CODE IS PROVIDED UNDER THIS LICENSE ON AN "AS IS" BASIS, WITHOUT WARRANTY
+// OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, WITHOUT LIMITATION, WARRANTIES
+// THAT THE COVERED CODE IS FREE OF DEFECTS, MERCHANTABLE, FIT FOR A PARTICULAR PURPOSE
+// OR NON-INFRINGING. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE COVERED
+// CODE IS WITH YOU. SHOULD ANY COVERED CODE PROVE DEFECTIVE IN ANY RESPECT, YOU (NOT
+// THE INITIAL DEVELOPER OR ANY OTHER CONTRIBUTOR) ASSUME THE COST OF ANY NECESSARY
+// SERVICING, REPAIR OR CORRECTION. THIS DISCLAIMER OF WARRANTY CONSTITUTES AN ESSENTIAL
+// PART OF THIS LICENSE. NO USE OF ANY COVERED CODE IS AUTHORIZED HEREUNDER EXCEPT UNDER
+// THIS DISCLAIMER.
 //
 // Use at your own risk!
 // ==========================================================
@@ -22,6 +31,485 @@
 static int s_format_id;
 
 // ==========================================================
+// FreeImageIO interface (I/O streaming functions)
+// ==========================================================
+
+/**
+JXR wrapper for FreeImage I/O handle
+*/
+typedef struct tagFreeImageJXRIO {
+    FreeImageIO *io;
+	fi_handle handle;
+} FreeImageJXRIO;
+
+static ERR 
+_jxr_io_Read(WMPStream* pWS, void* pv, size_t cb) {
+	FreeImageJXRIO *fio = (FreeImageJXRIO*)pWS->state.pvObj;
+	return (fio->io->read_proc(pv, (unsigned)cb, 1, fio->handle) == 1) ? WMP_errSuccess : WMP_errFileIO;
+}
+
+static ERR 
+_jxr_io_Write(WMPStream* pWS, const void* pv, size_t cb) {
+	FreeImageJXRIO *fio = (FreeImageJXRIO*)pWS->state.pvObj;
+	if(0 != cb) {
+		return (fio->io->write_proc((void*)pv, (unsigned)cb, 1, fio->handle) == 1) ? WMP_errSuccess : WMP_errFileIO;
+	}
+	return WMP_errFileIO;
+}
+
+static ERR 
+_jxr_io_SetPos(WMPStream* pWS, size_t offPos) {
+	FreeImageJXRIO *fio = (FreeImageJXRIO*)pWS->state.pvObj;
+    return (fio->io->seek_proc(fio->handle, (long)offPos, SEEK_SET) == 0) ? WMP_errSuccess : WMP_errFileIO;
+}
+
+static ERR 
+_jxr_io_GetPos(WMPStream* pWS, size_t* poffPos) {
+	FreeImageJXRIO *fio = (FreeImageJXRIO*)pWS->state.pvObj;
+    long lOff = fio->io->tell_proc(fio->handle);
+	if(lOff == -1) {
+		return WMP_errFileIO;
+	}
+    *poffPos = (size_t)lOff;
+	return WMP_errSuccess;
+}
+
+static Bool 
+_jxr_io_EOS(WMPStream* pWS) {
+	FreeImageJXRIO *fio = (FreeImageJXRIO*)pWS->state.pvObj;
+    long currentPos = fio->io->tell_proc(fio->handle);
+    fio->io->seek_proc(fio->handle, 0, SEEK_END);
+    long fileRemaining = fio->io->tell_proc(fio->handle) - currentPos;
+    fio->io->seek_proc(fio->handle, currentPos, SEEK_SET);
+    return (fileRemaining > 0);
+}
+
+static ERR 
+_jxr_io_Close(WMPStream** ppWS) {
+	WMPStream *pWS = *ppWS;
+	// HACK : we use fMem to avoid a stream destruction by the library
+	// because FreeImage MUST HAVE the ownership of the stream
+	// see _jxr_io_Create
+	if(pWS && pWS->fMem) {
+		free(pWS);
+		*ppWS = NULL;
+	}
+	return WMP_errSuccess;
+}
+
+static ERR 
+_jxr_io_Create(WMPStream **ppWS, FreeImageJXRIO *jxr_io) {
+	*ppWS = (WMPStream*)calloc(1, sizeof(**ppWS));
+	if(*ppWS) {
+		WMPStream *pWS = *ppWS;
+
+		pWS->state.pvObj = jxr_io;
+		pWS->Close = _jxr_io_Close;
+		pWS->EOS = _jxr_io_EOS;
+		pWS->Read = _jxr_io_Read;
+		pWS->Write = _jxr_io_Write;
+		pWS->SetPos = _jxr_io_SetPos;
+		pWS->GetPos = _jxr_io_GetPos;
+
+		// HACK : we use fMem to avoid a stream destruction by the library
+		// because FreeImage MUST HAVE the ownership of the stream
+		// see _jxr_io_Close
+		pWS->fMem = FALSE;
+
+		return WMP_errSuccess;
+	}
+	return WMP_errOutOfMemory;
+}
+
+// ==========================================================
+// JPEG XR Error handling
+// ==========================================================
+
+static const char* 
+JXR_ErrorMessage(const int error) {
+	switch(error) {
+		case WMP_errNotYetImplemented:
+		case WMP_errAbstractMethod:
+			return "Not yet implemented";
+		case WMP_errOutOfMemory:
+			return "Out of memory";
+		case WMP_errFileIO:
+			return "File I/O error";
+		case WMP_errBufferOverflow:
+			return "Buffer overflow";
+		case WMP_errInvalidParameter:
+			return "Invalid parameter";
+		case WMP_errInvalidArgument:
+			return "Invalid argument";
+		case WMP_errUnsupportedFormat:
+			return "Unsupported format";
+		case WMP_errIncorrectCodecVersion:
+			return "Incorrect codec version";
+		case WMP_errIndexNotFound:
+			return "Format converter: Index not found";
+		case WMP_errOutOfSequence:
+			return "Metadata: Out of sequence";
+		case WMP_errMustBeMultipleOf16LinesUntilLastCall:
+			return "Must be multiple of 16 lines until last call";
+		case WMP_errPlanarAlphaBandedEncRequiresTempFile:
+			return "Planar alpha banded encoder requires temp files";
+		case WMP_errAlphaModeCannotBeTranscoded:
+			return "Alpha mode cannot be transcoded";
+		case WMP_errIncorrectCodecSubVersion:
+			return "Incorrect codec subversion";
+		case WMP_errFail:
+		case WMP_errNotInitialized:
+		default:
+			return "Invalid instruction - please contact the FreeImage team";
+	}
+
+	return NULL;
+}
+
+// ==========================================================
+// Helper functions & macro
+// ==========================================================
+
+#define JXR_CHECK(error_code) \
+	if(error_code < 0) { \
+		const char *error_message = JXR_ErrorMessage(error_code); \
+		throw error_message; \
+	}
+
+// --------------------------------------------------------------------------
+
+/**
+Input conversions natively understood by FreeImage
+@see GetNativePixelFormat
+*/
+typedef struct tagJXRInputConversion {
+	BITDEPTH_BITS bdBitDepth;
+	U32 cbitUnit;
+	FREE_IMAGE_TYPE image_type;
+	unsigned red_mask;
+	unsigned green_mask;
+	unsigned blue_mask;
+} JXRInputConversion;
+
+/**
+Conversion table for native FreeImage formats
+@see GetNativePixelFormat
+*/
+static JXRInputConversion s_FreeImagePixelInfo[] = {
+	// 1-bit bitmap
+	{ BD_1, 1, FIT_BITMAP, 0, 0, 0 },
+	// 8-, 24-, 32-bit bitmap
+	{ BD_8, 8, FIT_BITMAP, 0, 0, 0 },
+	{ BD_8, 24, FIT_BITMAP, 0, 0, 0 },
+	{ BD_8, 32, FIT_BITMAP, 0, 0, 0 },
+	// 16-bit RGB 565
+	{ BD_565, 16, FIT_BITMAP, FI16_565_RED_MASK, FI16_565_GREEN_MASK, FI16_565_BLUE_MASK },
+	// 16-bit RGB 555
+	{ BD_5, 16, FIT_BITMAP, FI16_555_RED_MASK, FI16_555_GREEN_MASK, FI16_555_BLUE_MASK },
+	// 16-bit greyscale, RGB16, RGBA16 bitmap
+	{ BD_16, 16, FIT_UINT16, 0, 0, 0 },
+	{ BD_16, 48, FIT_RGB16, 0, 0, 0 },
+	{ BD_16, 64, FIT_RGBA16, 0, 0, 0 },
+	// 32-bit float, RGBF, RGBAF bitmap
+	{ BD_32F, 32, FIT_FLOAT, 0, 0, 0 },
+	{ BD_32F, 96, FIT_RGBF, 0, 0, 0 },
+	{ BD_32F, 128, FIT_RGBAF, 0, 0, 0 }
+};
+
+/**
+Scan input pixelInfo specifications and return the equivalent FreeImage info for loading
+@param pixelInfo Image specifications
+@param out_guid_format (returned value) output pixel format
+@param image_type (returned value) Image type
+@param bpp (returned value) Image bit depth
+@param red_mask (returned value) RGB mask
+@param green_mask (returned value) RGB mask
+@param blue_mask (returned value) RGB mask
+@return Returns WMP_errSuccess if successful, returns WMP_errFail otherwise
+@see GetInputPixelFormat
+*/
+static ERR
+GetNativePixelFormat(const PKPixelInfo *pixelInfo, PKPixelFormatGUID *out_guid_format, FREE_IMAGE_TYPE *image_type, unsigned *bpp, unsigned *red_mask, unsigned *green_mask, unsigned *blue_mask) {
+	const unsigned s_FreeImagePixelInfoSize = (unsigned)sizeof(s_FreeImagePixelInfo) / sizeof(*(s_FreeImagePixelInfo));
+
+	for(unsigned i = 0; i < s_FreeImagePixelInfoSize; i++) {
+		if(pixelInfo->bdBitDepth == s_FreeImagePixelInfo[i].bdBitDepth) {
+			if(pixelInfo->cbitUnit == s_FreeImagePixelInfo[i].cbitUnit) {
+				// found ! now get dst image format specifications
+				memcpy(out_guid_format, pixelInfo->pGUIDPixFmt, sizeof(PKPixelFormatGUID));
+				*image_type = s_FreeImagePixelInfo[i].image_type;
+				*bpp = s_FreeImagePixelInfo[i].cbitUnit;
+				*red_mask	= s_FreeImagePixelInfo[i].red_mask;
+				*green_mask	= s_FreeImagePixelInfo[i].green_mask;
+				*blue_mask	= s_FreeImagePixelInfo[i].blue_mask;
+				return WMP_errSuccess;
+			}
+		}
+	}
+
+	// not found : need pixel format conversion
+	return WMP_errFail;
+}
+
+/**
+Scan input file guid format and return the equivalent FreeImage info & target guid format for loading
+@param pDecoder Decoder handle
+@param guid_format (returned value) Output pixel format
+@param image_type (returned value) Image type
+@param bpp (returned value) Image bit depth
+@param red_mask (returned value) RGB mask
+@param green_mask (returned value) RGB mask
+@param blue_mask (returned value) RGB mask
+@return Returns TRUE if successful, returns FALSE otherwise
+*/
+static ERR
+GetInputPixelFormat(PKImageDecode *pDecoder, PKPixelFormatGUID *guid_format, FREE_IMAGE_TYPE *image_type, unsigned *bpp, unsigned *red_mask, unsigned *green_mask, unsigned *blue_mask) {
+	ERR error_code = 0;		// error code as returned by the interface
+	PKPixelInfo pixelInfo;	// image specifications
+
+	try {		
+		// get input file pixel format ...
+		PKPixelFormatGUID pguidSourcePF;
+		error_code = pDecoder->GetPixelFormat(pDecoder, &pguidSourcePF);
+		JXR_CHECK(error_code);
+		pixelInfo.pGUIDPixFmt = &pguidSourcePF;
+		// ... check for a supported format and get the format specifications
+		error_code = PixelFormatLookup(&pixelInfo, LOOKUP_FORWARD);
+		JXR_CHECK(error_code);
+
+		// search for an equivalent native FreeImage format
+		error_code = GetNativePixelFormat(&pixelInfo, guid_format, image_type, bpp, red_mask, green_mask, blue_mask);
+
+		if(error_code != WMP_errSuccess) {
+			// try to find a suitable conversion function ...
+			const PKPixelFormatGUID *ppguidTargetPF = NULL;	// target pixel format
+			unsigned iIndex = 0;	// first available conversion function
+			do {
+				error_code = PKFormatConverter_EnumConversions(&pguidSourcePF, iIndex, &ppguidTargetPF);
+				if(error_code == WMP_errSuccess) {
+					// found a conversion function, is the converted format a native FreeImage format ?
+					pixelInfo.pGUIDPixFmt = ppguidTargetPF;
+					error_code = PixelFormatLookup(&pixelInfo, LOOKUP_FORWARD);
+					JXR_CHECK(error_code);
+					error_code = GetNativePixelFormat(&pixelInfo, guid_format, image_type, bpp, red_mask, green_mask, blue_mask);
+					if(error_code == WMP_errSuccess) {
+						break;
+					}
+				}
+				// try next conversion function
+				iIndex++;
+			} while(error_code != WMP_errIndexNotFound);
+
+		}
+
+		return (error_code == WMP_errSuccess) ? WMP_errSuccess : WMP_errUnsupportedFormat;
+
+	} catch(...) {
+		return error_code;
+	}
+}
+
+// --------------------------------------------------------------------------
+
+/**
+Scan input dib format and return the equivalent PKPixelFormatGUID format for saving
+@param dib Image to be saved
+@param guid_format (returned value) GUID format
+@param bHasAlpha (returned value) TRUE if an alpha layer is present
+@return Returns TRUE if successful, returns FALSE otherwise
+*/
+static ERR
+GetOutputPixelFormat(FIBITMAP *dib, PKPixelFormatGUID *guid_format, BOOL *bHasAlpha) {
+	const FREE_IMAGE_TYPE image_type = FreeImage_GetImageType(dib);
+	const unsigned bpp = FreeImage_GetBPP(dib);
+	const FREE_IMAGE_COLOR_TYPE color_type = FreeImage_GetColorType(dib);
+
+	*guid_format = GUID_PKPixelFormatDontCare;
+	*bHasAlpha = FALSE;
+
+	switch(image_type) {
+		case FIT_BITMAP:	// standard image	: 1-, 4-, 8-, 16-, 24-, 32-bit
+			switch(bpp) {
+				case 1:
+					// assume FIC_MINISBLACK
+					if(color_type == FIC_MINISBLACK) {
+						*guid_format = GUID_PKPixelFormatBlackWhite;
+					}
+					break;
+				case 8:
+					// assume FIC_MINISBLACK
+					if(color_type == FIC_MINISBLACK) {
+						*guid_format = GUID_PKPixelFormat8bppGray;
+					}
+					break;
+				case 16:
+					if ((FreeImage_GetRedMask(dib) == FI16_565_RED_MASK) && (FreeImage_GetGreenMask(dib) == FI16_565_GREEN_MASK) && (FreeImage_GetBlueMask(dib) == FI16_565_BLUE_MASK)) {
+						*guid_format = GUID_PKPixelFormat16bppRGB565;
+					} else {
+						// includes case where all the masks are 0
+						*guid_format = GUID_PKPixelFormat16bppRGB555;
+					}
+					break;
+#if FREEIMAGE_COLORORDER == FREEIMAGE_COLORORDER_BGR
+				case 24:
+					*guid_format = GUID_PKPixelFormat24bppBGR;
+					break;
+				case 32:
+					*guid_format = GUID_PKPixelFormat32bppBGRA;
+					*bHasAlpha = TRUE;
+					break;
+#elif FREEIMAGE_COLORORDER == FREEIMAGE_COLORORDER_RGB
+				case 24:
+					*guid_format = GUID_PKPixelFormat24bppRGB;
+					break;
+				case 32:
+					*guid_format = GUID_PKPixelFormat32bppRGBA;
+					*bHasAlpha = TRUE;
+					break;
+#endif
+				case 4:
+				default:
+					// not supported
+					break;
+			}
+			break;
+		case FIT_UINT16:	// array of unsigned short	: unsigned 16-bit
+			*guid_format = GUID_PKPixelFormat16bppGray;
+			break;
+		case FIT_FLOAT:		// array of float			: 32-bit IEEE floating point
+			*guid_format = GUID_PKPixelFormat32bppGrayFloat;
+			break;
+		case FIT_RGB16:		// 48-bit RGB image			: 3 x 16-bit
+			*guid_format = GUID_PKPixelFormat48bppRGB;
+			break;
+		case FIT_RGBA16:	// 64-bit RGBA image		: 4 x 16-bit
+			*guid_format = GUID_PKPixelFormat64bppRGBA;
+			*bHasAlpha = TRUE;
+			break;
+		case FIT_RGBF:		// 96-bit RGB float image	: 3 x 32-bit IEEE floating point
+			*guid_format = GUID_PKPixelFormat96bppRGBFloat;
+			break;
+		case FIT_RGBAF:		// 128-bit RGBA float image	: 4 x 32-bit IEEE floating point
+			*guid_format = GUID_PKPixelFormat128bppRGBAFloat;
+			*bHasAlpha = TRUE;
+			break;
+
+		case FIT_INT16:		// array of short			: signed 16-bit
+		case FIT_UINT32:	// array of unsigned long	: unsigned 32-bit
+		case FIT_INT32:		// array of long			: signed 32-bit
+		case FIT_DOUBLE:	// array of double			: 64-bit IEEE floating point
+		case FIT_COMPLEX:	// array of FICOMPLEX		: 2 x 64-bit IEEE floating point
+
+		default:
+			// unsupported format
+			break;
+	}
+
+	return (*guid_format != GUID_PKPixelFormatDontCare) ? WMP_errSuccess : WMP_errUnsupportedFormat;
+}
+
+// ==========================================================
+// Metadata loading & saving
+// ==========================================================
+
+/**
+Read a JPEG-XR IFD as a buffer
+*/
+static ERR
+ReadProfile(WMPStream* pStream, unsigned cbByteCount, unsigned uOffset, BYTE **ppbProfile) {
+	// (re-)allocate profile buffer
+	BYTE *pbProfile = *ppbProfile;
+	pbProfile = (BYTE*)realloc(pbProfile, cbByteCount);
+	if(!pbProfile) {
+		return WMP_errOutOfMemory;
+	}
+	// read the profile
+	if(WMP_errSuccess == pStream->SetPos(pStream, uOffset)) {
+		if(WMP_errSuccess == pStream->Read(pStream, pbProfile, cbByteCount)) {
+			*ppbProfile = pbProfile;
+			return WMP_errSuccess;
+		}
+	}
+	return WMP_errFileIO;
+}
+
+// ==========================================================
+// Quantization tables (Y, U, V, YHP, UHP, VHP), 
+// optimized for PSNR
+// ==========================================================
+
+static const int DPK_QPS_420[11][6] = {      // for 8 bit only
+    { 66, 65, 70, 72, 72, 77 },
+    { 59, 58, 63, 64, 63, 68 },
+    { 52, 51, 57, 56, 56, 61 },
+    { 48, 48, 54, 51, 50, 55 },
+    { 43, 44, 48, 46, 46, 49 },
+    { 37, 37, 42, 38, 38, 43 },
+    { 26, 28, 31, 27, 28, 31 },
+    { 16, 17, 22, 16, 17, 21 },
+    { 10, 11, 13, 10, 10, 13 },
+    {  5,  5,  6,  5,  5,  6 },
+    {  2,  2,  3,  2,  2,  2 }
+};
+
+static const int DPK_QPS_8[12][6] = {
+    { 67, 79, 86, 72, 90, 98 },
+    { 59, 74, 80, 64, 83, 89 },
+    { 53, 68, 75, 57, 76, 83 },
+    { 49, 64, 71, 53, 70, 77 },
+    { 45, 60, 67, 48, 67, 74 },
+    { 40, 56, 62, 42, 59, 66 },
+    { 33, 49, 55, 35, 51, 58 },
+    { 27, 44, 49, 28, 45, 50 },
+    { 20, 36, 42, 20, 38, 44 },
+    { 13, 27, 34, 13, 28, 34 },
+    {  7, 17, 21,  8, 17, 21 }, // Photoshop 100%
+    {  2,  5,  6,  2,  5,  6 }
+};
+
+static const int DPK_QPS_16[11][6] = {
+    { 197, 203, 210, 202, 207, 213 },
+    { 174, 188, 193, 180, 189, 196 },
+    { 152, 167, 173, 156, 169, 174 },
+    { 135, 152, 157, 137, 153, 158 },
+    { 119, 137, 141, 119, 138, 142 },
+    { 102, 120, 125, 100, 120, 124 },
+    {  82,  98, 104,  79,  98, 103 },
+    {  60,  76,  81,  58,  76,  81 },
+    {  39,  52,  58,  36,  52,  58 },
+    {  16,  27,  33,  14,  27,  33 },
+    {   5,   8,   9,   4,   7,   8 }
+};
+
+static const int DPK_QPS_16f[11][6] = {
+    { 148, 177, 171, 165, 187, 191 },
+    { 133, 155, 153, 147, 172, 181 },
+    { 114, 133, 138, 130, 157, 167 },
+    {  97, 118, 120, 109, 137, 144 },
+    {  76,  98, 103,  85, 115, 121 },
+    {  63,  86,  91,  62,  96,  99 },
+    {  46,  68,  71,  43,  73,  75 },
+    {  29,  48,  52,  27,  48,  51 },
+    {  16,  30,  35,  14,  29,  34 },
+    {   8,  14,  17,   7,  13,  17 },
+    {   3,   5,   7,   3,   5,   6 }
+};
+
+static const int DPK_QPS_32f[11][6] = {
+    { 194, 206, 209, 204, 211, 217 },
+    { 175, 187, 196, 186, 193, 205 },
+    { 157, 170, 177, 167, 180, 190 },
+    { 133, 152, 156, 144, 163, 168 },
+    { 116, 138, 142, 117, 143, 148 },
+    {  98, 120, 123,  96, 123, 126 },
+    {  80,  99, 102,  78,  99, 102 },
+    {  65,  79,  84,  63,  79,  84 },
+    {  48,  61,  67,  45,  60,  66 },
+    {  27,  41,  46,  24,  40,  45 },
+    {   3,  22,  24,   2,  21,  22 }
+};
+
+// ==========================================================
 // Plugin Implementation
 // ==========================================================
 
@@ -32,12 +520,12 @@ Format() {
 
 static const char * DLL_CALLCONV
 Description() {
-	return "Microsoft HD Photo";
+	return "JPEG XR image format";
 }
 
 static const char * DLL_CALLCONV
 Extension() {
-	return "wdp,hdp,jxr";
+	return "jxr,wdp,hdp";
 }
 
 static const char * DLL_CALLCONV
@@ -52,7 +540,7 @@ MimeType() {
 
 static BOOL DLL_CALLCONV
 Validate(FreeImageIO *io, fi_handle handle) {
-	BYTE jxr_signature[3] = { 0x49, 0x49, 0xbc };
+	BYTE jxr_signature[3] = { 0x49, 0x49, 0xBC };
 	BYTE signature[3] = { 0, 0, 0 };
 
 	io->read_proc(&signature, 1, 3, handle);
@@ -63,19 +551,24 @@ Validate(FreeImageIO *io, fi_handle handle) {
 static BOOL DLL_CALLCONV
 SupportsExportDepth(int depth) {
 	return (
-		(depth == 24) ||
+		(depth == 1)  ||
+		(depth == 8)  ||
+		(depth == 16) ||
+		(depth == 24) || 
 		(depth == 32)
-	);
+		);
 }
 
 static BOOL DLL_CALLCONV 
 SupportsExportType(FREE_IMAGE_TYPE type) {
 	return (
-		(type == FIT_RGB16) ||
+		(type == FIT_BITMAP) ||
+		(type == FIT_UINT16) ||
+		(type == FIT_RGB16)  ||
 		(type == FIT_RGBA16) ||
-		(type == FIT_RGBF) ||
-		(type == FIT_RGBAF) ||
-		(type == FIT_BITMAP)
+		(type == FIT_FLOAT)  ||
+		(type == FIT_RGBF)   ||
+		(type == FIT_RGBAF)
 	);
 }
 
@@ -84,349 +577,502 @@ SupportsNoPixels() {
 	return TRUE;
 }
 
-static FIBITMAP * DLL_CALLCONV
-Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
-	if(handle) {
-		FIBITMAP *dib = NULL;
-		BYTE *raw_data;
+// ==========================================================
+//	Open & Close
+// ==========================================================
 
-		try {
-			// remember the start offset
-			long start_offset = io->tell_proc(handle);
-
-			// remember end-of-file (used for RLE cache)
-			io->seek_proc(handle, 0, SEEK_END);
-			long eof = io->tell_proc(handle);
-			io->seek_proc(handle, start_offset, SEEK_SET);
-			int size = eof - start_offset;
-			int width, height;
-			float rX, rY;
-			GUID format;
-			U8 *bitmap;
-
-			raw_data = (U8 *) malloc(size);
-			struct WMPStream* pDecodeStream = NULL;
-			PKImageDecode* pDecoder = NULL;
-			PKImageDecode_Create_WMP(&pDecoder);
-			io->read_proc(raw_data, 1, size, handle);
-			CreateWS_Memory(&pDecodeStream, raw_data, size);
-			pDecoder->Initialize(pDecoder, pDecodeStream);
-			
-			PKImageDecode_GetPixelFormat(pDecoder, &format);
-			PKImageDecode_GetSize(pDecoder, &width, &height);
-			PKImageDecode_GetResolution(pDecoder, &rX, &rY);
-			FreeImage_SetDotsPerMeterX(dib, (unsigned)(rX/0.0254));
-			FreeImage_SetDotsPerMeterY(dib, (unsigned)(rY/0.0254));
-			
-			PKRect rect = {0, 0, width, height};
-			U32 cbStride = 0;
-			PKPixelInfo pixelInfo;
-			pixelInfo.pGUIDPixFmt = &format;
-			PixelFormatLookup(&pixelInfo, LOOKUP_FORWARD);
-			cbStride = (((pixelInfo.cbitUnit + 7) >> 3) * width);
-			
-			switch(pixelInfo.cbitUnit) {
-				case 24:
-					bitmap = (U8 *) malloc(width*height*3);
-					pDecoder->Copy(pDecoder, &rect, bitmap, cbStride);
-					dib = FreeImage_Allocate(width, height, pixelInfo.cbitUnit);
-					RGBTRIPLE *rgb;
-					for(int y = 0; y < height; y++) {
-						rgb = (RGBTRIPLE *) FreeImage_GetScanLine(dib, height-1-y);
-						for(int x = 0; x < width; x++) {
-							rgb[x].rgbtBlue	= bitmap[0];
-							rgb[x].rgbtGreen= bitmap[1];
-							rgb[x].rgbtRed	= bitmap[2];
-							bitmap += 3;
-						}
-					}
-					break;
-				case 32:
-					bitmap = (U8 *) malloc(width*height*4);
-					pDecoder->Copy(pDecoder, &rect, bitmap, cbStride);
-					dib = FreeImage_Allocate(width, height, pixelInfo.cbitUnit);
-					RGBQUAD *rgba;
-					for(int y = 0; y < height; y++) {
-						rgba = (RGBQUAD *) FreeImage_GetScanLine(dib, height-1-y);
-						for(int x = 0; x < width; x++) {
-							rgba[x].rgbBlue		= bitmap[0];
-							rgba[x].rgbGreen	= bitmap[1];
-							rgba[x].rgbRed		= bitmap[2];
-							rgba[x].rgbReserved	= bitmap[3];
-							bitmap += 4;
-						}
-					}
-					break;
-				case 48:
-					bitmap = (U8 *) malloc(width*height*6);
-					pDecoder->Copy(pDecoder, &rect, bitmap, cbStride);
-					dib = FreeImage_AllocateHeaderT(FALSE, FIT_RGB16, width, height);
-					FIRGB16 *rgb16;
-					for(int y = 0; y < height; y++) {
-						rgb16 = (FIRGB16 *) FreeImage_GetScanLine(dib, height-1-y);
-						for(int x = 0; x < width; x++) {
-							rgb16[x].red	= ((short *)(bitmap))[0];
-							rgb16[x].green	= ((short *)(bitmap))[1];
-							rgb16[x].blue	= ((short *)(bitmap))[2];
-							bitmap += 6;
-						}
-					}
-					break;
-				case 64:
-					bitmap = (U8 *) malloc(width*height*8);
-					pDecoder->Copy(pDecoder, &rect, bitmap, cbStride);
-					dib = FreeImage_AllocateHeaderT(FALSE, FIT_RGBA16, width, height);
-					FIRGBA16 *rgba16;
-					for(int y = 0; y < height; y++) {
-						rgba16 = (FIRGBA16 *) FreeImage_GetScanLine(dib, height-1-y);
-						for(int x = 0; x < width; x++) {
-							rgba16[x].red	= ((short *)(bitmap))[0];
-							rgba16[x].green	= ((short *)(bitmap))[1];
-							rgba16[x].blue	= ((short *)(bitmap))[2];
-							rgba16[x].alpha	= ((short *)(bitmap))[3];
-							bitmap += 8;
-						}
-					}
-					break;
-				case 128:
-					bitmap = (U8 *) malloc(width*height*16);
-					pDecoder->Copy(pDecoder, &rect, bitmap, cbStride);
-					if (format == GUID_PKPixelFormat128bppRGBFloat) {
-						dib = FreeImage_AllocateHeaderT(FALSE, FIT_RGBF, width, height);
-						FIRGBF *rgbf;
-						for(int y = 0; y < height; y++) {
-							rgbf = (FIRGBF *) FreeImage_GetScanLine(dib, height-1-y);
-							for(int x = 0; x < width; x++) {
-								rgbf[x].red	= ((float *)(bitmap))[0];
-								rgbf[x].green	= ((float *)(bitmap))[1];
-								rgbf[x].blue	= ((float *)(bitmap))[2];
-								bitmap += 16;
-							}
-						}
-					} else if (format == GUID_PKPixelFormat128bppRGBAFloat) {
-						dib = FreeImage_AllocateHeaderT(FALSE, FIT_RGBAF, width, height);
-						FIRGBAF *rgbaf;
-						for(int y = 0; y < height; y++) {
-							rgbaf = (FIRGBAF *) FreeImage_GetScanLine(dib, height-1-y);
-							for(int x = 0; x < width; x++) {
-								rgbaf[x].red	= ((float *)(bitmap))[0];
-								rgbaf[x].green	= ((float *)(bitmap))[1];
-								rgbaf[x].blue	= ((float *)(bitmap))[2];
-								rgbaf[x].alpha	= ((float *)(bitmap))[3];
-								bitmap += 16;
-							}
-						}
-					} else return FALSE;
-					break;
-				case 8:
-					bitmap = (U8 *) malloc(width*height);
-					pDecoder->Copy(pDecoder, &rect, bitmap, cbStride);
-					dib = FreeImage_Allocate(width, height, pixelInfo.cbitUnit);
-					for(int y = 0; y < height; y++) {
-						BYTE *line = FreeImage_GetScanLine(dib, height-1-y);
-						memcpy(line, bitmap, width);
-						bitmap += width;
-					}
-					break;
-				default:
-					return FALSE;
+static void * DLL_CALLCONV
+Open(FreeImageIO *io, fi_handle handle, BOOL read) {
+	WMPStream *pStream = NULL;	// stream interface
+	if(io && handle) {
+		// allocate the FreeImageIO stream wrapper
+		FreeImageJXRIO *jxr_io = (FreeImageJXRIO*)malloc(sizeof(FreeImageJXRIO));
+		if(jxr_io) {
+			jxr_io->io = io;
+			jxr_io->handle = handle;
+			// create a JXR stream wrapper
+			if(_jxr_io_Create(&pStream, jxr_io) != WMP_errSuccess) {
+				free(jxr_io);
+				return NULL;
 			}
-
-			pDecoder->Release(&pDecoder);
-			return dib;
-		} catch (const char *message) {
-				FreeImage_OutputMessageProc(s_format_id, message);
-				return FALSE;
 		}
 	}
-	return FALSE;
+	return pStream;
 }
+
+static void DLL_CALLCONV
+Close(FreeImageIO *io, fi_handle handle, void *data) {
+	WMPStream *pStream = (WMPStream*)data;
+	if(pStream) {
+		// free the FreeImageIO stream wrapper
+		FreeImageJXRIO *jxr_io = (FreeImageJXRIO*)pStream->state.pvObj;
+		free(jxr_io);
+		// free the JXR stream wrapper
+		pStream->fMem = TRUE;
+		_jxr_io_Close(&pStream);
+	}
+}
+
+// ==========================================================
+//	Load
+// ==========================================================
+
+/**
+Set decoder parameters
+@param pDecoder Decoder handle
+@param flags FreeImage load flags
+*/
+static void 
+SetDecoderParameters(PKImageDecode *pDecoder, int flags) {
+	// load image & alpha for formats with alpha
+	pDecoder->WMP.wmiSCP.uAlphaMode = 2;
+	// more options to come ...
+}
+
+/**
+Copy or convert & copy decoded pixels into the dib
+@param pDecoder Decoder handle
+@param out_guid_format Target guid format
+@param dib Output dib
+@param width Image width
+@param height Image height
+@return Returns 0 if successful, returns ERR otherwise
+*/
+static ERR
+CopyPixels(PKImageDecode *pDecoder, PKPixelFormatGUID out_guid_format, FIBITMAP *dib, int width, int height) {
+	PKFormatConverter *pConverter = NULL;	// pixel format converter
+	ERR error_code = 0;	// error code as returned by the interface
+	BYTE *pb = NULL;	// local buffer used for pixel format conversion
+	
+	// image dimensions
+	const PKRect rect = {0, 0, width, height};
+
+	try {
+		// get input file pixel format ...
+		PKPixelFormatGUID in_guid_format;
+		error_code = pDecoder->GetPixelFormat(pDecoder, &in_guid_format);
+		JXR_CHECK(error_code);
+		
+		// is a format conversion needed ?
+
+		if(IsEqualGUID(out_guid_format, in_guid_format)) {
+			// no conversion, load bytes "as is" ...
+
+			// get a pointer to dst pixel data
+			BYTE *dib_bits = FreeImage_GetBits(dib);
+
+			// get dst pitch (count of BYTE for stride)
+			const unsigned cbStride = FreeImage_GetPitch(dib);			
+
+			// decode and copy bits to dst array
+			error_code = pDecoder->Copy(pDecoder, &rect, dib_bits, cbStride);
+			JXR_CHECK(error_code);		
+		}
+		else {
+			// we need to use the conversion API ...
+			
+			// allocate the pixel format converter
+			error_code = PKCodecFactory_CreateFormatConverter(&pConverter);
+			JXR_CHECK(error_code);
+			
+			// set the conversion function
+			error_code = pConverter->Initialize(pConverter, pDecoder, NULL, out_guid_format);
+			JXR_CHECK(error_code);
+			
+			// get the maximum stride
+			unsigned cbStride = 0;
+			{
+				PKPixelInfo pPIFrom;
+				PKPixelInfo pPITo;
+				
+				pPIFrom.pGUIDPixFmt = &in_guid_format;
+				error_code = PixelFormatLookup(&pPIFrom, LOOKUP_FORWARD);
+				JXR_CHECK(error_code);
+
+				pPITo.pGUIDPixFmt = &out_guid_format;
+				error_code = PixelFormatLookup(&pPITo, LOOKUP_FORWARD);
+				JXR_CHECK(error_code);
+
+				unsigned cbStrideFrom = ((pPIFrom.cbitUnit + 7) >> 3) * width;
+				unsigned cbStrideTo = ((pPITo.cbitUnit + 7) >> 3) * width;
+				cbStride = MAX(cbStrideFrom, cbStrideTo);
+			}
+
+			// allocate a local decoder / encoder buffer
+			error_code = PKAllocAligned((void **) &pb, cbStride * height, 128);
+			JXR_CHECK(error_code);
+
+			// copy / convert pixels
+			error_code = pConverter->Copy(pConverter, &rect, pb, cbStride);
+			JXR_CHECK(error_code);
+
+			// now copy pixels into the dib
+			const size_t line_size = FreeImage_GetLine(dib);
+			for(int y = 0; y < height; y++) {
+				BYTE *src_bits = (BYTE*)(pb + y * cbStride);
+				BYTE *dst_bits = (BYTE*)FreeImage_GetScanLine(dib, y);
+				memcpy(dst_bits, src_bits, line_size);
+			}
+			
+			// free the local buffer
+			PKFreeAligned((void **) &pb);
+
+			// free the pixel format converter
+			PKFormatConverter_Release(&pConverter);
+		}
+
+		// FreeImage DIB are upside-down relative to usual graphic conventions
+		FreeImage_FlipVertical(dib);
+
+		// post-processing ...
+		// -------------------
+
+		// swap RGB as needed
+
+#if FREEIMAGE_COLORORDER == FREEIMAGE_COLORORDER_BGR
+		if(IsEqualGUID(out_guid_format, GUID_PKPixelFormat24bppRGB) || IsEqualGUID(out_guid_format, GUID_PKPixelFormat32bppRGB)) {
+			SwapRedBlue32(dib);
+		}
+#elif FREEIMAGE_COLORORDER == FREEIMAGE_COLORORDER_RGB
+		if(IsEqualGUID(out_guid_format, GUID_PKPixelFormat24bppBGR) || IsEqualGUID(out_guid_format, GUID_PKPixelFormat32bppBGR)) {
+			SwapRedBlue32(dib);
+		}
+#endif
+		
+		return WMP_errSuccess;
+
+	} catch(...) {
+		// free the local buffer
+		PKFreeAligned((void **) &pb);
+		// free the pixel format converter
+		PKFormatConverter_Release(&pConverter);
+
+		return error_code;
+	}
+}
+
+// --------------------------------------------------------------------------
+
+static FIBITMAP * DLL_CALLCONV
+Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
+	PKImageDecode *pDecoder = NULL;	// decoder interface
+	ERR error_code = 0;				// error code as returned by the interface
+	PKPixelFormatGUID guid_format;	// loaded pixel format (== input file pixel format if no conversion needed)
+	
+	FREE_IMAGE_TYPE image_type = FIT_UNKNOWN;	// input image type
+	unsigned bpp = 0;							// input image bit depth
+	FIBITMAP *dib = NULL;
+	
+	// get the I/O stream wrapper
+	WMPStream *pDecodeStream = (WMPStream*)data;
+
+	if(!handle || !pDecodeStream) {
+		return NULL;
+	}
+
+	BOOL header_only = (flags & FIF_LOAD_NOPIXELS) == FIF_LOAD_NOPIXELS;
+
+	try {
+		int width, height;	// image dimensions (in pixels)
+
+		// create a JXR decoder interface and initialize function pointers with *_WMP functions
+		error_code = PKImageDecode_Create_WMP(&pDecoder);
+		JXR_CHECK(error_code);
+
+		// attach the stream to the decoder ...
+		// ... then read the image container and the metadata
+		error_code = pDecoder->Initialize(pDecoder, pDecodeStream);
+		JXR_CHECK(error_code);
+
+		// set decoder parameters
+		SetDecoderParameters(pDecoder, flags);
+
+		// get dst image format specifications
+		unsigned red_mask = 0, green_mask = 0, blue_mask = 0;
+		error_code = GetInputPixelFormat(pDecoder, &guid_format, &image_type, &bpp, &red_mask, &green_mask, &blue_mask);
+		JXR_CHECK(error_code);
+
+		// get image dimensions
+		pDecoder->GetSize(pDecoder, &width, &height);
+
+		// allocate dst image
+		{			
+			dib = FreeImage_AllocateHeaderT(header_only, image_type, width, height, bpp, red_mask, green_mask, blue_mask);
+			if(!dib) {
+				throw FI_MSG_ERROR_DIB_MEMORY;
+			}
+			if(FreeImage_GetBPP(dib) == 1) {
+				// BD_1 - build a FIC_MINISBLACK palette
+				RGBQUAD *pal = FreeImage_GetPalette(dib);
+				pal[0].rgbRed = pal[0].rgbGreen = pal[0].rgbBlue = 0;
+				pal[1].rgbRed = pal[1].rgbGreen = pal[1].rgbBlue = 255;
+			}
+		}
+
+		// get image resolution
+		{
+			float resX, resY;	// image resolution (in dots per inch)
+			// convert from English units, i.e. dots per inch to universal units, i.e. dots per meter
+			pDecoder->GetResolution(pDecoder, &resX, &resY);
+			FreeImage_SetDotsPerMeterX(dib, (unsigned)(resX / 0.0254F + 0.5F));
+			FreeImage_SetDotsPerMeterY(dib, (unsigned)(resY / 0.0254F + 0.5F));
+		}
+
+		if(header_only) {
+			// header only mode ...
+			
+			// free the decoder
+			pDecoder->Release(&pDecoder);
+			assert(pDecoder == NULL);
+
+			return dib;
+		}
+		
+		// copy pixels into the dib, perform pixel conversion if needed
+		error_code = CopyPixels(pDecoder, guid_format, dib, width, height);
+		JXR_CHECK(error_code);
+
+		// free the decoder
+		pDecoder->Release(&pDecoder);
+		assert(pDecoder == NULL);
+
+		return dib;
+
+	} catch (const char *message) {
+		// unload the dib
+		FreeImage_Unload(dib);
+		// free the decoder
+		pDecoder->Release(&pDecoder);
+
+		if(NULL != message) {
+			FreeImage_OutputMessageProc(s_format_id, message);
+		}
+	}
+
+	return NULL;
+}
+
+// ==========================================================
+//	Save
+// ==========================================================
+
+/**
+Configure compression parameters
+
+ImageQuality  Q (BD==1)  Q (BD==8)   Q (BD==16)  Q (BD==32F) Subsample   Overlap
+[0.0, 0.4]    8-IQ*5     (see table) (see table) (see table) 4:4:4       2
+(0.4, 0.8)    8-IQ*5     (see table) (see table) (see table) 4:4:4       1
+[0.8, 1.0)    8-IQ*5     (see table) (see table) (see table) 4:4:4       1
+[1.0, 1.0]    1          1           1           1           4:4:4       0
+
+@param wmiSCP Encoder parameters
+@param pixelInfo Image specifications
+@param fltImageQuality Image output quality in [0..1), 1 means lossless
+*/
+static void 
+SetCompression(CWMIStrCodecParam *wmiSCP, const PKPixelInfo *pixelInfo, float fltImageQuality) {
+    if(fltImageQuality < 1.0F) {
+        // overlap
+		if(fltImageQuality >= 0.5F) {
+			wmiSCP->olOverlap = OL_ONE;
+		} else {
+			wmiSCP->olOverlap = OL_TWO;
+		}
+		// chroma sub-sampling
+		if(fltImageQuality >= 0.5F || pixelInfo->uBitsPerSample > 8) {
+			wmiSCP->cfColorFormat = YUV_444;
+		} else {
+			wmiSCP->cfColorFormat = YUV_420;
+		}
+
+	    // bit depth
+		if(pixelInfo->bdBitDepth == BD_1) {
+			wmiSCP->uiDefaultQPIndex = (U8)(8 - 5.0F * fltImageQuality + 0.5F);
+		}
+		else {
+			// remap [0.8, 0.866, 0.933, 1.0] to [0.8, 0.9, 1.0, 1.1]
+            // to use 8-bit DPK QP table (0.933 == Photoshop JPEG 100)
+            if(fltImageQuality > 0.8F && pixelInfo->bdBitDepth == BD_8 && wmiSCP->cfColorFormat != YUV_420 && wmiSCP->cfColorFormat != YUV_422) {
+				fltImageQuality = 0.8F + (fltImageQuality - 0.8F) * 1.5F;
+			}
+
+            const int qi = (int) (10.0F * fltImageQuality);
+            const float qf = 10.0F * fltImageQuality - (float)qi;
+			
+			const int *pQPs = 
+				(wmiSCP->cfColorFormat == YUV_420 || wmiSCP->cfColorFormat == YUV_422) ?
+				DPK_QPS_420[qi] :
+				(pixelInfo->bdBitDepth == BD_8 ? DPK_QPS_8[qi] :
+				(pixelInfo->bdBitDepth == BD_16 ? DPK_QPS_16[qi] :
+				(pixelInfo->bdBitDepth == BD_16F ? DPK_QPS_16f[qi] :
+				DPK_QPS_32f[qi])));
+				
+			wmiSCP->uiDefaultQPIndex = (U8) (0.5F + (float) pQPs[0] * (1.0F - qf) + (float) (pQPs + 6)[0] * qf);
+			wmiSCP->uiDefaultQPIndexU = (U8) (0.5F + (float) pQPs[1] * (1.0F - qf) + (float) (pQPs + 6)[1] * qf);
+			wmiSCP->uiDefaultQPIndexV = (U8) (0.5F + (float) pQPs[2] * (1.0F - qf) + (float) (pQPs + 6)[2] * qf);
+            wmiSCP->uiDefaultQPIndexYHP = (U8) (0.5F + (float) pQPs[3] * (1.0F - qf) + (float) (pQPs + 6)[3] * qf);
+			wmiSCP->uiDefaultQPIndexUHP = (U8) (0.5F + (float) pQPs[4] * (1.0F - qf) + (float) (pQPs + 6)[4] * qf);
+			wmiSCP->uiDefaultQPIndexVHP = (U8) (0.5F + (float) pQPs[5] * (1.0F - qf) + (float) (pQPs + 6)[5] * qf);
+		}
+	} // fltImageQuality < 1.0F
+    else {
+		// lossless mode
+		wmiSCP->uiDefaultQPIndex = 1;
+	}
+}
+
+/**
+Set encoder parameters
+@param wmiSCP Encoder parameters
+@param pixelInfo Image specifications
+@param flags FreeImage save flags
+@param bHasAlpha TRUE if an alpha layer is present
+*/
+static void 
+SetEncoderParameters(CWMIStrCodecParam *wmiSCP, const PKPixelInfo *pixelInfo, int flags, BOOL bHasAlpha) {
+	float fltImageQuality = 1.0F;
+
+	// all values have been set to zero by the API
+	// update default values for some attributes
+    wmiSCP->cfColorFormat = YUV_444;		// color format
+    wmiSCP->bdBitDepth = BD_LONG;			// internal bit depth
+    wmiSCP->bfBitstreamFormat = SPATIAL;	// compressed image data in spatial order
+    wmiSCP->bProgressiveMode = FALSE;		// sequential mode
+    wmiSCP->olOverlap = OL_ONE;				// single level overlap processing 
+	wmiSCP->cNumOfSliceMinus1H = 0;			// # of horizontal slices
+	wmiSCP->cNumOfSliceMinus1V = 0;			// # of vertical slices
+    wmiSCP->sbSubband = SB_ALL;				// keep all subbands
+    wmiSCP->uAlphaMode = 0;					// 0:no alpha 1: alpha only else: something + alpha 
+    wmiSCP->uiDefaultQPIndex = 1;			// quantization for grey or rgb layer(s), 1: lossless
+    wmiSCP->uiDefaultQPIndexAlpha = 1;		// quantization for alpha layer, 1: lossless
+
+	// process the flags
+	// -----------------
+
+	// progressive mode
+	if ((flags & JXR_PROGRESSIVE) == JXR_PROGRESSIVE) {
+		// turn on progressive mode (instead of sequential mode)
+		wmiSCP->bProgressiveMode = TRUE;
+	}
+
+	// quality in [0.01 - 1.0), 1.0 means lossless - default is 0.80
+	int quality = flags & 0x7F;
+	if(quality == 0) {
+		// defaut to 0.80
+		fltImageQuality = 0.8F;
+	} else if((flags & JXR_LOSSLESS) == JXR_LOSSLESS) {
+		fltImageQuality = 1.0F;
+	} else {
+		quality = (quality >= 100) ? 100 : quality;
+		fltImageQuality = quality / 100.0F;
+	}
+	SetCompression(wmiSCP, pixelInfo, fltImageQuality);
+
+	// alpha compression
+	if(bHasAlpha) {
+		wmiSCP->uAlphaMode = 2;	// encode with a planar alpha channel
+	}
+}
+
+// --------------------------------------------------------------------------
 
 static BOOL DLL_CALLCONV
 Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
-	struct WMPStream *pEncodeStream = NULL;
-	PKImageEncode *pEncoder = NULL;
+	BOOL bIsFlipped = FALSE;		// FreeImage DIB are upside-down relative to usual graphic conventions
+	PKPixelFormatGUID guid_format;	// image format
+	PKPixelInfo pixelInfo;			// image specifications
+	BOOL bHasAlpha = FALSE;			// is alpha layer present ?
 
-	if((dib != NULL) && (handle != NULL)) {
-		if(flags == 0) flags = 80;
-		try {
-			int width = FreeImage_GetWidth(dib);
-			int height = FreeImage_GetHeight(dib);
-			// JPEG-XR's decoder doesn't support too small image although it may be valid when encodes
-			if(width < 16 || height < 16) return FALSE;
-			bool hasAlpha = false;
-			PKPixelFormatGUID format;
-			size_t bitmap_size;
-			int pixel_depth = FreeImage_GetBPP(dib);
+	PKImageEncode *pEncoder = NULL;		// encoder interface
+	ERR error_code = 0;					// error code as returned by the interface
 
-			void *bitmap;
-			void *bitmap_ptr = NULL;
-			switch(pixel_depth) {
-				case 24:
-					format = GUID_PKPixelFormat24bppBGR;
-					bitmap_size = width * height * 3;
-					bitmap = malloc(bitmap_size);
-					bitmap_ptr = bitmap;
-					RGBTRIPLE *rgb;
-					for(int y = 0; y < height; y++) {
-						rgb = (RGBTRIPLE *) FreeImage_GetScanLine(dib, height-1-y);
-						for(int x = 0; x < width; x++) {
-							((BYTE *)bitmap)[0] = rgb[x].rgbtBlue;
-							((BYTE *)bitmap)[1] = rgb[x].rgbtGreen;
-							((BYTE *)bitmap)[2] = rgb[x].rgbtRed;
-							bitmap = (BYTE *)bitmap + 3;
-						}
-					}
-					break;
-				case 32:
-					format = GUID_PKPixelFormat32bppBGRA;
-					hasAlpha = true;
-					bitmap_size = width * height * 4;
-					bitmap = malloc(bitmap_size);
-					bitmap_ptr = bitmap;
-					RGBQUAD *rgba;
-					for(int y = 0; y < height; y++) {
-						rgba = (RGBQUAD *) FreeImage_GetScanLine(dib, height-1-y);
-						for(int x = 0; x < width; x++) {
-							((BYTE *)bitmap)[0] = rgba[x].rgbBlue;
-							((BYTE *)bitmap)[1] = rgba[x].rgbGreen;
-							((BYTE *)bitmap)[2] = rgba[x].rgbRed;
-							((BYTE *)bitmap)[3] = rgba[x].rgbReserved;
-							bitmap = (BYTE *)bitmap + 4;
-						}
-					}
-					break;
-				case 48:
-					format = GUID_PKPixelFormat48bppRGB;
-					bitmap_size = width * height * 6;
-					bitmap = malloc(bitmap_size);
-					bitmap_ptr = bitmap;
-					FIRGB16 *rgb16;
-					for(int y = 0; y < height; y++) {
-						rgb16 = (FIRGB16 *) FreeImage_GetScanLine(dib, height-1-y);
-						for(int x = 0; x < width; x++) {
-							((short *)bitmap)[0] = rgb16[x].red;
-							((short *)bitmap)[1] = rgb16[x].green;
-							((short *)bitmap)[2] = rgb16[x].blue;
-							bitmap = (BYTE *)bitmap + 6;
-						}
-					}
-					break;
-				case 64:
-					format = GUID_PKPixelFormat64bppRGBA;
-					hasAlpha = true;
-					bitmap_size = width * height * 8;
-					bitmap = malloc(bitmap_size);
-					bitmap_ptr = bitmap;
-					FIRGBA16 *rgba16;
-					for(int y = 0; y < height; y++) {
-						rgba16 = (FIRGBA16 *) FreeImage_GetScanLine(dib, height-1-y);
-						for(int x = 0; x < width; x++) {
-							((short *)bitmap)[0] = rgba16[x].red;
-							((short *)bitmap)[1] = rgba16[x].green;
-							((short *)bitmap)[2] = rgba16[x].blue;
-							((short *)bitmap)[3] = rgba16[x].alpha;
-							bitmap = (BYTE *)bitmap + 8;
-						}
-					}
-					break;
-				case 96:
-					// 96bppRGBFloat doesn't supported
-					format = GUID_PKPixelFormat128bppRGBFloat;
-					bitmap_size = width * height * 16;
-					bitmap = malloc(bitmap_size);
-					bitmap_ptr = bitmap;
-					FIRGBF *rgbf;
-					for(int y = 0; y < height; y++) {
-						rgbf = (FIRGBF *) FreeImage_GetScanLine(dib, height-1-y);
-						for(int x = 0; x < width; x++) {
-							((float *)bitmap)[0] = rgbf[x].red;
-							((float *)bitmap)[1] = rgbf[x].green;
-							((float *)bitmap)[2] = rgbf[x].blue;
-							bitmap = (BYTE *)bitmap + 16;
-						}
-					}
-					break;
-				case 128:
-					format = GUID_PKPixelFormat128bppRGBAFloat;
-					hasAlpha = true;
-					bitmap_size = width * height * 16;
-					bitmap = malloc(bitmap_size);
-					bitmap_ptr = bitmap;
-					FIRGBAF *rgbaf;
-					for(int y = 0; y < height; y++) {
-						rgbaf = (FIRGBAF *) FreeImage_GetScanLine(dib, height-1-y);
-						for(int x = 0; x < width; x++) {
-							((float *)bitmap)[0] = rgbaf[x].red;
-							((float *)bitmap)[1] = rgbaf[x].green;
-							((float *)bitmap)[2] = rgbaf[x].blue;
-							((float *)bitmap)[3] = rgbaf[x].alpha;
-							bitmap = (BYTE *)bitmap + 16;
-						}
-					}
-					break;
-				case 8:
-					format = GUID_PKPixelFormat8bppGray;
-					bitmap_size = width * height;
-					bitmap = malloc(bitmap_size);
-					bitmap_ptr = bitmap;
-					for(int y = 0; y < height; y++) {
-						BYTE *line = FreeImage_GetScanLine(dib, height-1-y);
-						memcpy(bitmap, line, width);
-						bitmap = (BYTE *)bitmap + width;
-					}
-					break;
-				default:
-					return FALSE;
-			}
+	// get the I/O stream wrapper
+	WMPStream *pEncodeStream = (WMPStream*)data;
 
-		U32 cbStride = 0;
-		PKPixelInfo pixelInfo;
-		PKImageEncode_Create_WMP(&pEncoder);
-		BYTE *encode_cache = (BYTE *) malloc(bitmap_size);
-		CreateWS_Memory(&pEncodeStream, (U8*)encode_cache, bitmap_size);
+	if(!dib || !handle || !pEncodeStream) {
+		return FALSE;
+	}
 
-		if((flags & JXR_SUBSAMPLING_420) == JXR_SUBSAMPLING_420) {
-			pEncoder->WMP.wmiSCP.cfColorFormat = YUV_420;
-		} else if((flags & JXR_SUBSAMPLING_422) == JXR_SUBSAMPLING_422) {
-			pEncoder->WMP.wmiSCP.cfColorFormat = YUV_422;
-		} else {
-			pEncoder->WMP.wmiSCP.cfColorFormat = YUV_444;
-		}
-		
-		pEncoder->WMP.wmiSCP.bdBitDepth = BD_LONG;
-		pEncoder->WMP.wmiSCP.olOverlap = OL_ONE;
-		
-		pEncoder->WMP.wmiSCP.uiDefaultQPIndex = (flags & 0xFF) >= 100 ? 0 : 100 - (flags & 0xFF);
-		if(hasAlpha) {
-			pEncoder->WMP.wmiSCP.uAlphaMode = 2;
-			int alphaq = ((flags & 0xFF000) >> 12);
-			if(alphaq == 0) alphaq = pEncoder->WMP.wmiSCP.uiDefaultQPIndex;
-			pEncoder->WMP.wmiSCP_Alpha.uiDefaultQPIndex = alphaq;
+	try {
+		// get image dimensions
+		unsigned width = FreeImage_GetWidth(dib);
+		unsigned height = FreeImage_GetHeight(dib);
+
+		// check JPEG-XR limits
+		if((width < MB_WIDTH_PIXEL) || (height < MB_HEIGHT_PIXEL)) {
+			FreeImage_OutputMessageProc(s_format_id, "Unsupported image size: width x height = %d x %d", width, height);
+			throw (const char*)NULL;
 		}
 
-		pixelInfo.pGUIDPixFmt = &format;
-		PixelFormatLookup(&pixelInfo, LOOKUP_FORWARD);
-		cbStride = (((pixelInfo.cbitUnit + 7) >> 3) * width);
+		// get output pixel format
+		error_code = GetOutputPixelFormat(dib, &guid_format, &bHasAlpha);
+		JXR_CHECK(error_code);
+		pixelInfo.pGUIDPixFmt = &guid_format;
+		error_code = PixelFormatLookup(&pixelInfo, LOOKUP_FORWARD);
+		JXR_CHECK(error_code);
 
-		pEncoder->Initialize(pEncoder, pEncodeStream, 
-							&pEncoder->WMP.wmiSCP, sizeof(pEncoder->WMP.wmiSCP));
-		pEncoder->SetPixelFormat(pEncoder, format);
+		// create a JXR encoder interface and initialize function pointers with *_WMP functions
+		error_code = PKImageEncode_Create_WMP(&pEncoder);
+		JXR_CHECK(error_code);
+
+		// attach the stream to the encoder and set all encoder parameters to zero ...
+		error_code = pEncoder->Initialize(pEncoder, pEncodeStream, &pEncoder->WMP.wmiSCP, sizeof(CWMIStrCodecParam));
+		JXR_CHECK(error_code);
+
+		// ... then configure the encoder
+		SetEncoderParameters(&pEncoder->WMP.wmiSCP, &pixelInfo, flags, bHasAlpha);
+
+		// set pixel format
+		pEncoder->SetPixelFormat(pEncoder, guid_format);
+
+		// set image size
 		pEncoder->SetSize(pEncoder, width, height);
-		unsigned x = FreeImage_GetDotsPerMeterX(dib);
-		unsigned y = FreeImage_GetDotsPerMeterY(dib);
-		pEncoder->SetResolution(pEncoder, x*(float)0.0254, y*(float)0.0254);
-		pEncoder->WritePixels(pEncoder, height, (U8 *) bitmap_ptr, cbStride);
-		int image_size = pEncoder->WMP.nCbImage + pEncoder->WMP.nCbAlpha
-							+ pEncoder->WMP.nOffImage;
-		io->write_proc(encode_cache, 1, image_size, handle);
+		
+		// set resolution (convert from universal units to English units)
+		float resX = (float)(unsigned)(0.5F + 0.0254F * FreeImage_GetDotsPerMeterX(dib));
+		float resY = (float)(unsigned)(0.5F + 0.0254F * FreeImage_GetDotsPerMeterY(dib));
+		pEncoder->SetResolution(pEncoder, resX, resY);
 
+		// write pixels
+		// --------------
+
+		// dib coordinates are upside-down relative to usual conventions
+		bIsFlipped = FreeImage_FlipVertical(dib);
+
+		// get a pointer to dst pixel data
+		BYTE *dib_bits = FreeImage_GetBits(dib);
+
+		// get dst pitch (count of BYTE for stride)
+		const unsigned cbStride = FreeImage_GetPitch(dib);
+
+		// write pixels on output
+		error_code = pEncoder->WritePixels(pEncoder, height, dib_bits, cbStride);
+		JXR_CHECK(error_code);
+
+		// recover dib coordinates
+		FreeImage_FlipVertical(dib);
+
+		// free the encoder
 		pEncoder->Release(&pEncoder);
+		assert(pEncoder == NULL);
+		
 		return TRUE;
-		} catch (const char* text) {
-			FreeImage_OutputMessageProc(s_format_id, text);
+
+	} catch (const char *message) {
+		if(bIsFlipped) {
+			// recover dib coordinates
+			FreeImage_FlipVertical(dib);
+		}
+		if(pEncoder) {
+			// free the encoder
+			pEncoder->Release(&pEncoder);
+			assert(pEncoder == NULL);
+		}
+		if(NULL != message) {
+			FreeImage_OutputMessageProc(s_format_id, message);
 		}
 	}
+
 	return FALSE;
 }
 
@@ -442,12 +1088,14 @@ InitJXR(Plugin *plugin, int format_id) {
 	plugin->description_proc = Description;
 	plugin->extension_proc = Extension;
 	plugin->regexpr_proc = RegExpr;
-	plugin->open_proc = NULL;
-	plugin->close_proc = NULL;
+	plugin->open_proc = Open;
+	plugin->close_proc = Close;
 	plugin->load_proc = Load;
 	plugin->save_proc = Save;
 	plugin->validate_proc = Validate;
 	plugin->mime_proc = MimeType;
 	plugin->supports_export_bpp_proc = SupportsExportDepth;
 	plugin->supports_export_type_proc = SupportsExportType;
+	plugin->supports_no_pixels_proc = SupportsNoPixels;
 }
+

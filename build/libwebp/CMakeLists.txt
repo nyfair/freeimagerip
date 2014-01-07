@@ -21,6 +21,7 @@ SET(SOURCE_FILES
 	${SRC}/dsp/upsampling.c
 	${SRC}/dsp/upsampling_sse2.c
 	${SRC}/dsp/yuv.c
+	${SRC}/demux/demux.c
 	${SRC}/enc/alpha.c
 	${SRC}/enc/analysis.c
 	${SRC}/enc/backward_references.c
@@ -38,6 +39,10 @@ SET(SOURCE_FILES
 	${SRC}/enc/vp8l.c
 	${SRC}/enc/webpenc.c
 	${SRC}/enc/token.c
+	${SRC}/mux/muxedit.c
+	${SRC}/mux/muxinternal.c
+	${SRC}/mux/muxread.c
+	${SRC}/utils/alpha_processing.c
 	${SRC}/utils/bit_reader.c
 	${SRC}/utils/bit_writer.c
 	${SRC}/utils/color_cache.c
@@ -46,6 +51,7 @@ SET(SOURCE_FILES
 	${SRC}/utils/huffman_encode.c
 	${SRC}/utils/quant_levels.c
 	${SRC}/utils/quant_levels_dec.c
+	${SRC}/utils/random.c
 	${SRC}/utils/rescaler.c
 	${SRC}/utils/thread.c
 	${SRC}/utils/utils.c

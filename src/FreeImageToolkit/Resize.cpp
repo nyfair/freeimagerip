@@ -1975,7 +1975,7 @@ void CResizeEngine::verticalFilter(FIBITMAP *const src, unsigned width, unsigned
 					const float *src_bits = src_base + iLeft * src_pitch + index;
 					double value[4] = {0, 0, 0, 0};                            // 4 = 128 bpp max
 
-					for (unsigned i = iLeft; i <= iRight; i++) {
+					for (unsigned i = iLeft; i < iRight; i++) {
 						// scan between boundaries
 						// accumulate weighted effect of each neighboring pixel
 						const double weight = weightsTable.getWeight(y, i - iLeft);

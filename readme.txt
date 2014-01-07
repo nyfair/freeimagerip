@@ -1,7 +1,6 @@
 Gamecg composite library forks from FreeImage
 
 New Feature:
-+jpeg-xr support
 +asm accelerate for jpeg and png
 +lua wrapper
 +susie plugin on windows
@@ -12,9 +11,9 @@ New Feature:
 
 [3rd Party]
 libjpeg-turbo 1.3.0
-libpng 1.6.6
+libpng 1.6.8
 libtiff 4.0.3
-libwebp 0.3.1
+libwebp 0.4.0
 openjpeg 2.0.0
 zlib 1.2.8
 jxrlib 1.1
