@@ -162,8 +162,6 @@ JXR_ErrorMessage(const int error) {
 		default:
 			return "Invalid instruction - please contact the FreeImage team";
 	}
-
-	return NULL;
 }
 
 // ==========================================================

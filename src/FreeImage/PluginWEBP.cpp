@@ -530,7 +530,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 		// get the MUX object
 		mux = (WebPMux*)data;
 		if(!mux) {
-			return NULL;
+			return FALSE;
 		}
 
 		// --- prepare image data ---

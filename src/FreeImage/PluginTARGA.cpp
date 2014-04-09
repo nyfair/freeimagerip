@@ -338,8 +338,6 @@ Validate(FreeImageIO *io, fi_handle handle) {
 				return FALSE;
 		}
 	}
-
-	return FALSE;
 }
 
 static BOOL DLL_CALLCONV

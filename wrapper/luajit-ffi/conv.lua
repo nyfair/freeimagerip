@@ -10,7 +10,7 @@ if num == 0 then
 elseif num == 1 then
 	if arg[1] == '24' or arg[1] == '32' or arg[1] == '8' then
 		convbpp('*.bmp', tonumber(arg[1]), 'bmp')
-		convbpp('*.png', tonumber(arg[1]), 'bmp')
+		convbpp('*.png', tonumber(arg[1]), 'png', 9)
 	else convert('*.bmp', arg[1])
 	end
 elseif num == 2 then
