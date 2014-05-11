@@ -366,10 +366,9 @@ FI_ENUM(FREE_IMAGE_FORMAT) {
 	FIF_WEBP		= 5,
 	FIF_JXR			= 6,
 	FIF_TIFF		= 7,
-	FIF_JP2			= 8,
-	FIF_PSD			= 9,
-	FIF_ICO			= 10,
-	FIF_HDR			= 11
+	FIF_PSD			= 8,
+	FIF_ICO			= 9,
+	FIF_HDR			= 10
 };
 
 /** Image type used in FreeImage.
@@ -560,7 +559,6 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define HDR_DEFAULT			0
 #define ICO_DEFAULT		 	0
 #define ICO_MAKEALPHA		1			// convert to 32bpp and create an alpha channel from the AND-mask when loading
-#define JP2_DEFAULT			0			// save with a 16:1 rate
 #define JPEG_DEFAULT		0			// loading (see JPEG_FAST); saving (see JPEG_QUALITYGOOD|JPEG_SUBSAMPLING_420|JPEG_PROGRESSIVE)
 #define JPEG_FAST			0x0001		// load the file as fast as possible, sacrificing some quality
 #define JPEG_ACCURATE		0x0002		// load the file with the best quality, sacrificing some speed

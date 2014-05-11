@@ -10,10 +10,9 @@ New Feature:
 -multipage image suport
 
 [3rd Party]
-libjpeg-turbo 1.3.0
+libjpeg-turbo 1.3.1
 libpng 1.6.10
 libtiff 4.0.3
 libwebp 0.4.0
-openjpeg 2.0.0
 zlib 1.2.8
 jxrlib 1.1

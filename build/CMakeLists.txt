@@ -69,7 +69,6 @@ SET(SOURCE_FILES
 	${PROJECT_DIR}/FreeImage/FreeImageIO.cpp
 	${PROJECT_DIR}/FreeImage/GetType.cpp
 	${PROJECT_DIR}/FreeImage/Halftoning.cpp
-	${PROJECT_DIR}/FreeImage/J2KHelper.cpp
 	${PROJECT_DIR}/FreeImage/MemoryIO.cpp
 	${PROJECT_DIR}/FreeImage/PixelAccess.cpp
 	${PROJECT_DIR}/FreeImage/Plugin.cpp
@@ -77,7 +76,6 @@ SET(SOURCE_FILES
 	${PROJECT_DIR}/FreeImage/PluginGIF.cpp
 	${PROJECT_DIR}/FreeImage/PluginHDR.cpp
 	${PROJECT_DIR}/FreeImage/PluginICO.cpp
-	${PROJECT_DIR}/FreeImage/PluginJP2.cpp
 	${PROJECT_DIR}/FreeImage/PluginJPEG.cpp
 	${PROJECT_DIR}/FreeImage/PluginJXR.cpp
 	${PROJECT_DIR}/FreeImage/PluginPNG.cpp
@@ -130,11 +128,10 @@ ADD_SUBDIRECTORY(libjxr)
 ADD_SUBDIRECTORY(libpng)
 ADD_SUBDIRECTORY(libtiff)
 ADD_SUBDIRECTORY(libwebp)
-ADD_SUBDIRECTORY(openjpeg)
 ADD_SUBDIRECTORY(zlib)
 
-ADD_DEPENDENCIES(freeimage libjpeg-turbo libjxr libpng libtiff libwebp openjpeg zlib)
-TARGET_LINK_LIBRARIES(freeimage libjpeg-turbo libjxr libpng libtiff libwebp openjpeg zlib)
+ADD_DEPENDENCIES(freeimage libjpeg-turbo libjxr libpng libtiff libwebp zlib)
+TARGET_LINK_LIBRARIES(freeimage libjpeg-turbo libjxr libpng libtiff libwebp zlib)
 INCLUDE_DIRECTORIES(
 	${PROJECT_DIR}/
 	${3RDPARTY_DIR}/libjpeg-turbo/
@@ -145,11 +142,9 @@ INCLUDE_DIRECTORIES(
 	${3RDPARTY_DIR}/libjxr/jxrgluelib/
 	${3RDPARTY_DIR}/libtiff/
 	${3RDPARTY_DIR}/libwebp/src/
-	${3RDPARTY_DIR}/openjpeg/
 	${3RDPARTY_DIR}/zlib/
 	${CMAKE_BINARY_DIR}/libjpeg-turbo/
 	${CMAKE_BINARY_DIR}/libpng/
-	${CMAKE_BINARY_DIR}/openjpeg/
 )
 
 IF(MSVC AND NOT X64)

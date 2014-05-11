@@ -115,7 +115,6 @@ void DLL_CALLCONV InitTARGA(Plugin *plugin, int format_id);
 void DLL_CALLCONV InitWEBP(Plugin *plugin, int format_id);
 void DLL_CALLCONV InitJXR(Plugin *plugin, int format_id);
 void DLL_CALLCONV InitTIFF(Plugin *plugin, int format_id);
-void DLL_CALLCONV InitJP2(Plugin *plugin, int format_id);
 void DLL_CALLCONV InitPSD(Plugin *plugin, int format_id);
 void DLL_CALLCONV InitICO(Plugin *plugin, int format_id);
 void DLL_CALLCONV InitHDR(Plugin *plugin, int format_id);
