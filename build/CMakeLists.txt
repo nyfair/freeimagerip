@@ -50,61 +50,7 @@ SET(3RDPARTY_DIR ${PROJECT_DIR}/../3rdparty)
 SET(PLUGIN_DIR ${PROJECT_DIR}/../plugin)
 
 # FreeImage core
-SET(SOURCE_FILES
-	${PROJECT_DIR}/FreeImage/BitmapAccess.cpp
-	${PROJECT_DIR}/FreeImage/ColorLookup.cpp
-	${PROJECT_DIR}/FreeImage/Conversion.cpp
-	${PROJECT_DIR}/FreeImage/Conversion16_555.cpp
-	${PROJECT_DIR}/FreeImage/Conversion16_565.cpp
-	${PROJECT_DIR}/FreeImage/Conversion24.cpp
-	${PROJECT_DIR}/FreeImage/Conversion32.cpp
-	${PROJECT_DIR}/FreeImage/Conversion4.cpp
-	${PROJECT_DIR}/FreeImage/Conversion8.cpp
-	${PROJECT_DIR}/FreeImage/ConversionFloat.cpp
-	${PROJECT_DIR}/FreeImage/ConversionRGB16.cpp
-	${PROJECT_DIR}/FreeImage/ConversionRGBF.cpp
-	${PROJECT_DIR}/FreeImage/ConversionType.cpp
-	${PROJECT_DIR}/FreeImage/ConversionUINT16.cpp
-	${PROJECT_DIR}/FreeImage/FreeImage.cpp
-	${PROJECT_DIR}/FreeImage/FreeImageIO.cpp
-	${PROJECT_DIR}/FreeImage/GetType.cpp
-	${PROJECT_DIR}/FreeImage/Halftoning.cpp
-	${PROJECT_DIR}/FreeImage/MemoryIO.cpp
-	${PROJECT_DIR}/FreeImage/PixelAccess.cpp
-	${PROJECT_DIR}/FreeImage/Plugin.cpp
-	${PROJECT_DIR}/FreeImage/PluginBMP.cpp
-	${PROJECT_DIR}/FreeImage/PluginGIF.cpp
-	${PROJECT_DIR}/FreeImage/PluginHDR.cpp
-	${PROJECT_DIR}/FreeImage/PluginICO.cpp
-	${PROJECT_DIR}/FreeImage/PluginJPEG.cpp
-	${PROJECT_DIR}/FreeImage/PluginJXR.cpp
-	${PROJECT_DIR}/FreeImage/PluginPNG.cpp
-	${PROJECT_DIR}/FreeImage/PluginPSD.cpp
-	${PROJECT_DIR}/FreeImage/PluginTARGA.cpp
-	${PROJECT_DIR}/FreeImage/PluginTIFF.cpp
-	${PROJECT_DIR}/FreeImage/PluginWEBP.cpp
-	${PROJECT_DIR}/FreeImage/PSDParser.cpp
-	${PROJECT_DIR}/FreeImage/TIFFLogLuv.cpp
-	${PROJECT_DIR}/FreeImage/tmoColorConvert.cpp
-	${PROJECT_DIR}/FreeImage/tmoDrago03.cpp
-	${PROJECT_DIR}/FreeImage/tmoFattal02.cpp
-	${PROJECT_DIR}/FreeImage/tmoReinhard05.cpp
-	${PROJECT_DIR}/FreeImage/ToneMapping.cpp
-	${PROJECT_DIR}/FreeImage/NNQuantizer.cpp
-	${PROJECT_DIR}/FreeImage/WuQuantizer.cpp
-	${PROJECT_DIR}/FreeImageToolkit/Background.cpp
-	${PROJECT_DIR}/FreeImageToolkit/BSplineRotate.cpp
-	${PROJECT_DIR}/FreeImageToolkit/Channels.cpp
-	${PROJECT_DIR}/FreeImageToolkit/ClassicRotate.cpp
-	${PROJECT_DIR}/FreeImageToolkit/Colors.cpp
-	${PROJECT_DIR}/FreeImageToolkit/CopyPaste.cpp
-	${PROJECT_DIR}/FreeImageToolkit/Display.cpp
-	${PROJECT_DIR}/FreeImageToolkit/Flip.cpp
-	${PROJECT_DIR}/FreeImageToolkit/JPEGTransform.cpp
-	${PROJECT_DIR}/FreeImageToolkit/MultigridPoissonSolver.cpp
-	${PROJECT_DIR}/FreeImageToolkit/Rescale.cpp
-	${PROJECT_DIR}/FreeImageToolkit/Resize.cpp
-)
+FILE(GLOB SOURCE_FILES ${PROJECT_DIR}/FreeImage/*.cpp ${PROJECT_DIR}/FreeImageToolkit/*.cpp)
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
 

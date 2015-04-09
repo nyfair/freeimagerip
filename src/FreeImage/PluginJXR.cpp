@@ -2,7 +2,7 @@
 // JPEG XR Loader & Writer
 //
 // Design and implementation by
-// - Herve Drolon (drolon@infonie.fr)
+// - Hervé Drolon (drolon@infonie.fr)
 //
 // This file is part of FreeImage 3
 //
@@ -404,31 +404,6 @@ GetOutputPixelFormat(FIBITMAP *dib, PKPixelFormatGUID *guid_format, BOOL *bHasAl
 	}
 
 	return (*guid_format != GUID_PKPixelFormatDontCare) ? WMP_errSuccess : WMP_errUnsupportedFormat;
-}
-
-// ==========================================================
-// Metadata loading & saving
-// ==========================================================
-
-/**
-Read a JPEG-XR IFD as a buffer
-*/
-static ERR
-ReadProfile(WMPStream* pStream, unsigned cbByteCount, unsigned uOffset, BYTE **ppbProfile) {
-	// (re-)allocate profile buffer
-	BYTE *pbProfile = *ppbProfile;
-	pbProfile = (BYTE*)realloc(pbProfile, cbByteCount);
-	if(!pbProfile) {
-		return WMP_errOutOfMemory;
-	}
-	// read the profile
-	if(WMP_errSuccess == pStream->SetPos(pStream, uOffset)) {
-		if(WMP_errSuccess == pStream->Read(pStream, pbProfile, cbByteCount)) {
-			*ppbProfile = pbProfile;
-			return WMP_errSuccess;
-		}
-	}
-	return WMP_errFileIO;
 }
 
 // ==========================================================
@@ -948,7 +923,7 @@ SetEncoderParameters(CWMIStrCodecParam *wmiSCP, const PKPixelInfo *pixelInfo, in
 	// -----------------
 
 	// progressive mode
-	if ((flags & JXR_PROGRESSIVE) == JXR_PROGRESSIVE) {
+	if((flags & JXR_PROGRESSIVE) == JXR_PROGRESSIVE) {
 		// turn on progressive mode (instead of sequential mode)
 		wmiSCP->bProgressiveMode = TRUE;
 	}
@@ -1030,9 +1005,6 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 		float resX = (float)(unsigned)(0.5F + 0.0254F * FreeImage_GetDotsPerMeterX(dib));
 		float resY = (float)(unsigned)(0.5F + 0.0254F * FreeImage_GetDotsPerMeterY(dib));
 		pEncoder->SetResolution(pEncoder, resX, resY);
-
-		// write pixels
-		// --------------
 
 		// dib coordinates are upside-down relative to usual conventions
 		bIsFlipped = FreeImage_FlipVertical(dib);

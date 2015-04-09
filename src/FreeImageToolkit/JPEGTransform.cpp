@@ -376,7 +376,7 @@ closeStdIO(fi_handle src_handle, fi_handle dst_handle) {
 	if(src_handle) {
 		fclose((FILE*)src_handle);
 	}
-	if(dst_handle) {
+	if(dst_handle && (dst_handle != src_handle)) {
 		fclose((FILE*)dst_handle);
 	}
 }
@@ -548,40 +548,6 @@ FreeImage_JPEGCropU(const wchar_t *src_file, const wchar_t *dst_file, int left, 
 	return ret;
 }
 
-BOOL DLL_CALLCONV
-FreeImage_JPEGTransformCombined(const char *src_file, const char *dst_file, FREE_IMAGE_JPEG_OPERATION operation, int* left, int* top, int* right, int* bottom, BOOL perfect) {
-	FreeImageIO io;
-	fi_handle src;
-	fi_handle dst;
-	
-	if(!openStdIO(src_file, dst_file, &io, &src, &dst)) {
-		return FALSE;
-	}
-	
-	BOOL ret = FreeImage_JPEGTransformFromHandle(&io, src, &io, dst, operation, left, top, right, bottom, perfect);
-
-	closeStdIO(src, dst);
-
-	return ret;
-}
-
-BOOL DLL_CALLCONV
-FreeImage_JPEGTransformCombinedU(const wchar_t *src_file, const wchar_t *dst_file, FREE_IMAGE_JPEG_OPERATION operation, int* left, int* top, int* right, int* bottom, BOOL perfect) {
-	FreeImageIO io;
-	fi_handle src;
-	fi_handle dst;
-	
-	if(!openStdIOU(src_file, dst_file, &io, &src, &dst)) {
-		return FALSE;
-	}
-	
-	BOOL ret = FreeImage_JPEGTransformFromHandle(&io, src, &io, dst, operation, left, top, right, bottom, perfect);
-
-	closeStdIO(src, dst);
-
-	return ret;
-}
-
 // --------------------------------------------------------------------------
 
 static BOOL
@@ -607,17 +573,3 @@ getMemIO(FIMEMORY* src_stream, FIMEMORY* dst_stream, FreeImageIO* dst_io, fi_han
 
 	return TRUE;
 }
-
-BOOL DLL_CALLCONV
-FreeImage_JPEGTransformCombinedFromMemory(FIMEMORY* src_stream, FIMEMORY* dst_stream, FREE_IMAGE_JPEG_OPERATION operation, int* left, int* top, int* right, int* bottom, BOOL perfect) {
-	FreeImageIO io;
-	fi_handle src;
-	fi_handle dst;
-	
-	if(!getMemIO(src_stream, dst_stream, &io, &src, &dst)) {
-		return FALSE;
-	}
-	
-	return FreeImage_JPEGTransformFromHandle(&io, src, &io, dst, operation, left, top, right, bottom, perfect);
-}
-

@@ -38,6 +38,7 @@ ffi.cdef[[
 	
 	void* __stdcall FreeImage_Copy(void*, int, int, int, int);
 	int __stdcall FreeImage_Paste(void*, void*, int, int, int);
+	void* __stdcall FreeImage_CreateView(void*, int, int, int, int);
 	void* __stdcall FreeImage_Composite(void*, int, RGBA*, void*);
 	int __stdcall FreeImage_GetPixelColor(void*, unsigned, unsigned, RGBA*);
 	int __stdcall FreeImage_SetPixelColor(void*, unsigned, unsigned, RGBA*);
@@ -201,6 +202,10 @@ function paste(back, front, left, top, alpha)
 	filua.FreeImage_Paste(back, front, left, top, alpha or 255)
 end
 
+function ref(img, left, top, right, bottom)
+	return filua.FreeImage_CreateView(img, left, top, right, bottom)
+end
+
 -- alpha composite
 function composite(back, front)
 	return filua.FreeImage_Composite(front, 0, nil, back)
@@ -351,7 +356,7 @@ function splitw(src, num)
 	local bpp = getbpp(img)
 	for x = 1, num do
 		local imgx = newimg(width, height, bpp)
-		local tmp = copy(img, width*(x-1), 0, width*x, height)
+		local tmp = ref(img, width*(x-1), 0, width*x, height)
 		paste(imgx, tmp, 0, 0)
 		save(imgx, stripext(src)..'_'..tostring(x)..'.bmp')
 		free(tmp)
@@ -367,7 +372,7 @@ function splith(src, num)
 	local bpp = getbpp(img)
 	for y = 1, num do
 		local imgy = newimg(width, height, bpp)
-		local tmp = copy(img, 0, height*(y-1), width, height*y)
+		local tmp = ref(img, 0, height*(y-1), width, height*y)
 		paste(imgy, tmp, 0, 0)
 		save(imgy, stripext(src)..'_'..tostring(y)..'.bmp')
 		free(tmp)

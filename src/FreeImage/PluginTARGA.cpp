@@ -303,14 +303,14 @@ Validate(FreeImageIO *io, fi_handle handle) {
 		}
 		// if the color map type is 1 then we validate the map entry information...
 		if(header.color_map_type > 0) {
-			// It doesn't make any sense if the first entry is larger than the color map table
+			// it doesn't make any sense if the first entry is larger than the color map table
 			if(header.cm_first_entry >= header.cm_length) {
 				return FALSE;
 			}
-		}
-		// check header.cm_size, don't allow 0 or anything bigger than 32
-		if(header.cm_size == 0 || header.cm_size > 32) {
-			return FALSE;
+			// check header.cm_size, don't allow 0 or anything bigger than 32
+			if(header.cm_size == 0 || header.cm_size > 32) {
+				return FALSE;
+			}
 		}
 		// the width/height shouldn't be 0, right ?
 		if(header.is_width == 0 || header.is_height == 0) {
@@ -318,9 +318,9 @@ Validate(FreeImageIO *io, fi_handle handle) {
 		}
 		// let's now verify all the types that are supported by FreeImage (this is our final verification)
 		switch(header.image_type) {
-			case TGA_CMAP	:
+			case TGA_CMAP:
 			case TGA_RGB:
-			case TGA_MONO	:
+			case TGA_MONO:
 			case TGA_RLECMAP:
 			case TGA_RLERGB:
 			case TGA_RLEMONO:
@@ -1165,7 +1165,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 	header.is_width = (WORD)FreeImage_GetWidth(dib);
 	header.is_height = (WORD)FreeImage_GetHeight(dib);
 	header.is_pixel_depth = (BYTE)bpp;
-	header.is_image_descriptor = 0;
+	header.is_image_descriptor = (bpp == 32 ? 8 : 0);
 
 	if (palette) {
 		header.color_map_type = 1;

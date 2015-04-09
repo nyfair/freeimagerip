@@ -3,6 +3,7 @@
 //
 // Design and implementation by
 // - Hervé Drolon (drolon@infonie.fr)
+// - Tanner Helland (tannerhelland@users.sf.net)
 //
 // This file is part of FreeImage 3
 //
@@ -343,11 +344,13 @@ FreeImage_ConvertToType(FIBITMAP *src, FREE_IMAGE_TYPE dst_type, BOOL scale_line
 					dst = FreeImage_ConvertToRGB16(src);
 					break;
 				case FIT_RGBA16:
+					dst = FreeImage_ConvertToRGBA16(src);
 					break;
 				case FIT_RGBF:
 					dst = FreeImage_ConvertToRGBF(src);
 					break;
 				case FIT_RGBAF:
+					dst = FreeImage_ConvertToRGBAF(src);
 					break;
 			}
 			break;
@@ -375,11 +378,13 @@ FreeImage_ConvertToType(FIBITMAP *src, FREE_IMAGE_TYPE dst_type, BOOL scale_line
 					dst = FreeImage_ConvertToRGB16(src);
 					break;
 				case FIT_RGBA16:
+					dst = FreeImage_ConvertToRGBA16(src);
 					break;
 				case FIT_RGBF:
 					dst = FreeImage_ConvertToRGBF(src);
 					break;
 				case FIT_RGBAF:
+					dst = FreeImage_ConvertToRGBAF(src);
 					break;
 			}
 			break;
@@ -500,6 +505,7 @@ FreeImage_ConvertToType(FIBITMAP *src, FREE_IMAGE_TYPE dst_type, BOOL scale_line
 					dst = FreeImage_ConvertToRGBF(src);
 					break;
 				case FIT_RGBAF:
+					dst = FreeImage_ConvertToRGBAF(src);
 					break;
 			}
 			break;
@@ -579,11 +585,13 @@ FreeImage_ConvertToType(FIBITMAP *src, FREE_IMAGE_TYPE dst_type, BOOL scale_line
 				case FIT_COMPLEX:
 					break;
 				case FIT_RGBA16:
+					dst = FreeImage_ConvertToRGBA16(src);
 					break;
 				case FIT_RGBF:
 					dst = FreeImage_ConvertToRGBF(src);
 					break;
 				case FIT_RGBAF:
+					dst = FreeImage_ConvertToRGBAF(src);
 					break;
 			}
 			break;
@@ -615,6 +623,7 @@ FreeImage_ConvertToType(FIBITMAP *src, FREE_IMAGE_TYPE dst_type, BOOL scale_line
 					dst = FreeImage_ConvertToRGBF(src);
 					break;
 				case FIT_RGBAF:
+					dst = FreeImage_ConvertToRGBAF(src);
 					break;
 			}
 			break;
@@ -642,6 +651,7 @@ FreeImage_ConvertToType(FIBITMAP *src, FREE_IMAGE_TYPE dst_type, BOOL scale_line
 				case FIT_RGBA16:
 					break;
 				case FIT_RGBAF:
+					dst = FreeImage_ConvertToRGBAF(src);
 					break;
 			}
 			break;

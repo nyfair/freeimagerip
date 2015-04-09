@@ -107,13 +107,13 @@ typedef struct {
 static tmsize_t 
 _tiffReadProc(thandle_t handle, void *buf, tmsize_t size) {
 	fi_TIFFIO *fio = (fi_TIFFIO*)handle;
-	return fio->io->read_proc(buf, size, 1, fio->handle) * size;
+	return fio->io->read_proc(buf, (unsigned)size, 1, fio->handle) * size;
 }
 
 static tmsize_t
 _tiffWriteProc(thandle_t handle, void *buf, tmsize_t size) {
 	fi_TIFFIO *fio = (fi_TIFFIO*)handle;
-	return fio->io->write_proc(buf, size, 1, fio->handle) * size;
+	return fio->io->write_proc(buf, (unsigned)size, 1, fio->handle) * size;
 }
 
 static toff_t
@@ -158,19 +158,11 @@ Open a TIFF file descriptor for reading or writing
 TIFF *
 TIFFFdOpen(thandle_t handle, const char *name, const char *mode) {
 	TIFF *tif;
-
+	
 	// Open the file; the callback will set everything up
 	tif = TIFFClientOpen(name, mode, handle,
 	    _tiffReadProc, _tiffWriteProc, _tiffSeekProc, _tiffCloseProc,
 	    _tiffSizeProc, _tiffMapProc, _tiffUnmapProc);
-
-	// Warning: tif_fd is declared as 'int' currently (see libTIFF), 
-    // may result in incorrect file pointers inside libTIFF on 
-    // 64bit machines (sizeof(int) != sizeof(long)). 
-    // Needs to be fixed within libTIFF.
-	if (tif) {
-		tif->tif_fd = (long)handle;
-	}
 
 	return tif;
 }
@@ -821,6 +813,8 @@ Open(FreeImageIO *io, fi_handle handle, BOOL read) {
 	if (read) {
 		fio->tif = TIFFFdOpen((thandle_t)fio, "", "r");
 	} else {
+		// mode = "w"	: write Classic TIFF
+		// mode = "w8"	: write Big TIFF
 		fio->tif = TIFFFdOpen((thandle_t)fio, "", "w");
 	}
 	if(fio->tif == NULL) {
@@ -870,7 +864,12 @@ IsValidBitsPerSample(uint16 photometric, uint16 bitspersample) {
 			}
 			break;
 		case 32:
-			return TRUE;
+			if((photometric == PHOTOMETRIC_MINISWHITE) || (photometric == PHOTOMETRIC_MINISBLACK) || (photometric == PHOTOMETRIC_LOGLUV)) { 
+				return TRUE;
+			} else {
+				return FALSE;
+			}
+			break;
 		case 64:
 		case 128:
 			if(photometric == PHOTOMETRIC_MINISBLACK) { 
@@ -1662,8 +1661,8 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 				// calculate src line and dst pitch
 				int dst_pitch = FreeImage_GetPitch(dib);
-				int tileRowSize = TIFFTileRowSize(tif);
-				int imageRowSize = TIFFScanlineSize(tif);
+				uint32 tileRowSize = (uint32)TIFFTileRowSize(tif);
+				uint32 imageRowSize = (uint32)TIFFScanlineSize(tif);
 
 
 				// In the tiff file the lines are saved from up to down 
@@ -1671,11 +1670,10 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 				BYTE *bits = FreeImage_GetScanLine(dib, height - 1);
 				
-				uint32 x, y, rowSize;
-				for (y = 0; y < height; y += tileHeight) {						
+				for (uint32 y = 0; y < height; y += tileHeight) {						
 					int32 nrows = (y + tileHeight > height ? height - y : tileHeight);					
 
-					for (x = 0, rowSize = 0; x < width; x += tileWidth, rowSize += tileRowSize) {
+					for (uint32 x = 0, rowSize = 0; x < width; x += tileWidth, rowSize += tileRowSize) {
 						memset(tileBuffer, 0, tileSize);
 
 						// read one tile

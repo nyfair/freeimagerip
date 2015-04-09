@@ -92,18 +92,6 @@ FreeImage_GetCopyrightMessage() {
 
 //----------------------------------------------------------------------
 
-BOOL DLL_CALLCONV
-FreeImage_IsLittleEndian() {
-	union {
-		DWORD i;
-		BYTE c[4];
-	} u;
-	u.i = 1;
-	return (u.c[0] != 0);
-}
-
-//----------------------------------------------------------------------
-
 static FreeImage_OutputMessageFunction freeimage_outputmessage_proc = NULL;
 static FreeImage_OutputMessageFunctionStdCall freeimage_outputmessagestdcall_proc = NULL; 
 
