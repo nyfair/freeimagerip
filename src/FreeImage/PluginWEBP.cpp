@@ -2,7 +2,7 @@
 // Google WebP Loader & Writer
 //
 // Design and implementation by
-// - Herve Drolon (drolon@infonie.fr)
+// - Hervé Drolon (drolon@infonie.fr)
 //
 // This file is part of FreeImage 3
 //
@@ -435,14 +435,6 @@ EncodeImage(FIMEMORY *hmem, FIBITMAP *dib, int flags) {
 			if(config.quality > 100) {
 				config.quality = 100;
 			}
-		}
-
-		if ((flags & WEBP_SUBSAMPLING_444) == WEBP_SUBSAMPLING_444) {
-			picture.colorspace = WEBP_YUV444;
-		} else if ((flags & WEBP_SUBSAMPLING_422) == WEBP_SUBSAMPLING_422) {
-			picture.colorspace = WEBP_YUV422;
-		} else {
-			picture.colorspace = WEBP_YUV420;
 		}
 
 		// validate encoding parameters
