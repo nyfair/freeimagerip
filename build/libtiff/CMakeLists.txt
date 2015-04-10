@@ -1,4 +1,4 @@
-SET(SRC ${3RDPARTY_DIR}/libtiff)
+SET(SRC ${3RDPARTY_DIR}/libtiff/libtiff)
 
 SET(SOURCE_FILES
 	${SRC}/tif_aux.c
@@ -40,10 +40,15 @@ SET(SOURCE_FILES
 	${SRC}/tif_zip.c
 )
 
+FILE(COPY ${SRC}/tif_config.vc.h ${SRC}/tiffconf.vc.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+FILE(RENAME ${CMAKE_CURRENT_BINARY_DIR}/tif_config.vc.h ${CMAKE_CURRENT_BINARY_DIR}/tif_config.h)
+FILE(RENAME ${CMAKE_CURRENT_BINARY_DIR}/tiffconf.vc.h ${CMAKE_CURRENT_BINARY_DIR}/tiffconf.h)
+
 INCLUDE_DIRECTORIES(
-	${3RDPARTY_DIR}/zlib/
-	${3RDPARTY_DIR}/libjpeg-turbo/
-	${CMAKE_BINARY_DIR}/libjpeg-turbo/
+	${3RDPARTY_DIR}/zlib
+	${3RDPARTY_DIR}/libjpeg-turbo
+	${CMAKE_BINARY_DIR}/libjpeg-turbo
+	${CMAKE_CURRENT_BINARY_DIR}
 )
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})

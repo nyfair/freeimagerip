@@ -26,10 +26,10 @@ SET(SOURCE_FILES
 )
 
 INCLUDE_DIRECTORIES(
-	${SRC}/common/include/
-	${SRC}/image/sys/
-	${SRC}/image/x86/
-	${SRC}/jxrgluelib/
+	${SRC}/common/include
+	${SRC}/image/sys
+	${SRC}/image/x86
+	${SRC}/jxrgluelib
 )
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
@@ -38,7 +38,6 @@ IF(MSVC)
 	SET(SOURCE_FILES ${SOURCE_FILES} ${SRC}/image/decode/strdec_x86.c ${SRC}/image/encode/strenc_x86.c)
 	ADD_DEFINITIONS(-DENABLE_OPTIMIZATIONS)
 ELSE()
-	SET(SOURCE_FILES ${SOURCE_FILES} ${SRC}/strlcpy.c)
 	ADD_DEFINITIONS(-D__ANSI__)
 ENDIF()
 

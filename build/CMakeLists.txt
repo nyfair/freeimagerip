@@ -79,18 +79,19 @@ ADD_SUBDIRECTORY(zlib)
 ADD_DEPENDENCIES(freeimage libjpeg-turbo libjxr libpng libtiff libwebp zlib)
 TARGET_LINK_LIBRARIES(freeimage libjpeg-turbo libjxr libpng libtiff libwebp zlib)
 INCLUDE_DIRECTORIES(
-	${PROJECT_DIR}/
-	${3RDPARTY_DIR}/libjpeg-turbo/
-	${3RDPARTY_DIR}/libpng/
-	${3RDPARTY_DIR}/libjxr/common/include/
-	${3RDPARTY_DIR}/libjxr/image/sys/
-	${3RDPARTY_DIR}/libjxr/image/x86/
-	${3RDPARTY_DIR}/libjxr/jxrgluelib/
-	${3RDPARTY_DIR}/libtiff/
-	${3RDPARTY_DIR}/libwebp/src/
-	${3RDPARTY_DIR}/zlib/
-	${CMAKE_BINARY_DIR}/libjpeg-turbo/
-	${CMAKE_BINARY_DIR}/libpng/
+	${PROJECT_DIR}
+	${3RDPARTY_DIR}/libjpeg-turbo
+	${3RDPARTY_DIR}/libpng
+	${3RDPARTY_DIR}/libjxr/common/include
+	${3RDPARTY_DIR}/libjxr/image/sys
+	${3RDPARTY_DIR}/libjxr/image/x86
+	${3RDPARTY_DIR}/libjxr/jxrgluelib
+	${3RDPARTY_DIR}/libtiff/libtiff
+	${3RDPARTY_DIR}/libwebp/src
+	${3RDPARTY_DIR}/zlib
+	${CMAKE_BINARY_DIR}/libjpeg-turbo
+	${CMAKE_BINARY_DIR}/libpng
+	${CMAKE_BINARY_DIR}/libtiff
 )
 
 IF(MSVC AND NOT X64)

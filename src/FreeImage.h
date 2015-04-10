@@ -614,10 +614,6 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define JXR_PROGRESSIVE		0x4000	// save as a progressive-JXR (use | to combine with other save flags)
 #define WEBP_DEFAULT		0		// save with quality 75 & 4:2:0
 #define WEBP_LOSSLESS		100		// save lossless vp8 photo
-#define WEBP_SUBSAMPLING_420 0x100	// save with medium 2x2 medium chroma subsampling (4:2:0) - default value
-#define WEBP_SUBSAMPLING_422 0x200	// save with low 2x1 chroma subsampling (4:2:2) 
-#define WEBP_SUBSAMPLING_444 0x400	// save with no chroma subsampling (4:4:4)
-
 
 // Background filling options ---------------------------------------------------------
 // Constants used in FreeImage_FillBackground and FreeImage_EnlargeCanvas
