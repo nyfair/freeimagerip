@@ -1,7 +1,6 @@
 INCLUDE_DIRECTORIES(${PROJECT_DIR})
 
 IF(SUSIE_PLUGIN)
-	SET(CMAKE_LINK_DEF_FILE_FLAG "/DEF:${PLUGIN_DIR}/Susie/spi.def")
 	ADD_LIBRARY(susie SHARED ${PLUGIN_DIR}/Susie/susie.cc ${PLUGIN_DIR}/Susie/spi.def)
 	ADD_DEPENDENCIES(susie freeimage)
 	TARGET_LINK_LIBRARIES(susie freeimage)
