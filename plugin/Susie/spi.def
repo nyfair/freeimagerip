@@ -1,13 +1,10 @@
-﻿;;LIBRARY "susiespi"
-
 EXPORTS
-	GetPluginInfo
-	IsSupported
-	GetPictureInfo
-	GetPicture
-	GetPreview
-
-	IsSupportedW
-	GetPictureInfoW
-	GetPictureW
-	GetPreviewW
+    GetPicture @1
+    GetPictureInfo @2
+    GetPictureInfoW @3
+    GetPictureW @4
+    GetPluginInfo @5
+    GetPreview @6
+    GetPreviewW @7
+    IsSupported @8
+    IsSupportedW @9

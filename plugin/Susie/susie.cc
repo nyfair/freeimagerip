@@ -57,8 +57,9 @@ int GetPictureEx(FIBITMAP* dib, HANDLE *pHBInfo, HANDLE *pHBm,
 	unsigned int height = FreeImage_GetHeight(dib);
 	unsigned int bpp_real = FreeImage_GetBPP(dib);
 	unsigned int bpp = bpp_real>32 ? (bpp_real%48 ? 32 : 24) : bpp_real;
-	unsigned int line_size = (((bpp>>3)*width)+3)&~3;
-	unsigned int remain = line_size - (bpp>>3)*width;
+	unsigned int factor = bpp>>3;
+	unsigned int line_size = (((factor)*width)+3)&~3;
+	unsigned int remain = line_size - (factor)*width;
 	unsigned int bitmap_size = line_size * height;
 
 	if(bpp <= 8) {
@@ -83,36 +84,12 @@ int GetPictureEx(FIBITMAP* dib, HANDLE *pHBInfo, HANDLE *pHBm,
 	}
 
 	switch(bpp_real) {
-		case 24:
-			RGBTRIPLE *rgb;
-			for(unsigned int y = height-1; y; y--) {
-				rgb = (RGBTRIPLE *) FreeImage_GetScanLine(dib, height-1-y);
-				for(unsigned int x = 0; x < width; x++) {
-					((BYTE *)bitmap)[0] = rgb[x].rgbtBlue;
-					((BYTE *)bitmap)[1] = rgb[x].rgbtGreen;
-					((BYTE *)bitmap)[2] = rgb[x].rgbtRed;
-					bitmap = (BYTE *)bitmap + 3;
-				}
-				bitmap = (BYTE *)bitmap + remain;
-			}
-			break;
-		case 32:
-			RGBQUAD *rgba;
-			for(unsigned int y = height-1; y; y--) {
-				rgba = (RGBQUAD *) FreeImage_GetScanLine(dib, height-1-y);
-				for(unsigned int x = 0; x < width; x++) {
-					((BYTE *)bitmap)[0] = rgba[x].rgbBlue;
-					((BYTE *)bitmap)[1] = rgba[x].rgbGreen;
-					((BYTE *)bitmap)[2] = rgba[x].rgbRed;
-					((BYTE *)bitmap)[3] = rgba[x].rgbReserved;
-					bitmap = (BYTE *)bitmap + 4;
-				}
-			}
-			break;
 		case 8:
+		case 24:
+		case 32:
 			for(unsigned int y = height-1; y; y--) {
 				BYTE *line = FreeImage_GetScanLine(dib, height-1-y);
-				memcpy(bitmap, line, width);
+				memcpy(bitmap, line, width*factor);
 				bitmap = (BYTE *)bitmap + line_size;
 			}
 			break;
