@@ -10,6 +10,7 @@ New Feature:
 -multipage image suport
 
 [3rd Party]
+libbpg 0.9.5		http://bellard.org/bpg
 libjpeg-turbo 1.4	http://sourceforge.net/projects/libjpeg-turbo
 libpng 1.6.17		http://libmng.com/pub/png/libpng.html
 libtiff 4.0.3		ftp://ftp.remotesensing.org/pub/libtiff

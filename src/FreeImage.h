@@ -377,12 +377,13 @@ FI_ENUM(FREE_IMAGE_FORMAT) {
 	FIF_BMP			= 2,
 	FIF_GIF			= 3,
 	FIF_TARGA		= 4,
-	FIF_WEBP		= 5,
-	FIF_JXR			= 6,
-	FIF_TIFF		= 7,
-	FIF_PSD			= 8,
-	FIF_ICO			= 9,
-	FIF_HDR			= 10
+	FIF_BPG			= 5,
+	FIF_WEBP		= 6,
+	FIF_JXR			= 7,
+	FIF_TIFF		= 8,
+	FIF_PSD			= 9,
+	FIF_ICO			= 10,
+	FIF_HDR			= 11
 };
 
 /** Image type used in FreeImage.
@@ -589,12 +590,9 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define JPEG_SUBSAMPLING_444 0x400		// save with no chroma subsampling (4:4:4)
 #define JPEG_OPTIMIZE		0x2000		// on saving, compute optimal Huffman coding tables (can reduce a few percent of file size)
 #define PNG_DEFAULT			9			// save with maximum ZLib compression
-#define PNG_Z_NO_COMPRESSION		10		// save with maximum ZLib compression
+#define PNG_NO_COMPRESSION	10			// save without compression
 #define PNG_IGNOREGAMMA		1			// loading: avoid gamma correction
-#define PNG_Z_BEST_SPEED			0x0001	// save using ZLib level 1 compression flag
-#define PNG_Z_DEFAULT_COMPRESSION	0x0006	// save using ZLib level 6 compression flag
-#define PNG_Z_BEST_COMPRESSION		0x0009	// save using ZLib level 9 compression flag
-#define PNG_INTERLACED				0x0200	// save using Adam7 interlacing (use | to combine with other save flags)
+#define PNG_INTERLACED		0x0200	// save using Adam7 interlacing (use | to combine with other save flags)
 #define PSD_DEFAULT		 	0
 #define TARGA_DEFAULT		0
 #define TARGA_LOAD_RGB888 	1		// If set the loader converts RGB555 and ARGB8888 -> RGB888.
@@ -614,6 +612,7 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define JXR_PROGRESSIVE		0x4000	// save as a progressive-JXR (use | to combine with other save flags)
 #define WEBP_DEFAULT		0		// save with quality 75 & 4:2:0
 #define WEBP_LOSSLESS		100		// save lossless vp8 photo
+#define BPG_DEFAULT			0
 
 // Background filling options ---------------------------------------------------------
 // Constants used in FreeImage_FillBackground and FreeImage_EnlargeCanvas
