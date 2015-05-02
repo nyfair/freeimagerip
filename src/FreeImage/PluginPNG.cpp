@@ -707,13 +707,10 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 
 			// set the ZLIB compression level or default to PNG default compression level (ZLIB level = 6)
 			int zlib_level = flags & 0x0F;
-			if(zlib_level > 9) {
-				png_set_compression_level(png_ptr, 0);
-			}
-			if(zlib_level < 1) {
-				png_set_compression_level(png_ptr, PNG_DEFAULT);
-			} else if(zlib_level >= PNG_NO_COMPRESSION) {
+			if(zlib_level >= PNG_NO_COMPRESSION) {
 				png_set_compression_level(png_ptr, Z_NO_COMPRESSION);
+			} else if(zlib_level < 1) {
+				png_set_compression_level(png_ptr, PNG_DEFAULT);
 			} else {
 				png_set_compression_level(png_ptr, zlib_level);
 			}

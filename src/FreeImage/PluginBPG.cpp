@@ -79,56 +79,45 @@ static FIBITMAP * DLL_CALLCONV
 Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 	if(handle) {
 		FIBITMAP *dib = NULL;
+		long start_offset = io->tell_proc(handle);
+		io->seek_proc(handle, 0, SEEK_END);
+		long eof = io->tell_proc(handle);
+		io->seek_proc(handle, start_offset, SEEK_SET);
+		int size = eof - start_offset;
 
-		try {
-			// remember the start offset
-			long start_offset = io->tell_proc(handle);
+		BPGImageInfo img_info_s, *img_info = &img_info_s;
+		BPGDecoderContext *img;
+		img = bpg_decoder_open();
+		uint8_t *raw_data = (uint8_t *) malloc(size);
+		io->read_proc(raw_data, 1, size, handle);
+		if(bpg_decoder_decode(img, raw_data, size) < 0 || bpg_decoder_get_info(img, img_info) < 0) {
+			bpg_decoder_close(img);
+			return FALSE;
+		}
 
-			// remember end-of-file (used for RLE cache)
-			io->seek_proc(handle, 0, SEEK_END);
-			long eof = io->tell_proc(handle);
-			io->seek_proc(handle, start_offset, SEEK_SET);
-			int size = eof - start_offset;
-
-			BPGImageInfo img_info_s, *img_info = &img_info_s;
-			BPGDecoderContext *img;
-			img = bpg_decoder_open();
-			if(bpg_decoder_decode(img, (uint8_t *)handle, size) < 0 || bpg_decoder_get_info(img, img_info) < 0) {
-				bpg_decoder_close(img);
-				return FALSE;
-			}
-
-			uint32_t width = img_info->width, height = img_info->height;
-			if(img_info->has_alpha) {
-				if(bpg_decoder_start(img, BPG_OUTPUT_FORMAT_RGBA32) < 0 ) {
-					bpg_decoder_close(img);
-					return FALSE;
-				}
-				dib = FreeImage_Allocate(width, height, 32);
-			} else {
-				if(bpg_decoder_start(img, BPG_OUTPUT_FORMAT_RGB24) < 0 ) {
-					bpg_decoder_close(img);
-					return FALSE;
-				}
-				dib = FreeImage_Allocate(width, height, 24);
-			}
+		uint32_t width = img_info->width, height = img_info->height;
+		int bpp, i;
+		if(img_info->has_alpha) {
+			i = bpg_decoder_start(img, BPG_OUTPUT_FORMAT_RGBA32);
+			bpp = 32;
+		} else {
+			i = bpg_decoder_start(img, BPG_OUTPUT_FORMAT_RGB24);
+			bpp = 24;
+		}
+		if(i==0) {
+			dib = FreeImage_Allocate(width, height, bpp);
 			BYTE* curLine;
 			for(int y = 0; y < height; y++) {
-				curLine = FreeImage_GetScanLine(dib, height);
-				if(bpg_decoder_get_line(img, curLine) < 0)
+				curLine = FreeImage_GetScanLine(dib, height-1-y);
+				if(bpg_decoder_get_line(img, curLine))
 					break;
 			}
-			return dib;
-		} catch (const char *message) {
-				FreeImage_OutputMessageProc(s_format_id, message);
-				return FALSE;
 		}
+		SwapRedBlue32(dib);
+		bpg_decoder_close(img);
+		free(raw_data);
+		return dib;
 	}
-	return FALSE;
-}
-
-static BOOL DLL_CALLCONV
-Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 	return FALSE;
 }
 
@@ -147,7 +136,7 @@ InitBPG(Plugin *plugin, int format_id) {
 	plugin->open_proc = NULL;
 	plugin->close_proc = NULL;
 	plugin->load_proc = Load;
-	plugin->save_proc = Save;
+	plugin->save_proc = NULL;
 	plugin->validate_proc = Validate;
 	plugin->mime_proc = MimeType;
 	plugin->supports_export_bpp_proc = SupportsExportDepth;
