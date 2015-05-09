@@ -1,4 +1,4 @@
 {
-    "Keys": [ "bmp", "bpg", "gif", "hdr", "ico", "jpeg", "jpg", "jxr", "png", "psd", "tga", "tif", "tiff", "wdp", "webp" ],
-    "MimeTypes": [ "image/bmp", "image/bpg", "image/gif", "image/vnd.radiance", "image/vnd.microsoft.icon", "image/jpeg", "image/vnd.ms-photo", "image/png", "image/vnd.adobe.photoshop", "image/x-tga", "image/tiff", "image/webp" ]
+    "Keys": [ "bmp", "bpg", "dds", "gif", "hdr", "ico", "jpeg", "jpg", "jxr", "png", "psd", "tga", "tif", "tiff", "wdp", "webp" ],
+    "MimeTypes": [ "image/bmp", "image/bpg", "image/dds", "image/gif", "image/vnd.radiance", "image/vnd.microsoft.icon", "image/jpeg", "image/vnd.ms-photo", "image/png", "image/vnd.adobe.photoshop", "image/x-tga", "image/tiff", "image/webp" ]
 }
