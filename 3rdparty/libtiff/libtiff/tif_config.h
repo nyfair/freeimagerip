@@ -80,11 +80,6 @@ If your big endian system isn't being detected, add an OS specific check
 #undef HOST_BIGENDIAN
 #endif // BYTE_ORDER
 
-#ifdef _WIN32
-#define snprintf _snprintf
-#define lfind _lfind
-#endif // _WIN32
-
 /* Define to `__inline__' or `__inline' if that's what the C compiler
    calls it, or to nothing if 'inline' is not supported under any name.  */
 #ifndef __cplusplus

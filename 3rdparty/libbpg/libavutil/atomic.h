@@ -25,12 +25,12 @@
 
 #if HAVE_ATOMICS_NATIVE
 
-#if HAVE_ATOMICS_GCC
-#include "atomic_gcc.h"
-#elif HAVE_ATOMICS_WIN32
+#ifdef _MSC_VER
 #include "atomic_win32.h"
 #elif HAVE_ATOMICS_SUNCC
 #include "atomic_suncc.h"
+#else
+#include "atomic_gcc.h"
 #endif
 
 #else

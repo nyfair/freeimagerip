@@ -63,14 +63,6 @@ av_cold void ff_videodsp_init(VideoDSPContext *ctx, int bpc)
 #endif
 #endif /* !USE_FULL */
 
-    if (ARCH_AARCH64)
-        ff_videodsp_init_aarch64(ctx, bpc);
-    if (ARCH_ARM)
-        ff_videodsp_init_arm(ctx, bpc);
-    if (ARCH_PPC)
-        ff_videodsp_init_ppc(ctx, bpc);
-    if (ARCH_X86)
-        ff_videodsp_init_x86(ctx, bpc);
 }
 
 #endif

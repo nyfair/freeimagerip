@@ -47,23 +47,30 @@ int DLL_API WINAPI GetPictureInfoW(LPWSTR buf, long len,
 }
 
 int GetPictureEx(FIBITMAP* dib, HANDLE *pHBInfo, HANDLE *pHBm,
-				SPI_PROGRESS lpPrgressCallback, long lData) {
-	if(lpPrgressCallback != NULL)
-		if(lpPrgressCallback(0, 1, lData))
-			return SPI_ABORT;
+	SPI_PROGRESS lpPrgressCallback, long lData) {
+	if (lpPrgressCallback != NULL)
+		if (lpPrgressCallback(0, 1, lData))
+		return SPI_ABORT;
 	int ret = SPI_ALL_RIGHT;
 
 	unsigned int width = FreeImage_GetWidth(dib);
 	unsigned int height = FreeImage_GetHeight(dib);
 	unsigned int bpp_real = FreeImage_GetBPP(dib);
-	unsigned int bpp = bpp_real>32 ? (bpp_real%48 ? 32 : 24) : bpp_real;
-	unsigned int factor = bpp>>3;
-	unsigned int line_size = (((factor)*width)+3)&~3;
-	unsigned int remain = line_size - (factor)*width;
+	unsigned int bpp = bpp_real > 32 ? (bpp_real % 48 ? 32 : 24) : bpp_real;
+	unsigned int factor, line_size;
+	if (bpp < 8) {
+		factor = 1;
+		line_size = (width*bpp) >> 3;
+	}
+	else {
+		factor = bpp >> 3;
+		line_size = (factor*width + 3)&~3;
+	}
+	unsigned int remain = line_size - factor*width;
 	unsigned int bitmap_size = line_size * height;
 
-	if(bpp <= 8) {
-		*pHBInfo = LocalAlloc(LMEM_MOVEABLE, infosize + (sizeof(RGBQUAD) << bpp));
+	if(bpp_real <= 8) {
+		*pHBInfo = LocalAlloc(LMEM_MOVEABLE, infosize + (sizeof(RGBQUAD) << bpp_real));
 	} else {
 		*pHBInfo = LocalAlloc(LMEM_MOVEABLE, infosize);
 	}
@@ -79,19 +86,18 @@ int GetPictureEx(FIBITMAP* dib, HANDLE *pHBInfo, HANDLE *pHBm,
 
 	BITMAPINFO *info = FreeImage_GetInfo(dib);
 	pinfo->bmiHeader = info->bmiHeader;
-	if(bpp <= 8) {
-		memcpy(pinfo->bmiColors, info->bmiColors, sizeof(RGBQUAD) << bpp);
+	if(bpp_real <= 8) {
+		memcpy(pinfo->bmiColors, info->bmiColors, sizeof(RGBQUAD) << bpp_real);
 	}
 
 	switch(bpp_real) {
+		case 1:
+		case 4:
 		case 8:
+		case 16:
 		case 24:
 		case 32:
-			for(unsigned int y = height-1; y; y--) {
-				BYTE *line = FreeImage_GetScanLine(dib, height-1-y);
-				memcpy(bitmap, line, width*factor);
-				bitmap = (BYTE *)bitmap + line_size;
-			}
+			FreeImage_ConvertToRawBits(bitmap, dib, line_size, bpp_real, 0, 0, 0, 0);
 			break;
 		case 48:
 			pinfo->bmiHeader.biBitCount = 24;
