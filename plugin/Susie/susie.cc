@@ -60,9 +60,8 @@ int GetPictureEx(FIBITMAP* dib, HANDLE *pHBInfo, HANDLE *pHBm,
 	unsigned int factor, line_size;
 	if (bpp < 8) {
 		factor = 1;
-		line_size = (width*bpp) >> 3;
-	}
-	else {
+		line_size = bpp == 4 ? (width+1)>>1 : (width+7)>>3;
+	} else {
 		factor = bpp >> 3;
 		line_size = (factor*width + 3)&~3;
 	}
