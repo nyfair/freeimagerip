@@ -433,11 +433,11 @@ else
 end
 
 function rm(dst)
-	os.rm(dst)
+	os.remove(dst)
 end
 
 function mv(src, dst)
-	os.mv(src, dst)
+	os.rename(src, dst)
 end
 
 function stripext(fn)
