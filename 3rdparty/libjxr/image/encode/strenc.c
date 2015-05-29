@@ -1529,8 +1529,7 @@ Int ImageStrEncEncode(
         ProcessRight = pSC->ProcessRight;
     }
 
-    if( pSC->Load(pSC) != ICERR_OK )
-		return ICERR_ERROR;
+    pSC->Load(pSC);
     if(ProcessLeft(pSC) != ICERR_OK)
         return ICERR_ERROR;
     advanceMRPtr(pSC);

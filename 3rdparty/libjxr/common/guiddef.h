@@ -41,7 +41,7 @@ typedef struct {
 } GUID;
 #else
 typedef struct _GUID {
-#if defined(_WINDOWS_) || !__LP64__
+#if defined(_WINDOWS_) || !__x86_64__
     unsigned long  Data1;
 #else
     unsigned int   Data1;

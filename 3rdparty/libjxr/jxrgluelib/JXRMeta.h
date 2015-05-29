@@ -54,7 +54,7 @@
 
 #ifndef UNREFERENCED_PARAMETER
 #define UNREFERENCED_PARAMETER(P) { (P) = (P); }
-#endif
+#endif UNREFERENCED_PARAMETER
 
 //================================================================
 // Container

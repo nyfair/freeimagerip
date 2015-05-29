@@ -47,7 +47,7 @@ EXTERN_C Void FreeCodingContextDec(CWMImageStrCodec *);
 EXTERN_C Int StrEncInit(CWMImageStrCodec *);
 EXTERN_C Void StrIOEncTerm(CWMImageStrCodec *);
 EXTERN_C Void FreeCodingContextEnc(CWMImageStrCodec *);
-EXTERN_C Int  encodeMB(CWMImageStrCodec *, Int, Int);
+EXTERN_C Void encodeMB(CWMImageStrCodec *, Int, Int);
 EXTERN_C Int  writeIndexTableNull(CWMImageStrCodec *);
 EXTERN_C Void writePacketHeader(BitIOInfo *, U8, U8);
 
@@ -871,15 +871,13 @@ Int WMPhotoTranscode(struct WMPStream * pStreamIn, struct WMPStream * pStreamOut
                     if(pSCEnc->m_bCtxLeft && pSCEnc->m_bCtxTop)
                         transcodeTileHeader(pSCEnc, pTileQPInfo);
 
-                    if(encodeMB(pSCEnc, cColumn, cRow) != ICERR_OK)
-                        return ICERR_ERROR;
+                    encodeMB(pSCEnc, cColumn, cRow);
                     if(pParam->uAlphaMode > 0){
                         pSCEnc->m_pNextSC->cColumn = pSCDec->cColumn - mbLeft + 1;
                         pSCEnc->m_pNextSC->cRow = pSCDec->cRow + 1 - mbTop;
                         getTilePos(pSCEnc->m_pNextSC, cColumn, cRow);
                         pSCEnc->m_pNextSC->MBInfo = pSCDec->m_pNextSC->MBInfo;
-                        if(encodeMB(pSCEnc->m_pNextSC, cColumn, cRow) != ICERR_OK)
-                            return ICERR_ERROR;
+                        encodeMB(pSCEnc->m_pNextSC, cColumn, cRow);
                     }
                 }
                 else{
@@ -934,8 +932,7 @@ Int WMPhotoTranscode(struct WMPStream * pStreamIn, struct WMPStream * pStreamOut
 
                 if(pSCEnc->m_bCtxLeft && pSCEnc->m_bCtxTop)
                     transcodeTileHeader(pSCEnc, pTileQPInfo + pSCEnc->cTileRow * (pSCEnc->WMISCP.cNumOfSliceMinus1V + 1) + pSCEnc->cTileColumn);
-                if(encodeMB(pSCEnc, cColumn, cRow) != ICERR_OK)
-                    return ICERR_ERROR;
+                encodeMB(pSCEnc, cColumn, cRow);
                 
                 if(pParam->uAlphaMode > 0){
                     pSCEnc->m_pNextSC->cColumn = pSCEnc->cColumn;
@@ -949,8 +946,7 @@ Int WMPhotoTranscode(struct WMPStream * pStreamIn, struct WMPStream * pStreamOut
                     pSCEnc->m_pNextSC->MBInfo.iQIndexLP = pMBInfoAlpha[cOff].iQIndexLP;
                     pSCEnc->m_pNextSC->MBInfo.iQIndexHP = pMBInfoAlpha[cOff].iQIndexHP;
 
-                    if(encodeMB(pSCEnc->m_pNextSC, cColumn, cRow) != ICERR_OK)
-                        return ICERR_ERROR;
+                    encodeMB(pSCEnc->m_pNextSC, cColumn, cRow);
                 }
             }
 

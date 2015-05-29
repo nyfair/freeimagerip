@@ -26,9 +26,10 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //
 //*@@@---@@@@******************************************************************
+
 #include <limits.h>
 #include <JXRGlue.h>
-
+#include <bsdstring.h>
 
 static const char szHDPhotoFormat[] = "<dc:format>image/vnd.ms-photo</dc:format>";
 const U32 IFDEntryTypeSizes[] = { 0, 1, 1, 2, 4, 8, 1, 1, 2, 4, 8, 4, 8 };
@@ -1983,11 +1984,8 @@ ERR PKImageDecode_Copy_WMP(
             Call(pID->WMP.wmiSCP.pWStream->GetPos(pID->WMP.wmiSCP.pWStream, &(pID->WMP.cMarker)));
             FailIf(ICERR_OK != ImageStrDecInit(&pID->WMP.wmiI, &pID->WMP.wmiSCP, &pID->WMP.ctxSC), WMP_errFail);
         }
-        // Re-entrant mode incurs 1 MBR delay, so to get 0th MBR, we have to ask for 1st MBR
-        cMBRow = ((U32) pID->WMP.cLinesCropped + pRect->Y + pRect->Height +          
-            (pRect->Y + pRect->Height >= (I32) pID->WMP.wmiI.cROIHeight ? linesperMBRow - 1 : 0)) / // round up if last MBR
-            linesperMBRow + 1;
-        cMBRowStart = ((U32) pID->WMP.cLinesCropped + pRect->Y) / linesperMBRow + 1;
+        cMBRow = ((U32) pID->WMP.wmiI.cROITopY + pRect->Y + pRect->Height + linesperMBRow - 1) / linesperMBRow + 1;
+        cMBRowStart = pRect->Y / linesperMBRow + 1;
         // if current request starts before current state, then rewind.
         if (cMBRowStart < pID->WMP.DecoderCurrMBRow) 
         {
@@ -2014,7 +2012,7 @@ ERR PKImageDecode_Copy_WMP(
         }
         else
         {
-            pbLowMemAdj = pb - pRect->Y * cbStride;
+            pbLowMemAdj = pb - (pRect->Y - pID->WMP.cLinesCropped) * cbStride;
         }
         wmiBI.pv = pbLowMemAdj;
 
@@ -2024,28 +2022,22 @@ ERR PKImageDecode_Copy_WMP(
             wmiBI.uiFirstMBRow = i;
             wmiBI.uiLastMBRow = i;
             FailIf(ICERR_OK != ImageStrDecDecode(pID->WMP.ctxSC, &wmiBI, &cLinesDecoded), WMP_errFail);
-            pID->WMP.cLinesDecoded = cLinesDecoded;
+            pID->WMP.cLinesDecoded += cLinesDecoded;
             if (FALSE == pID->WMP.fFirstNonZeroDecode && cLinesDecoded > 0)
             {
                 pID->WMP.cLinesCropped += (linesperMBRow - cLinesDecoded);
                 pID->WMP.fFirstNonZeroDecode = TRUE;
-                // update cMBRow if partial MB row cropped
-                cMBRow = ((U32) pID->WMP.cLinesCropped + pRect->Y + pRect->Height +          
-                    (pRect->Y + pRect->Height >= (I32) pID->WMP.wmiI.cROIHeight ? linesperMBRow - 1 : 0)) / // round up if last MBR
-                    linesperMBRow + 1;
             }
 
-            if (0 == cLinesDecoded && i > 0)
+            if (0 == cLinesDecoded && pRect->Y > 0)
             {
                 pID->WMP.cLinesCropped += linesperMBRow;
-                // update cMBRow if whole MB row cropped
-                cMBRow++;
             }
         }
         wmiBI.pv = pbLowMemAdj;
 
         // If we're past the top of the image, then we're done, so terminate.
-        if (linesperMBRow * (cMBRow - 1) >= (U32) pID->WMP.cLinesCropped + pID->WMP.wmiI.cROIHeight) {
+        if (linesperMBRow * (cMBRow - 1) >= pID->WMP.wmiI.cROIHeight) {
             FailIf(ICERR_OK != ImageStrDecTerm(pID->WMP.ctxSC), WMP_errFail);        
         }
         pID->WMP.DecoderCurrMBRow = cMBRow; // Set to next possible MBRow that is decodable
@@ -2105,11 +2097,8 @@ ERR PKImageDecode_Copy_WMP(
             FailIf(ICERR_OK != ImageStrDecInit(&pID->WMP.wmiI_Alpha, &pID->WMP.wmiSCP_Alpha, &pID->WMP.ctxSC_Alpha), WMP_errFail);
         }
         
-        // Re-entrant mode incurs 1 MBR delay, so to get 0th MBR, we have to ask for 1st MBR
-        cMBRow = ((U32) pID->WMP.cLinesCropped + pRect->Y + pRect->Height +          
-            (pRect->Y + pRect->Height >= (I32) pID->WMP.wmiI.cROIHeight ? linesperMBRow - 1 : 0)) / // round up if last MBR
-            linesperMBRow + 1;
-        cMBRowStart = ((U32) pID->WMP.cLinesCropped + pRect->Y) / linesperMBRow + 1;
+        cMBRow = ((U32) pID->WMP.wmiI.cROITopY + pRect->Y + pRect->Height + linesperMBRow - 1) / linesperMBRow + 1;
+        cMBRowStart = pRect->Y / linesperMBRow + 1;
         // if current request starts before current state, then rewind.
         if (cMBRowStart < pID->WMP.DecoderCurrAlphaMBRow) 
         {
@@ -2127,7 +2116,7 @@ ERR PKImageDecode_Copy_WMP(
         }
 
         // If we're past the top of the image, then we're done, so terminate
-        if (linesperMBRow * (cMBRow - 1) >= (U32) pID->WMP.cLinesCropped + pID->WMP.wmiI.cROIHeight) {
+        if (linesperMBRow * (cMBRow - 1) >= pID->WMP.wmiI.cROIHeight) {
             FailIf(ICERR_OK != ImageStrDecTerm(pID->WMP.ctxSC_Alpha), WMP_errFail);
         }
         pID->WMP.DecoderCurrAlphaMBRow = cMBRow; // Set to next possible MBRow that is decodable
@@ -2179,40 +2168,6 @@ ERR PKImageDecode_GetColorContext_WMP(PKImageDecode *pID, U8 *pbColorContext, U3
         pID->WMP.wmiDEMisc.uColorProfileByteCount, pbColorContext, pcbColorContext);
 }
 
-
-ERR PKImageDecode_GetXMPMetadata_WMP(PKImageDecode *pID, U8 *pbXMPMetadata, U32 *pcbXMPMetadata)
-{
-    return PKImageDecode_GetMetadata_WMP(pID, pID->WMP.wmiDEMisc.uXMPMetadataOffset,
-        pID->WMP.wmiDEMisc.uXMPMetadataByteCount, pbXMPMetadata, pcbXMPMetadata);
-}
-
-
-ERR PKImageDecode_GetEXIFMetadata_WMP(PKImageDecode *pID, U8 *pbEXIFMetadata, U32 *pcbEXIFMetadata)
-{
-    return PKImageDecode_GetMetadata_WMP(pID, pID->WMP.wmiDEMisc.uEXIFMetadataOffset,
-        pID->WMP.wmiDEMisc.uEXIFMetadataByteCount, pbEXIFMetadata, pcbEXIFMetadata);
-}
-
-
-ERR PKImageDecode_GetGPSInfoMetadata_WMP(PKImageDecode *pID, U8 *pbGPSInfoMetadata, U32 *pcbGPSInfoMetadata)
-{
-    return PKImageDecode_GetMetadata_WMP(pID, pID->WMP.wmiDEMisc.uGPSInfoMetadataOffset,
-        pID->WMP.wmiDEMisc.uGPSInfoMetadataByteCount, pbGPSInfoMetadata, pcbGPSInfoMetadata);
-}
-
-
-ERR PKImageDecode_GetIPTCNAAMetadata_WMP(PKImageDecode *pID, U8 *pbIPTCNAAMetadata, U32 *pcbIPTCNAAMetadata)
-{
-    return PKImageDecode_GetMetadata_WMP(pID, pID->WMP.wmiDEMisc.uIPTCNAAMetadataOffset,
-        pID->WMP.wmiDEMisc.uIPTCNAAMetadataByteCount, pbIPTCNAAMetadata, pcbIPTCNAAMetadata);
-}
-
-
-ERR PKImageDecode_GetPhotoshopMetadata_WMP(PKImageDecode *pID, U8 *pbPhotoshopMetadata, U32 *pcbPhotoshopMetadata)
-{
-    return PKImageDecode_GetMetadata_WMP(pID, pID->WMP.wmiDEMisc.uPhotoshopMetadataOffset,
-        pID->WMP.wmiDEMisc.uPhotoshopMetadataByteCount, pbPhotoshopMetadata, pcbPhotoshopMetadata);
-}
 
 
 ERR PKImageDecode_GetDescriptiveMetadata_WMP(PKImageDecode *pID, DESCRIPTIVEMETADATA *pDescMetadata)
