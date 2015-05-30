@@ -51,7 +51,6 @@ SET(SOURCE_FILES
 	${SRC}/jctvc/TLibCommon/TComRdCost.cpp
 	${SRC}/jctvc/TLibCommon/TComPattern.cpp
 	${SRC}/jctvc/TLibCommon/TComCABACTables.cpp
-	${SRC}/bpgenc.cpp
 	${SRC}/jctvc/libmd5/libmd5.c
 	${SRC}/libbpg.c
 	${SRC}/libavcodec/hevc_cabac.c
@@ -80,8 +79,7 @@ IF(MSVC)
 	INCLUDE_DIRECTORIES(${SRC}/getopt)
 ENDIF()
 
-INCLUDE_DIRECTORIES(${SRC}
-	${SRC}/jctvc
+INCLUDE_DIRECTORIES(${SRC} ${SRC}/jctvc
 	${3RDPARTY_DIR}/libjpeg-turbo
 	${3RDPARTY_DIR}/libpng
 	${CMAKE_BINARY_DIR}/libjpeg-turbo
@@ -90,6 +88,6 @@ INCLUDE_DIRECTORIES(${SRC}
 
 ADD_DEFINITIONS(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_REENTRANT -DHAVE_AV_CONFIG_H -DUSE_VAR_BIT_DEPTH -DUSE_PRED)
 
-SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
+SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES} ${SRC}/bpgenc.cpp)
 
-ADD_LIBRARY(libbpg STATIC ${SOURCE_FILES})
+ADD_LIBRARY(libbpg STATIC ${SOURCE_FILES} ${SRC}/bpgenc.cpp)
