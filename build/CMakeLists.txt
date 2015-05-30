@@ -52,8 +52,7 @@ ADD_SUBDIRECTORY(libwebp)
 ADD_SUBDIRECTORY(zlib)
 
 ADD_DEPENDENCIES(freeimage libbpg libjpeg-turbo libjxr libpng libtiff libwebp zlib)
-TARGET_LINK_LIBRARIES(freeimage libbpg libjpeg-turbo)
-TARGET_LINK_LIBRARIES(freeimage libjxr libpng libtiff libwebp zlib)
+TARGET_LINK_LIBRARIES(freeimage libbpg libjpeg-turbo libjxr libpng libtiff libwebp zlib)
 
 INCLUDE_DIRECTORIES(
 	${PROJECT_DIR}

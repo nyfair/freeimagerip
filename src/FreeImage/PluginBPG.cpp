@@ -4,13 +4,10 @@
 // Design and implementation by
 // - nyfair (nyfair2012@gmail.com)
 // ==========================================================
-
 #include "FreeImage.h"
 #include "Utilities.h"
 
-extern "C" {
-#include "libbpg.h"
-}
+#include "bpgenc.h"
 
 // ==========================================================
 // Plugin Interface
@@ -121,6 +118,88 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 	return FALSE;
 }
 
+static BOOL DLL_CALLCONV
+Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
+	if(handle) {
+		const char *tmpdir = getenv("TEMP");
+		if (tmpdir == 0)
+			tmpdir = "/tmp";
+		char swap_png[256], swap_bpg[256];
+		snprintf(swap_png, 256, "%s/__tmp.png", tmpdir);
+		snprintf(swap_bpg, 256, "%s/__tmp.bpg", tmpdir);
+		FreeImage_Save(FIF_PNG, dib, swap_png, PNG_NO_COMPRESSION);
+
+		int argc;
+		char *argv[ARGV_MAX + 1];
+		void* outbuf;
+		argc = 0;
+		add_opt(&argc, argv, swap_png);
+		add_opt(&argc, argv, "-o");
+		add_opt(&argc, argv, swap_bpg);
+		add_opt(&argc, argv, "-m");
+		add_opt(&argc, argv, "9");	// max compression level
+
+		if ((flags & BPG_LOSSLESS) == BPG_LOSSLESS) {
+			add_opt(&argc, argv, "-lossless");
+		} else {
+			char *chroma, *bt, *bit;
+			if ((flags & BPG_SUBSAMPLING_420) == BPG_SUBSAMPLING_420) {
+				chroma = "420";
+			} else if ((flags & BPG_SUBSAMPLING_422) == BPG_SUBSAMPLING_422) {
+				chroma = "422";
+			} else {
+				chroma = "444";
+			}
+			add_opt(&argc, argv, "-f");
+			add_opt(&argc, argv, chroma);
+			if ((flags & BPG_COLOR_601) == BPG_COLOR_601) {
+				bt = "ycbcr";
+			} else if ((flags & BPG_COLOR_709) == BPG_COLOR_709) {
+				bt = "ycbcr_bt709";
+			} else {
+				bt = "ycbcr_bt2020";
+			}
+			add_opt(&argc, argv, "-c");
+			add_opt(&argc, argv, bt);
+			if ((flags & BPG_BITDEPTH_8) == BPG_BITDEPTH_8) {
+				bit = "8";
+			} else if ((flags & BPG_BITDEPTH_10) == BPG_BITDEPTH_10) {
+				bit = "10";
+			} else {
+				bit = "12";
+			}
+			add_opt(&argc, argv, "-b");
+			add_opt(&argc, argv, bit);
+			int q = flags & 0xff;
+			if (q == 0) {
+				q = 20;
+			} else {
+				q = 100 - q;
+				if (q < 0 || q > 51)
+					q = 51;
+			}
+			char qp[2];
+			sprintf(qp,"%d",q); 
+			add_opt(&argc, argv, "-q");
+			add_opt(&argc, argv, qp);
+		}
+
+		if (encode_main(argc, argv) == 0) {
+			FILE *f = fopen(swap_bpg, "rb");
+			fseek(f, 0, SEEK_END);
+			int size = ftell(f);
+			outbuf = malloc(size);
+			fseek(f, 0, SEEK_SET);
+			fread(outbuf, 1, size, f);
+			io->write_proc(outbuf, 1, size, handle);
+			free(outbuf);
+			return TRUE;
+		}
+		return FALSE;
+	}
+	return FALSE;
+}
+
 // ==========================================================
 //	 Init
 // ==========================================================
@@ -136,7 +215,7 @@ InitBPG(Plugin *plugin, int format_id) {
 	plugin->open_proc = NULL;
 	plugin->close_proc = NULL;
 	plugin->load_proc = Load;
-	plugin->save_proc = NULL;
+	plugin->save_proc = Save;
 	plugin->validate_proc = Validate;
 	plugin->mime_proc = MimeType;
 	plugin->supports_export_bpp_proc = SupportsExportDepth;

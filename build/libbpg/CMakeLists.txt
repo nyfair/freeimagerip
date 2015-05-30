@@ -1,29 +1,6 @@
 SET(SRC ${3RDPARTY_DIR}/libbpg)
 
 SET(SOURCE_FILES
-	${SRC}/libbpg.c
-	${SRC}/libavcodec/hevc_cabac.c
-	${SRC}/libavcodec/hevc_filter.c
-	${SRC}/libavcodec/hevc.c
-	${SRC}/libavcodec/hevcpred.c
-	${SRC}/libavcodec/hevc_refs.c
-	${SRC}/libavcodec/hevcdsp.c
-	${SRC}/libavcodec/hevc_mvs.c
-	${SRC}/libavcodec/hevc_ps.c
-	${SRC}/libavcodec/hevc_sei.c
-	${SRC}/libavcodec/utils.c
-	${SRC}/libavcodec/cabac.c
-	${SRC}/libavcodec/golomb.c
-	${SRC}/libavcodec/videodsp.c
-	${SRC}/libavutil/mem.c
-	${SRC}/libavutil/buffer.c
-	${SRC}/libavutil/log2_tab.c
-	${SRC}/libavutil/frame.c
-	${SRC}/libavutil/pixdesc.c
-	${SRC}/libavutil/md5.c
-)
-
-SET(H265_FILES
 	${SRC}/jctvc_glue.cpp
 	${SRC}/jctvc/TAppEncCfg.cpp
 	${SRC}/jctvc/TAppEncTop.cpp
@@ -74,13 +51,45 @@ SET(H265_FILES
 	${SRC}/jctvc/TLibCommon/TComRdCost.cpp
 	${SRC}/jctvc/TLibCommon/TComPattern.cpp
 	${SRC}/jctvc/TLibCommon/TComCABACTables.cpp
+	${SRC}/bpgenc.cpp
 	${SRC}/jctvc/libmd5/libmd5.c
+	${SRC}/libbpg.c
+	${SRC}/libavcodec/hevc_cabac.c
+	${SRC}/libavcodec/hevc_filter.c
+	${SRC}/libavcodec/hevc.c
+	${SRC}/libavcodec/hevcpred.c
+	${SRC}/libavcodec/hevc_refs.c
+	${SRC}/libavcodec/hevcdsp.c
+	${SRC}/libavcodec/hevc_mvs.c
+	${SRC}/libavcodec/hevc_ps.c
+	${SRC}/libavcodec/hevc_sei.c
+	${SRC}/libavcodec/utils.c
+	${SRC}/libavcodec/cabac.c
+	${SRC}/libavcodec/golomb.c
+	${SRC}/libavcodec/videodsp.c
+	${SRC}/libavutil/mem.c
+	${SRC}/libavutil/buffer.c
+	${SRC}/libavutil/log2_tab.c
+	${SRC}/libavutil/frame.c
+	${SRC}/libavutil/pixdesc.c
+	${SRC}/libavutil/md5.c
 )
 
-INCLUDE_DIRECTORIES(${3RDPARTY_DIR}/libbpg ${3RDPARTY_DIR}/libbpg/jctvc)
+IF(MSVC)
+	SET(SOURCE_FILES ${SOURCE_FILES} ${SRC}/getopt/getopt.cpp)
+	INCLUDE_DIRECTORIES(${SRC}/getopt)
+ENDIF()
 
-ADD_DEFINITIONS(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_REENTRANT -DHAVE_AV_CONFIG_H -std=c99 -D_GNU_SOURCE=1 -DUSE_VAR_BIT_DEPTH -DUSE_PRED)
+INCLUDE_DIRECTORIES(${SRC}
+	${SRC}/jctvc
+	${3RDPARTY_DIR}/libjpeg-turbo
+	${3RDPARTY_DIR}/libpng
+	${CMAKE_BINARY_DIR}/libjpeg-turbo
+	${CMAKE_BINARY_DIR}/libpng
+)
 
-SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES} ${H265_FILES})
+ADD_DEFINITIONS(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_REENTRANT -DHAVE_AV_CONFIG_H -DUSE_VAR_BIT_DEPTH -DUSE_PRED)
+
+SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
 
 ADD_LIBRARY(libbpg STATIC ${SOURCE_FILES})

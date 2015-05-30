@@ -608,13 +608,23 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define TIFF_LZW			0x4000	// save using LZW compression
 #define TIFF_JPEG			0x8000	// save using JPEG compression
 #define TIFF_LOGLUV			0x10000	// save using LogLuv compression
-#define JXR_DEFAULT			0		// save with quality 80 and no chroma subsampling (4:4:4)
+#define JXR_DEFAULT			0		// save with quality 80 & 4:4:4
 #define JXR_LOSSLESS		100 	// save lossless
 #define JXR_PROGRESSIVE		0x4000	// save as a progressive-JXR (use | to combine with other save flags)
 #define WEBP_DEFAULT		0		// save with quality 75 & 4:2:0
 #define WEBP_LOSSLESS		100		// save lossless vp8 photo
 #define DDS_DEFAULT			0
-#define BPG_DEFAULT			0
+#define BPG_DEFAULT			0		// save with quality 80(qp=100-quality=20) & 4:4:4 & bt.2020 & 12bit
+#define BPG_LOSSLESS		100 	// save lossless
+#define BPG_SUBSAMPLING_420	0x100	// save with medium 2x2 medium chroma subsampling (4:2:0)
+#define BPG_SUBSAMPLING_422	0x200	// save with low 2x1 chroma subsampling (4:2:2)
+#define BPG_SUBSAMPLING_444	0x400	// save with no chroma subsampling (4:4:4)
+#define BPG_COLOR_601		0x1000	// save with ITU-R BT.601
+#define BPG_COLOR_709		0x2000	// save with ITU-R BT.709
+#define BPG_COLOR_2020		0x4000	// save with ITU-R BT.2020
+#define BPG_BITDEPTH_8		0x10000	// save with 8bit
+#define BPG_BITDEPTH_10		0x20000	// save with 10bit
+#define BPG_BITDEPTH_12		0x40000	// save with 12bit
 
 // Background filling options ---------------------------------------------------------
 // Constants used in FreeImage_FillBackground and FreeImage_EnlargeCanvas

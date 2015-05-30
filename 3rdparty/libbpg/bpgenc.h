@@ -25,6 +25,8 @@
 extern "C" {
 #endif
 
+#define ARGV_MAX 256
+
 #include "libbpg.h"
 
 typedef struct {
@@ -72,8 +74,9 @@ int x265_encode_picture(uint8_t **pbuf, Image *img,
                         const HEVCEncodeParams *params);
 void save_yuv1(Image *img, FILE *f);
 void save_yuv(Image *img, const char *filename);
+int encode_main(int argc, char **argv);
+void add_opt(int *pargc, char **argv, const char *str);
 
 #ifdef __cplusplus
 }
 #endif
-

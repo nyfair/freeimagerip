@@ -25,13 +25,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
-#include <getopt.h>
+#include "getopt.h"
 #include <math.h>
 #include <assert.h>
 
-#include <png.h>
-#include <jpeglib.h>
+#define USE_JCTVC
+#define CONFIG_BPG_VERSION "0.9.5"
 
+#include "png.h"
+#include "jpeglib.h"
 #include "bpgenc.h"
 
 typedef uint16_t PIXEL;
@@ -158,7 +160,7 @@ static void rgb24_to_ycc(ColorConvertState *s,
                          PIXEL *y_ptr, PIXEL *cb_ptr, PIXEL *cr_ptr,
                          const void *src1, int n, int incr)
 {
-    const uint8_t *src = src1;
+    const uint8_t *src = (const uint8_t*)src1;
     int i, r, g, b, c0, c1, c2, c3, c4, c5, c6, c7, c8, shift, rnd, center;
     int pixel_max, y_offset;
 
@@ -194,7 +196,7 @@ static void rgb24_to_rgb(ColorConvertState *s,
                          PIXEL *y_ptr, PIXEL *cb_ptr, PIXEL *cr_ptr,
                          const void *src1, int n, int incr)
 {
-    const uint8_t *src = src1;
+    const uint8_t *src = (const uint8_t*)src1;
     int i, r, g, b, c, shift, rnd;
 
     c = s->y_one;
@@ -215,7 +217,7 @@ static void rgb24_to_ycgco(ColorConvertState *s,
                            PIXEL *y_ptr, PIXEL *cb_ptr, PIXEL *cr_ptr,
                            const void *src1, int n, int incr)
 {
-    const uint8_t *src = src1;
+    const uint8_t *src = (const uint8_t*)src1;
     int i, r, g, b, t1, t2, pixel_max, c_0_5, c_0_25, rnd, shift, center;
     int y_offset;
 
@@ -278,7 +280,7 @@ static void rgb48_to_ycc(ColorConvertState *s,
                          PIXEL *y_ptr, PIXEL *cb_ptr, PIXEL *cr_ptr,
                          const void *src1, int n, int incr)
 {
-    const uint16_t *src = src1;
+    const uint16_t *src = (const uint16_t*)src1;
     int i, r, g, b, c0, c1, c2, c3, c4, c5, c6, c7, c8, shift, rnd, center;
     int pixel_max, y_offset;
 
@@ -314,7 +316,7 @@ static void rgb48_to_ycgco(ColorConvertState *s,
                            PIXEL *y_ptr, PIXEL *cb_ptr, PIXEL *cr_ptr,
                            const void *src1, int n, int incr)
 {
-    const uint16_t *src = src1;
+    const uint16_t *src = (const uint16_t*)src1;
     int i, r, g, b, t1, t2, pixel_max, c_0_5, c_0_25, rnd, shift, center;
     int y_offset;
 
@@ -375,7 +377,7 @@ static void rgb48_to_rgb(ColorConvertState *s,
                          PIXEL *y_ptr, PIXEL *cb_ptr, PIXEL *cr_ptr,
                          const void *src1, int n, int incr)
 {
-    const uint16_t *src = src1;
+    const uint16_t *src = (const uint16_t*)src1;
 
     luma16_to_gray(s, y_ptr, src + 1, n, incr);
     luma16_to_gray(s, cb_ptr, src + 2, n, incr);
@@ -530,7 +532,7 @@ static void decimate2_h(PIXEL *dst, PIXEL *src, int n, int bit_depth, int phase)
     else
         d = DP1TAPS2;
     /* add edge pixels */
-    src1 = malloc(sizeof(PIXEL) * (n + 2 * d));
+    src1 = (PIXEL*)malloc(sizeof(PIXEL) * (n + 2 * d));
     v = src[0];
     for(i = 0; i < d; i++)
         src1[i] = v;
@@ -621,10 +623,10 @@ static void decimate2_hv(uint8_t *dst, int dst_linesize,
     
     w2 = (w + 1) / 2;
 
-    buf1 = malloc(sizeof(PIXEL) * (w + 2 * DTAPS_MAX));
+    buf1 = (PIXEL*)malloc(sizeof(PIXEL) * (w + 2 * DTAPS_MAX));
     /* init line buffer */
     for(i = 0; i < DP1TAPS; i++) {
-        buf2[i] = malloc(sizeof(int16_t) * w2);
+        buf2[i] = (int16_t*)malloc(sizeof(int16_t) * w2);
         y = i;
         if (y > DP1TAPS2)
             y -= DP1TAPS;
@@ -689,7 +691,7 @@ Image *image_alloc(int w, int h, BPGImageFormatEnum format, int has_alpha,
     Image *img;
     int i, linesize, w1, h1, c_count;
 
-    img = malloc(sizeof(Image));
+    img = (Image*)malloc(sizeof(Image));
     memset(img, 0, sizeof(*img));
     
     img->w = w;
@@ -714,7 +716,7 @@ Image *image_alloc(int w, int h, BPGImageFormatEnum format, int has_alpha,
         h1 = (h1 + (W_PAD - 1)) & ~(W_PAD - 1);
         
         linesize = w1 << img->pixel_shift;
-        img->data[i] = malloc(linesize * h1);
+        img->data[i] = (uint8_t*)malloc(linesize * h1);
         img->linesize[i] = linesize;
     }
     return img;
@@ -747,7 +749,7 @@ int image_ycc444_to_ycc422(Image *img, int h_phase)
     h1 = (img->h + (W_PAD - 1)) & ~(W_PAD - 1);
     linesize1 = bpp * w1;
     for(i = 1; i <= 2; i++) {
-        data1 = malloc(linesize1 * h1);
+        data1 = (uint8_t*)malloc(linesize1 * h1);
         for(y = 0; y < img->h; y++) {
             decimate2_h((PIXEL *)(data1 + y * linesize1),
                         (PIXEL *)(img->data[i] + y * img->linesize[i]),
@@ -776,7 +778,7 @@ int image_ycc444_to_ycc420(Image *img, int h_phase)
     h1 = (h1 + (W_PAD - 1)) & ~(W_PAD - 1);
     linesize1 = bpp * w1;
     for(i = 1; i <= 2; i++) {
-        data1 = malloc(linesize1 * h1);
+        data1 = (uint8_t*)malloc(linesize1 * h1);
         decimate2_hv(data1, linesize1,
                      img->data[i], img->linesize[i],
                      img->w, img->h, img->bit_depth, h_phase);
@@ -864,7 +866,7 @@ void image_convert16to8(Image *img)
     for(i = 0; i < c_count; i++) {
         get_plane_res(img, &w, &h, i);
         stride = w;
-        plane = malloc(stride * h);
+        plane = (uint8_t*)malloc(stride * h);
         for(y = 0; y < h; y++) {
             const uint16_t *src;
             uint8_t *dst;
@@ -890,7 +892,7 @@ typedef struct BPGMetaData {
 BPGMetaData *bpg_md_alloc(uint32_t tag)
 {
     BPGMetaData *md;
-    md = malloc(sizeof(BPGMetaData));
+    md = (BPGMetaData*)malloc(sizeof(BPGMetaData));
     memset(md, 0, sizeof(*md));
     md->tag = tag;
     return md;
@@ -994,14 +996,14 @@ Image *read_png(BPGMetaData **pmd,
     img->limited_range = limited_range;
     img->premultiplied_alpha = premultiplied_alpha;
 
-    rows = malloc(sizeof(rows[0]) * img->h);
+    rows = (uint8_t**)malloc(sizeof(rows[0]) * img->h);
     if (format == BPG_FORMAT_GRAY)
         bpp = (1 + has_alpha) * (bit_depth / 8);
     else
         bpp = (3 + has_alpha) * (bit_depth / 8);
     linesize = bpp * img->w;
     for (y = 0; y < img->h; y++) {
-        rows[y] = malloc(linesize);
+        rows[y] = (uint8_t*)malloc(linesize);
     }
     
     png_read_image(png_ptr, rows);
@@ -1073,7 +1075,7 @@ Image *read_png(BPGMetaData **pmd,
             PNG_INFO_iCCP) {
             md = bpg_md_alloc(BPG_EXTENSION_TAG_ICCP);
             md->buf_len = iccp_buf_len;
-            md->buf = malloc(iccp_buf_len);
+            md->buf = (uint8_t*)malloc(iccp_buf_len);
             memcpy(md->buf, iccp_buf, iccp_buf_len);
             *plast_md = md;
             plast_md = &md->next;
@@ -1112,7 +1114,7 @@ static BPGMetaData *jpeg_get_metadata(jpeg_saved_marker_ptr first_marker)
             md = bpg_md_alloc(BPG_EXTENSION_TAG_EXIF);
             l = sizeof(app1_exif);
             md->buf_len = marker->data_length - l;
-            md->buf = malloc(md->buf_len);
+            md->buf = (uint8_t*)malloc(md->buf_len);
             memcpy(md->buf, marker->data + l, md->buf_len);
             *plast_md = md;
             plast_md = &md->next;
@@ -1124,7 +1126,7 @@ static BPGMetaData *jpeg_get_metadata(jpeg_saved_marker_ptr first_marker)
             md = bpg_md_alloc(BPG_EXTENSION_TAG_XMP);
             l = sizeof(app1_xmp);
             md->buf_len = marker->data_length - l;
-            md->buf = malloc(md->buf_len);
+            md->buf = (uint8_t*)malloc(md->buf_len);
             memcpy(md->buf, marker->data + l, md->buf_len);
             *plast_md = md;
             plast_md = &md->next;
@@ -1166,7 +1168,7 @@ static BPGMetaData *jpeg_get_metadata(jpeg_saved_marker_ptr first_marker)
         if (i == iccp_chunk_count) {
             md = bpg_md_alloc(BPG_EXTENSION_TAG_ICCP);
             md->buf_len = len;
-            md->buf = malloc(md->buf_len);
+            md->buf = (uint8_t*)malloc(md->buf_len);
             idx = 0;
             for(i = 0; i < iccp_chunk_count; i++) {
                 l = iccp_chunks[i]->data_length - hlen;
@@ -1207,7 +1209,7 @@ Image *read_jpeg(BPGMetaData **pmd, FILE *f,
     
     cinfo.raw_data_out = TRUE;
     cinfo.do_fancy_upsampling = TRUE;
-    
+
     w = cinfo.image_width;
     h = cinfo.image_height;
 
@@ -1261,7 +1263,7 @@ Image *read_jpeg(BPGMetaData **pmd, FILE *f,
         switch(comp_hv) {
         case 0x11111111:
             format = BPG_FORMAT_444;
-            color_space = BPG_CS_YCbCr;
+        color_space = BPG_CS_YCbCr;
             break;
         case 0x22111121:
             format = BPG_FORMAT_422;
@@ -1322,79 +1324,79 @@ Image *read_jpeg(BPGMetaData **pmd, FILE *f,
         JSAMPROW rows[4][16];
         JSAMPROW *plane_pointer[4];
 
-        y_h = 8 * cinfo.max_v_samp_factor;
-        if (cinfo.num_components == 1) {
-            c_h = 0;
-            c_w = 0;
-        } else {
-            c_h = 8;
+    y_h = 8 * cinfo.max_v_samp_factor;
+    if (cinfo.num_components == 1) {
+        c_h = 0;
+        c_w = 0;
+    } else {
+        c_h = 8;
             if (h_shift)
-                c_w = (w + 1) / 2;
-            else
-                c_w = w;
+            c_w = (w + 1) / 2;
+        else
+            c_w = w;
+    }
+    w1 = (w + 15) & ~15;
+    for(c_idx = 0; c_idx < cinfo.num_components; c_idx++) {
+        if (c_idx == 1 || c_idx == 2) {
+            h1 = c_h;
+        } else {
+            h1 = y_h;
         }
-        w1 = (w + 15) & ~15;
+        for(i = 0; i < h1; i++) {
+            rows[c_idx][i] = (JSAMPROW)malloc(w1);
+        }
+        plane_pointer[c_idx] = rows[c_idx];
+    }
+    
+    while (cinfo.output_scanline < cinfo.output_height) {
+        y = cinfo.output_scanline;
+        jpeg_read_raw_data(&cinfo, plane_pointer, y_h);
+        
         for(c_idx = 0; c_idx < cinfo.num_components; c_idx++) {
             if (c_idx == 1 || c_idx == 2) {
                 h1 = c_h;
+                w1 = c_w;
+                y1 = (y >> v_shift);
             } else {
                 h1 = y_h;
+                w1 = img->w;
+                y1 = y;
             }
+            idx = plane_idx[c_idx];
             for(i = 0; i < h1; i++) {
-                rows[c_idx][i] = malloc(w1);
-            }
-            plane_pointer[c_idx] = rows[c_idx];
-        }
-        
-        while (cinfo.output_scanline < cinfo.output_height) {
-            y = cinfo.output_scanline;
-            jpeg_read_raw_data(&cinfo, plane_pointer, y_h);
-            
-            for(c_idx = 0; c_idx < cinfo.num_components; c_idx++) {
-                if (c_idx == 1 || c_idx == 2) {
-                    h1 = c_h;
-                    w1 = c_w;
-                    y1 = (y >> v_shift);
-                } else {
-                    h1 = y_h;
-                    w1 = img->w;
-                    y1 = y;
-                }
-                idx = plane_idx[c_idx];
-                for(i = 0; i < h1; i++) {
-                    PIXEL *ptr;
-                    ptr = (PIXEL *)(img->data[idx] + 
-                                    img->linesize[idx] * (y1 + i));
-                    gray8_to_gray(cvt, ptr, rows[c_idx][i], w1, 1);
-                    if (color_space == BPG_CS_YCbCr && has_w_plane) {
-                        /* negate color */
-                        if (c_idx == 0) {
-                            gray_one_minus(cvt, ptr, w1);
-                        } else if (c_idx <= 2) {
-                            gray_neg_c(cvt, ptr, w1);
-                        }
+                PIXEL *ptr;
+                ptr = (PIXEL *)(img->data[idx] + 
+                                img->linesize[idx] * (y1 + i));
+                gray8_to_gray(cvt, ptr, rows[c_idx][i], w1, 1);
+                if (color_space == BPG_CS_YCbCr && has_w_plane) {
+                    /* negate color */
+                    if (c_idx == 0) {
+                        gray_one_minus(cvt, ptr, w1);
+                    } else if (c_idx <= 2) {
+                        gray_neg_c(cvt, ptr, w1);
                     }
                 }
             }
         }
+    }
     
-        for(c_idx = 0; c_idx < cinfo.num_components; c_idx++) {
-            if (c_idx == 1 || c_idx == 2) {
-                h1 = c_h;
-            } else {
-                h1 = y_h;
-            }
-            for(i = 0; i < h1; i++) {
-                free(rows[c_idx][i]);
-            }
+    for(c_idx = 0; c_idx < cinfo.num_components; c_idx++) {
+        if (c_idx == 1 || c_idx == 2) {
+            h1 = c_h;
+        } else {
+            h1 = y_h;
         }
+        for(i = 0; i < h1; i++) {
+            free(rows[c_idx][i]);
+        }
+    }
     } else {
         JSAMPROW rows[1];
         uint8_t *buf;
         int c_count;
 
         c_count = 3 + has_w_plane;
-        buf = malloc(c_count * w);
+        buf = (uint8_t*)malloc(c_count * w);
         rows[0] = buf;
         while (cinfo.output_scanline < cinfo.output_height) {
             y = cinfo.output_scanline;
@@ -1409,7 +1411,7 @@ Image *read_jpeg(BPGMetaData **pmd, FILE *f,
         }
         free(buf);
     }
-    
+
     first_md = jpeg_get_metadata(cinfo.marker_list);
 
  the_end:
@@ -1443,7 +1445,7 @@ Image *load_image(BPGMetaData **pmd, const char *infilename,
             is_png = 0;
         fseek(f, 0, SEEK_SET);
     }
-    
+
     if (is_png) {
         img = read_png(&md, f, color_space, bit_depth, limited_range,
                        premultiplied_alpha);
@@ -1536,7 +1538,7 @@ static int extract_nal(uint8_t **pnal_buf, int *pnal_len,
         start = 4;
     len = end - start;
     
-    nal_buf = malloc(len);
+    nal_buf = (uint8_t*)malloc(len);
     nal_len = 0;
     idx = start;
     while (idx < end) {
@@ -1712,7 +1714,7 @@ static int dyn_buf_resize(DynBuf *s, int size)
     new_size = (s->size * 3) / 2;
     if (new_size < size)
         new_size = size;
-    new_buf = realloc(s->buf, new_size);
+    new_buf = (uint8_t*)realloc(s->buf, new_size);
     if (!new_buf) 
         return -1;
     s->buf = new_buf;
@@ -1723,7 +1725,7 @@ static int dyn_buf_resize(DynBuf *s, int size)
 /* suppress the VPS NAL and keep only the useful part of the SPS
    header. The decoder can rebuild a valid HEVC stream if needed. */
 static int build_modified_sps(uint8_t **pout_buf, int *pout_buf_len,
-                              const uint8_t *buf, int buf_len)
+                               const uint8_t *buf, int buf_len)
 {
     int nal_unit_type, nal_len, idx, i, ret, msps_buf_len;
     int out_buf_len, out_buf_len_max;
@@ -1972,7 +1974,7 @@ static int build_modified_sps(uint8_t **pout_buf, int *pout_buf_len,
         }
 
         /* build the modified SPS */
-        msps_buf = malloc(nal_len + 32);
+        msps_buf = (uint8_t*)malloc(nal_len + 32);
         memset(msps_buf, 0, nal_len + 16);
         
         init_put_bits(pb, msps_buf);
@@ -2002,7 +2004,7 @@ static int build_modified_sps(uint8_t **pout_buf, int *pout_buf_len,
         msps_buf_len = (pb->idx + 7) >> 3;
 
         out_buf_len_max = 5 + msps_buf_len;
-        out_buf = malloc(out_buf_len_max);
+        out_buf = (uint8_t*)malloc(out_buf_len_max);
 
         //        printf("msps_n_bits=%d\n", pb->idx);
         p = out_buf;
@@ -2248,7 +2250,7 @@ void *mallocz(size_t size)
 BPGEncoderParameters *bpg_encoder_param_alloc(void)
 {
     BPGEncoderParameters *p;
-    p = mallocz(sizeof(BPGEncoderParameters));
+    p = (BPGEncoderParameters*)mallocz(sizeof(BPGEncoderParameters));
     if (!p)
         return NULL;
     p->qp = DEFAULT_QP;
@@ -2270,7 +2272,7 @@ BPGEncoderContext *bpg_encoder_open(BPGEncoderParameters *p)
 {
     BPGEncoderContext *s;
 
-    s = mallocz(sizeof(BPGEncoderContext));
+    s = (BPGEncoderContext*)mallocz(sizeof(BPGEncoderContext));
     if (!s)
         return NULL;
     s->params = *p;
@@ -2360,7 +2362,7 @@ int bpg_encoder_encode(BPGEncoderContext *s, Image *img,
     if (img->has_alpha) {
         int c_idx;
 
-        img_alpha = malloc(sizeof(Image));
+        img_alpha = (Image*)malloc(sizeof(Image));
         memset(img_alpha, 0, sizeof(*img_alpha));
         if (img->format == BPG_FORMAT_GRAY)
             c_idx = 1;
@@ -2387,13 +2389,14 @@ int bpg_encoder_encode(BPGEncoderContext *s, Image *img,
         if (p->preferred_chroma_format == BPG_FORMAT_420 ||
             p->preferred_chroma_format == BPG_FORMAT_420_VIDEO) {
             int c_h_phase = (p->preferred_chroma_format == BPG_FORMAT_420);
-            if (image_ycc444_to_ycc420(img, c_h_phase) != 0)
-                goto error_convert;
+            if (image_ycc444_to_ycc420(img, c_h_phase) != 0) {
+                fprintf(stderr, "Cannot convert image\n");
+                exit(1);
+            }
         } else if (p->preferred_chroma_format == BPG_FORMAT_422 ||
                    p->preferred_chroma_format == BPG_FORMAT_422_VIDEO) {
             int c_h_phase = (p->preferred_chroma_format == BPG_FORMAT_422);
             if (image_ycc444_to_ycc422(img, c_h_phase) != 0)  {
-            error_convert:
                 fprintf(stderr, "Cannot convert image\n");
                 exit(1);
             }
@@ -2460,7 +2463,7 @@ int bpg_encoder_encode(BPGEncoderContext *s, Image *img,
             put_ue(&q, p->frame_delay_num);
             put_ue(&q, p->frame_delay_den);
             md->buf_len = q - buf;
-            md->buf = malloc(md->buf_len);
+            md->buf = (uint8_t*)malloc(md->buf_len);
             memcpy(md->buf, buf, md->buf_len);
             md->next = s->first_md;
             s->first_md = md;
@@ -2477,7 +2480,7 @@ int bpg_encoder_encode(BPGEncoderContext *s, Image *img,
             for(md1 = s->first_md; md1 != NULL; md1 = md1->next) {
                 max_len += md1->buf_len + 5 * 2;
             }
-            extension_buf = malloc(max_len);
+            extension_buf = (uint8_t*)malloc(max_len);
             q = extension_buf;
             for(md1 = s->first_md; md1 != NULL; md1 = md1->next) {
                 put_ue(&q, md1->tag);
@@ -2555,7 +2558,7 @@ int bpg_encoder_encode(BPGEncoderContext *s, Image *img,
         s->frame_duration_tab_size = (s->frame_duration_tab_size * 3) / 2;
         if (s->frame_duration_tab_size < (s->frame_count + 1))
             s->frame_duration_tab_size = (s->frame_count + 1);
-        s->frame_duration_tab = realloc(s->frame_duration_tab, 
+        s->frame_duration_tab = (uint16_t*)realloc(s->frame_duration_tab, 
                                         sizeof(s->frame_duration_tab) * s->frame_duration_tab_size);
     }
     s->frame_duration_tab[s->frame_count] = s->frame_ticks;
@@ -2584,7 +2587,7 @@ void bpg_encoder_close(BPGEncoderContext *s)
 
 static int my_write_func(void *opaque, const uint8_t *buf, int buf_len)
 {
-    FILE *f = opaque;
+    FILE *f = (FILE*)opaque;
     return fwrite(buf, 1, buf_len, f);
 }
 
@@ -2616,7 +2619,7 @@ static int get_filename_num(char *buf, int buf_size, const char *str, int n)
             } else if (c != 'd') {
                 return -1;
             }
-            snprintf(q, buf + buf_size - q, "%0*u", l, n);
+            _snprintf(q, buf + buf_size - q, "%0*u", l, n);
             q += strlen(q);
             
         } else {
@@ -2697,7 +2700,7 @@ struct option long_opts[] = {
     { NULL },
 };
 
-int main(int argc, char **argv)
+int encode_main(int argc, char **argv)
 {
     const char *infilename, *outfilename, *frame_delay_file;
     Image *img;
@@ -2719,9 +2722,11 @@ int main(int argc, char **argv)
     limited_range = 0;
     premultiplied_alpha = 0;
     frame_delay_file = NULL;
+
+	option_index = -1;
     
     for(;;) {
-        c = getopt_long_only(argc, argv, "q:o:hf:c:vm:b:e:a", long_opts, &option_index);
+		c = getopt(argc, argv, "q:o:hf:c:vm:b:e:a");
         if (c == -1)
             break;
         switch(c) {
@@ -2849,7 +2854,7 @@ int main(int argc, char **argv)
                 fprintf(stderr, "\n");
                 exit(1);
             }
-            p->encoder_type = i;
+            p->encoder_type = (HEVCEncoderEnum)i;
             break;
         case 'a':
             p->animated = 1;
@@ -2859,107 +2864,129 @@ int main(int argc, char **argv)
         }
     }
 
-    if (optind >= argc) 
-        help(0);
-    infilename = argv[optind];
+	if (optind > argc) 
+		help(0);
+	infilename = argv[0];
 
-    f = fopen(outfilename, "wb");
-    if (!f) {
-        perror(outfilename);
-        exit(1);
-    }
+	f = fopen(outfilename, "wb");
+	if (!f) {
+		perror(outfilename);
+		exit(1);
+	}
 
-    enc_ctx = bpg_encoder_open(p);
-    if (!enc_ctx) {
-        fprintf(stderr, "Could not open BPG encoder\n");
-        exit(1);
-    }
+	enc_ctx = bpg_encoder_open(p);
+	if (!enc_ctx) {
+		fprintf(stderr, "Could not open BPG encoder\n");
+		exit(1);
+	}
 
-    if (p->animated) {
-        int frame_num, first_frame, frame_ticks;
-        char filename[1024];
-        FILE *f1;
+	if (p->animated) {
+		int frame_num, first_frame, frame_ticks;
+		char filename[1024];
+		FILE *f1;
 
-        if (frame_delay_file) {
-            f1 = fopen(frame_delay_file, "r");
-            if (!f1) {
-                fprintf(stderr, "Could not open '%s'\n", frame_delay_file);
-                exit(1);
-            }
-        } else {
-            f1 = NULL;
-        }
+		if (frame_delay_file) {
+			f1 = fopen(frame_delay_file, "r");
+			if (!f1) {
+				fprintf(stderr, "Could not open '%s'\n", frame_delay_file);
+				exit(1);
+			}
+		} else {
+			f1 = NULL;
+		}
 
-        first_frame = 1;
-        for(frame_num = 0; ; frame_num++) {
-            if (get_filename_num(filename, sizeof(filename), infilename, frame_num) < 0) {
-                fprintf(stderr, "Invalid filename syntax: '%s'\n", infilename);
-                exit(1);
-            }
-            img = load_image(&md, filename, color_space, bit_depth, limited_range,
-                             premultiplied_alpha);
-            if (!img) {
-                if (frame_num == 0)
-                    continue; /* accept to start at 0 or 1 */
-                if (first_frame) {
-                    fprintf(stderr, "Could not read '%s'\n", filename);
-                    exit(1);
-                } else {
-                    break;
-                }
-            }
-            frame_ticks = 1;
-            if (f1) {
-                float fdelay;
-                if (fscanf(f1, "%f", &fdelay) == 1) {
-                    frame_ticks = lrint(fdelay * p->frame_delay_den / (p->frame_delay_num * 100));
-                    if (frame_ticks < 1)
-                        frame_ticks = 1;
-                }
-            }
-            
-            if (p->verbose)
-                printf("Encoding '%s' ticks=%d\n", filename, frame_ticks);
-            
-            if (keep_metadata && first_frame) {
-                bpg_encoder_set_extension_data(enc_ctx, md);
-            } else {
-                bpg_md_free(md);
-            }
-            bpg_encoder_set_frame_duration(enc_ctx, frame_ticks);
-            bpg_encoder_encode(enc_ctx, img, my_write_func, f);
-            image_free(img);
+		first_frame = 1;
+		for(frame_num = 0; ; frame_num++) 
+		{
+			if (get_filename_num(filename, sizeof(filename), infilename, frame_num) < 0) 
+			{
+				fprintf(stderr, "Invalid filename syntax: '%s'\n", infilename);
+				exit(1);
+			}
 
-            first_frame = 0;
-        }
-        if (f1)
-            fclose(f1);
-        /* end of stream */
-        bpg_encoder_encode(enc_ctx, NULL, my_write_func, f);
-    } else {
-        img = load_image(&md, infilename, color_space, bit_depth, limited_range,
-                         premultiplied_alpha);
-        if (!img) {
-            fprintf(stderr, "Could not read '%s'\n", infilename);
-            exit(1);
-        }
-        
-        if (!keep_metadata && md) {
-            bpg_md_free(md);
-            md = NULL;
-        }
-        
-        bpg_encoder_set_extension_data(enc_ctx, md);
-        
-        bpg_encoder_encode(enc_ctx, img, my_write_func, f);
-        image_free(img);
-    }
+			img = load_image(&md, filename, color_space, bit_depth, limited_range, premultiplied_alpha);
+			if (!img) 
+			{
+				if (frame_num == 0)
+					continue; /* accept to start at 0 or 1 */
+				if (first_frame) 
+				{
+					fprintf(stderr, "Could not read '%s'\n", filename);
+					exit(1);
+				} 
+				else 
+				{
+					break;
+				}
+			}
+			frame_ticks = 1;
+			if (f1) 
+			{
+				float fdelay;
+				if (fscanf(f1, "%f", &fdelay) == 1) 
+				{
+					frame_ticks = lrint(fdelay * p->frame_delay_den / (p->frame_delay_num * 100));
+					if (frame_ticks < 1)
+						frame_ticks = 1;
+				}
+			}
 
-    fclose(f);
-    
-    bpg_encoder_close(enc_ctx);
-    
-    bpg_encoder_param_free(p);
+			if (p->verbose)
+				printf("Encoding '%s' ticks=%d\n", filename, frame_ticks);
 
-    return 0;
+			if (keep_metadata && first_frame) 
+			{
+				bpg_encoder_set_extension_data(enc_ctx, md);
+			} 
+			else 
+			{
+				bpg_md_free(md);
+			}
+			bpg_encoder_set_frame_duration(enc_ctx, frame_ticks);
+			bpg_encoder_encode(enc_ctx, img, my_write_func, f);
+			image_free(img);
+
+			first_frame = 0;
+		}
+		if (f1)
+			fclose(f1);
+		/* end of stream */
+		bpg_encoder_encode(enc_ctx, NULL, my_write_func, f);
+	} else {
+		img = load_image(&md, infilename, color_space, bit_depth, limited_range,
+			premultiplied_alpha);
+		if (!img) {
+			fprintf(stderr, "Could not read '%s'\n", infilename);
+			exit(1);
+		}
+
+		if (!keep_metadata && md) {
+			bpg_md_free(md);
+			md = NULL;
+		}
+
+		bpg_encoder_set_extension_data(enc_ctx, md);
+
+		bpg_encoder_encode(enc_ctx, img, my_write_func, f);
+		image_free(img);
+	}
+
+	fclose(f);
+
+	bpg_encoder_close(enc_ctx);
+
+	bpg_encoder_param_free(p);
+
+	return 0;
+}
+
+void add_opt(int *pargc, char **argv,
+                    const char *str)
+{
+    int argc;
+    argc = *pargc;
+    if (argc >= ARGV_MAX)
+        abort();
+    argv[argc++] = strdup(str);
+    *pargc = argc;
 }

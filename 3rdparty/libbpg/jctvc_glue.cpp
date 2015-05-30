@@ -1,7 +1,9 @@
-#ifdef WIN32
-#include <windows.h>
-#endif
+#ifdef _MSC_VER
+#include <io.h>
+#include <process.h>
+#else
 #include <unistd.h>
+#endif
 #include <iostream>
 #include "TAppEncTop.h"
 #include "TLibCommon/Debug.h"
@@ -17,40 +19,20 @@ struct HEVCEncoderContext {
     int frame_count;
 };
 
-#define ARGV_MAX 256
-
-static void add_opt(int *pargc, char **argv,
-                    const char *str)
-{
-    int argc;
-    argc = *pargc;
-    if (argc >= ARGV_MAX)
-        abort();
-    argv[argc++] = strdup(str);
-    *pargc = argc;
-}
-
 static HEVCEncoderContext *jctvc_open(const HEVCEncodeParams *params)
 {
     HEVCEncoderContext *s;
-    char buf[1024];
     static int tmp_idx = 1;
 
     s = (HEVCEncoderContext *)malloc(sizeof(HEVCEncoderContext));
     memset(s, 0, sizeof(*s));
 
     s->params = *params;
-#ifdef WIN32
-    if (GetTempPath(sizeof(buf), buf) > sizeof(buf) - 1) {
-        fprintf(stderr, "Temporary path too long\n");
-        free(s);
-        return NULL;
-    }
-#else
-    strcpy(buf, "/tmp/");
-#endif
-    snprintf(s->infilename, sizeof(s->infilename), "%sout%d-%d.yuv", buf, getpid(), tmp_idx);
-    snprintf(s->outfilename, sizeof(s->outfilename), "%sout%d-%d.bin", buf, getpid(), tmp_idx);
+	const char *tmpdir = getenv("TEMP");
+	if (tmpdir == 0)
+		tmpdir = "/tmp";
+    snprintf(s->infilename, 256, "%s/out%d-%d.yuv", tmpdir, getpid(), tmp_idx);
+    snprintf(s->outfilename, 256, "%s/out%d-%d.bin", tmpdir, getpid(), tmp_idx);
     tmp_idx++;
 
     s->yuv_file = fopen(s->infilename, "wb");
@@ -250,8 +232,16 @@ static int jctvc_close(HEVCEncoderContext *s, uint8_t **pbuf)
     return out_buf_len;
 }
 
+#ifdef _MSC_VER
 HEVCEncoder jctvc_encoder = {
-  .open = jctvc_open,
-  .encode = jctvc_encode,
-  .close = jctvc_close,
+	jctvc_open,
+	jctvc_encode,
+	jctvc_close,
 };
+#else
+HEVCEncoder jctvc_encoder = {
+	.open = jctvc_open,
+	.encode = jctvc_encode,
+	.close = jctvc_close,
+};
+#endif
