@@ -11,9 +11,9 @@ SET(SOURCE_FILES
 	${SRC}/jctvc/TLibEncoder/TEncGOP.cpp
 	${SRC}/jctvc/TLibEncoder/TEncSampleAdaptiveOffset.cpp
 	${SRC}/jctvc/TLibEncoder/TEncBinCoderCABAC.cpp
-	${SRC}/jctvc/TLibEncoder/TEncAnalyze.cpp
 	${SRC}/jctvc/TLibEncoder/TEncEntropy.cpp
 	${SRC}/jctvc/TLibEncoder/TEncTop.cpp
+	${SRC}/jctvc/TLibEncoder/SEIEncoder.cpp
 	${SRC}/jctvc/TLibEncoder/SEIwrite.cpp
 	${SRC}/jctvc/TLibEncoder/TEncPic.cpp
 	${SRC}/jctvc/TLibEncoder/TEncRateCtrl.cpp
@@ -86,7 +86,7 @@ INCLUDE_DIRECTORIES(${SRC} ${SRC}/jctvc
 	${CMAKE_BINARY_DIR}/libpng
 )
 
-ADD_DEFINITIONS(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_REENTRANT -DHAVE_AV_CONFIG_H -DUSE_VAR_BIT_DEPTH -DUSE_PRED)
+ADD_DEFINITIONS(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_REENTRANT -DHAVE_AV_CONFIG_H -DUSE_VAR_BIT_DEPTH -DUSE_PRED -DENCODE_MAIN -DUSE_JCTVC)
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES} ${SRC}/bpgenc.cpp)
 

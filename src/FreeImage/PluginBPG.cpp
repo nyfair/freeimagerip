@@ -133,14 +133,14 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 		char *argv[ARGV_MAX + 1];
 		void* outbuf;
 		argc = 0;
-		add_opt(&argc, argv, swap_png);
+		add_opt(&argc, argv, "bpgenc");
 		add_opt(&argc, argv, "-o");
 		add_opt(&argc, argv, swap_bpg);
 		add_opt(&argc, argv, "-m");
 		add_opt(&argc, argv, "9");	// max compression level
 
 		if ((flags & BPG_LOSSLESS) == BPG_LOSSLESS) {
-			add_opt(&argc, argv, "-lossless");
+			add_opt(&argc, argv, "-l");
 		} else {
 			char *chroma, *bt, *bit;
 			if ((flags & BPG_SUBSAMPLING_420) == BPG_SUBSAMPLING_420) {
@@ -183,6 +183,7 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 			add_opt(&argc, argv, "-q");
 			add_opt(&argc, argv, qp);
 		}
+		add_opt(&argc, argv, swap_png);
 
 		if (encode_main(argc, argv) == 0) {
 			FILE *f = fopen(swap_bpg, "rb");
