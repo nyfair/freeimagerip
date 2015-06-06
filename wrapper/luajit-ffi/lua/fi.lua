@@ -1,72 +1,109 @@
 -- The file is in public domain
 -- nyfair (nyfair2012@gmail.com)
 
-ffi = require 'ffi'
+local ffi = require 'ffi'
 local filua = ffi.load('freeimage')
 ffi.cdef[[
 	typedef struct { uint8_t b, g, r, a; } RGBA;
 	
-	void* __stdcall FreeImage_Load(int, const char*, int);
-	int __stdcall FreeImage_Save(int, void*, const char*, int);
-	void* __stdcall FreeImage_Clone(void*);
-	void __stdcall FreeImage_Unload(void*);
-	void* __stdcall FreeImage_EnlargeCanvas(void*, int, int, int, int, RGBA*, int);
-	void* __stdcall FreeImage_Allocate(int, int, int, unsigned, unsigned, unsigned);
+	void*  FreeImage_Load(int, const char*, int);
+	void*  FreeImage_LoadU(int, const char*, int);
+	int  FreeImage_Save(int, void*, const char*, int);
+	int  FreeImage_SaveU(int, void*, const char*, int);
+	void*  FreeImage_Clone(void*);
+	void  FreeImage_Unload(void*);
+	void*  FreeImage_EnlargeCanvas(void*, int, int, int, int, RGBA*, int);
+	void*  FreeImage_Allocate(int, int, int, unsigned, unsigned, unsigned);
 	
-	unsigned __stdcall FreeImage_GetBPP(void*);
-	unsigned __stdcall FreeImage_GetWidth(void*);
-	unsigned __stdcall FreeImage_GetHeight(void*);
-	unsigned __stdcall FreeImage_GetDotsPerMeterX(void*);
-	unsigned __stdcall FreeImage_GetDotsPerMeterY(void*);
-	void __stdcall FreeImage_SetDotsPerMeterX(void*, unsigned);
-	void __stdcall FreeImage_SetDotsPerMeterY(void*, unsigned);
-	int __stdcall FreeImage_GetFIFFromFilename(const char*);
-	int __stdcall FreeImage_GetFileType(const char*, int);
-	RGBA* __stdcall FreeImage_GetPalette(void*);
-	void* __stdcall FreeImage_SetTransparentIndex(void*, int);
+	unsigned  FreeImage_GetBPP(void*);
+	unsigned  FreeImage_GetWidth(void*);
+	unsigned  FreeImage_GetHeight(void*);
+	unsigned  FreeImage_GetDotsPerMeterX(void*);
+	unsigned  FreeImage_GetDotsPerMeterY(void*);
+	void  FreeImage_SetDotsPerMeterX(void*, unsigned);
+	void  FreeImage_SetDotsPerMeterY(void*, unsigned);
+	int  FreeImage_GetFIFFromFilename(const char*);
+	int  FreeImage_GetFIFFromFilenameU(const char*);
+	int  FreeImage_GetFileType(const char*, int);
+	int  FreeImage_GetFileTypeU(const char*, int);
+	RGBA*  FreeImage_GetPalette(void*);
+	void*  FreeImage_SetTransparentIndex(void*, int);
 	
-	void* __stdcall FreeImage_ConvertToGreyscale(void*);
-	void* __stdcall FreeImage_ConvertTo24Bits(void*);
-	void* __stdcall FreeImage_ConvertTo32Bits(void*);
+	void*  FreeImage_ConvertToGreyscale(void*);
+	void*  FreeImage_ConvertTo24Bits(void*);
+	void*  FreeImage_ConvertTo32Bits(void*);
 	
-	void* __stdcall FreeImage_Rotate(void*, double, RGBA*);
-	int __stdcall FreeImage_FlipHorizontal(void*);
-	int __stdcall FreeImage_FlipVertical(void*);
-	void* __stdcall FreeImage_Rescale(void*, int, int, int);
-	int __stdcall FreeImage_JPEGTransform(const char*, const char*, int, int);
-	int __stdcall FreeImage_JPEGCrop(const char *, const char*, int, int, int, int);
+	void*  FreeImage_Rotate(void*, double, RGBA*);
+	int  FreeImage_FlipHorizontal(void*);
+	int  FreeImage_FlipVertical(void*);
+	void*  FreeImage_Rescale(void*, int, int, int);
+	int  FreeImage_JPEGTransform(const char*, const char*, int, int);
+	int  FreeImage_JPEGCrop(const char *, const char*, int, int, int, int);
 	
-	void* __stdcall FreeImage_Copy(void*, int, int, int, int);
-	int __stdcall FreeImage_Paste(void*, void*, int, int, int);
-	void* __stdcall FreeImage_CreateView(void*, int, int, int, int);
-	void* __stdcall FreeImage_Composite(void*, int, RGBA*, void*);
-	int __stdcall FreeImage_GetPixelColor(void*, unsigned, unsigned, RGBA*);
-	int __stdcall FreeImage_SetPixelColor(void*, unsigned, unsigned, RGBA*);
-	void* __stdcall FreeImage_GetChannel(void*, int);
-	int __stdcall FreeImage_SetChannel(void*, void*, int);
-	int __stdcall FreeImage_SwapColors(void*, RGBA*, RGBA*, int);
-	int __stdcall FreeImage_Invert(void*);
+	void*  FreeImage_Copy(void*, int, int, int, int);
+	int  FreeImage_Paste(void*, void*, int, int, int);
+	void*  FreeImage_CreateView(void*, int, int, int, int);
+	void*  FreeImage_Composite(void*, int, RGBA*, void*);
+	int  FreeImage_GetPixelColor(void*, unsigned, unsigned, RGBA*);
+	int  FreeImage_SetPixelColor(void*, unsigned, unsigned, RGBA*);
+	void*  FreeImage_GetChannel(void*, int);
+	int  FreeImage_SetChannel(void*, void*, int);
+	int  FreeImage_SwapColors(void*, RGBA*, RGBA*, int);
+	int  FreeImage_Invert(void*);
 ]]
 
--- Image IO
--- get format id from image's filename
-function getfmt(name)
-	local fmt = filua.FreeImage_GetFIFFromFilename(name)
-	if fmt > -1 then
-		return fmt
-	else
-		return filua.FreeImage_GetFileType(name, 0)
+-- helper
+if ffi.os == 'Windows' then
+	require 'fswin'
+
+	function getfmt(name)
+		local fmt = filua.FreeImage_GetFIFFromFilenameU(u2w(name))
+		if fmt > -1 then
+			return fmt
+		else
+			return filua.FreeImage_GetFileTypeU(u2w(name), 0)
+		end
+	end
+
+	function open(name, flag)
+		local fmt = getfmt(name)
+		return filua.FreeImage_LoadU(fmt, u2w(name), flag or 0)
+	end
+
+	function save(img, name, flag)
+		local fmt = getfmt(name)
+		return filua.FreeImage_SaveU(fmt, img, u2w(name), flag or 0)
+	end
+else
+	require 'fsposix'
+
+	function getfmt(name)
+		local fmt = filua.FreeImage_GetFIFFromFilename(name)
+		if fmt > -1 then
+			return fmt
+		else
+			return filua.FreeImage_GetFileType(name, 0)
+		end
+	end
+
+	function open(name, flag)
+		local fmt = getfmt(name)
+		return filua.FreeImage_Load(fmt, name, flag or 0)
+	end
+
+	function save(img, name, flag)
+		local fmt = getfmt(name)
+		return filua.FreeImage_Save(fmt, img, name, flag or 0)
 	end
 end
 
-function open(name, flag)
-	local fmt = getfmt(name)
-	return filua.FreeImage_Load(fmt, name, flag or 0)
-end
-
-function save(img, name, flag)
-	local fmt = getfmt(name)
-	return filua.FreeImage_Save(fmt, img, name, flag or 0)
+function stripext(fn)
+	local idx = fn:match('.+()%..+$')
+	if idx then
+		return fn:sub(1, idx - 1)
+	else
+		return fn
+	end
 end
 
 function clone(img)
@@ -227,7 +264,6 @@ end
 function convert(src, dst, flag)
 	if src:find('*') then
 		for k,v in ipairs(ls(src)) do
-			print(v)
 			local img = open(v)
 			save(img, stripext(v)..'.'..dst, flag)
 			free(img)
@@ -246,7 +282,6 @@ function convbpp(src, bpp, dst, flag)
 				dst = 'bmp'
 			end
 			for k,v in ipairs(ls(src)) do
-				print(v)
 				local img = open(v)
 				local out
 				if bpp == 24 then out = to24(img)
@@ -422,29 +457,5 @@ function mergehs(y1, y2, offset)
 		for k2,v2 in ipairs(ls(y2)) do
 			mergeh(v1, v2, offset)
 		end
-	end
-end
-
--- helper
-if ffi.os == 'Windows' then
-	require 'fswin'
-else
-	require 'fsposix'
-end
-
-function rm(dst)
-	os.remove(dst)
-end
-
-function mv(src, dst)
-	os.rename(src, dst)
-end
-
-function stripext(fn)
-	local idx = fn:match('.+()%..+$')
-	if idx then
-		return fn:sub(1, idx - 1)
-	else
-		return fn
 	end
 end

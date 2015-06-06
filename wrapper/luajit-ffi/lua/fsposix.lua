@@ -8,6 +8,9 @@ ffi.cdef[[
 
 function ls(pattern)
 	local files = {}
+	if pattern == nil then
+		pattern = './*'
+	end
 	local output = assert(io.popen('ls '..pattern:gsub(' ', '\\ ')))
 	for line in output:lines() do
 		table.insert(files, line)
@@ -15,14 +18,14 @@ function ls(pattern)
 	return files
 end
 
-function cp(src, dst)
-	os.execute('cp '..src:gsub(' ', '\\ ')..' '..dst:gsub(' ', '\\ '))
-end
-
 function md(dst)
 	ffi.C.mkdir(dst, 493) --0755
 end
 
-function rd(dst)
-	os.execute('rm -rf '..normalize(dst:gsub(' ', '\\ ')))
+function rm(dst)
+	os.remove(dst)
+end
+
+function mv(src, dst)
+	os.rename(src, dst)
 end
