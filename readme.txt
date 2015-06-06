@@ -2,7 +2,6 @@ Gamecg composite library forks from FreeImage
 
 New Feature:
 +asm accelerate for jpeg and png
-+lua wrapper
 +susie plugin on windows
 +qt plugin
 
