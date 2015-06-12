@@ -78,7 +78,7 @@ IF(MSVC)
 	SET(SOURCE_FILES ${SOURCE_FILES} ${SRC}/getopt/getopt.cpp)
 	INCLUDE_DIRECTORIES(${SRC}/getopt)
 ELSE()
-	ADD_DEFINITIONS(-D__ANSI__)
+	ADD_DEFINITIONS(-D__ANSI__ -Dstricmp=strcasecmp -D_snprintf=snprintf)
 ENDIF()
 
 INCLUDE_DIRECTORIES(${SRC} ${SRC}/jctvc
