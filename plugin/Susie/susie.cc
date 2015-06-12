@@ -173,7 +173,7 @@ int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 	FIBITMAP* dib;
 	if((flag & 7) == 0) {
 	/* buf is filename */
-		fmt = FreeImage_GetFIFFromFilename(buf);
+		fmt = FreeImage_GetFileType(buf);
 		dib = FreeImage_Load(fmt, buf);
 	} else {
 	/* buf is memory */

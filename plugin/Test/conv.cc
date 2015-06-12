@@ -10,8 +10,6 @@ int main(int argc, char *argv[]) {
 	
 	int flag = (argc > 3) ? atoi(argv[3]) : 0;
 	FREE_IMAGE_FORMAT fifin = FreeImage_GetFileType(argv[1]);
-	if(fifin == FIF_UNKNOWN)
-		fifin = FreeImage_GetFIFFromFilename(argv[1]);
 	FREE_IMAGE_FORMAT fifout = FreeImage_GetFIFFromFilename(argv[2]);
 	FIBITMAP *dib = FreeImage_Load(fifin, argv[1]);
 	FreeImage_Save(fifout, dib, argv[2], flag);
