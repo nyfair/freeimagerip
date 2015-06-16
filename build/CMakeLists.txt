@@ -44,20 +44,19 @@ OPTION(QT_PLUGIN "Build QT plugin" OFF)
 OPTION(CONV_TEST "Build a simple convert test program" OFF)
 ADD_SUBDIRECTORY(plugin)
 ADD_SUBDIRECTORY(libbpg)
-ADD_SUBDIRECTORY(libjpeg-turbo)
 ADD_SUBDIRECTORY(libjxr)
 ADD_SUBDIRECTORY(libpng)
 ADD_SUBDIRECTORY(libtiff)
 ADD_SUBDIRECTORY(libwebp)
+ADD_SUBDIRECTORY(mozjpeg)
 ADD_SUBDIRECTORY(zlib)
 
-ADD_DEPENDENCIES(freeimage libbpg libjpeg-turbo libjxr libpng libtiff libwebp zlib)
-TARGET_LINK_LIBRARIES(freeimage libbpg libjpeg-turbo libjxr libpng libtiff libwebp zlib)
+ADD_DEPENDENCIES(freeimage libbpg libjxr libpng libtiff libwebp mozjpeg zlib)
+TARGET_LINK_LIBRARIES(freeimage libbpg libjxr libpng libtiff libwebp mozjpeg zlib)
 
 INCLUDE_DIRECTORIES(
 	${PROJECT_DIR}
 	${3RDPARTY_DIR}/libbpg
-	${3RDPARTY_DIR}/libjpeg-turbo
 	${3RDPARTY_DIR}/libpng
 	${3RDPARTY_DIR}/libjxr/common/include
 	${3RDPARTY_DIR}/libjxr/image/sys
@@ -65,8 +64,9 @@ INCLUDE_DIRECTORIES(
 	${3RDPARTY_DIR}/libjxr/jxrgluelib
 	${3RDPARTY_DIR}/libtiff/libtiff
 	${3RDPARTY_DIR}/libwebp/src
+	${3RDPARTY_DIR}/mozjpeg
 	${3RDPARTY_DIR}/zlib
-	${CMAKE_BINARY_DIR}/libjpeg-turbo
+	${CMAKE_BINARY_DIR}/mozjpeg
 	${CMAKE_BINARY_DIR}/libpng
 )
 

@@ -42,8 +42,8 @@ SET(SOURCE_FILES
 
 INCLUDE_DIRECTORIES(
 	${3RDPARTY_DIR}/zlib
-	${3RDPARTY_DIR}/libjpeg-turbo
-	${CMAKE_BINARY_DIR}/libjpeg-turbo
+	${3RDPARTY_DIR}/mozjpeg
+	${CMAKE_BINARY_DIR}/mozjpeg
 )
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})

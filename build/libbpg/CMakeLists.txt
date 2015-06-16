@@ -78,13 +78,16 @@ IF(MSVC)
 	SET(SOURCE_FILES ${SOURCE_FILES} ${SRC}/getopt/getopt.cpp)
 	INCLUDE_DIRECTORIES(${SRC}/getopt)
 ELSE()
-	ADD_DEFINITIONS(-D__ANSI__ -Dstricmp=strcasecmp -D_snprintf=snprintf)
+	ADD_DEFINITIONS(-D__ANSI__)
+ENDIF()
+IF(NOT WIN32)
+	ADD_DEFINITIONS(-Dstricmp=strcasecmp -D_snprintf=snprintf)
 ENDIF()
 
 INCLUDE_DIRECTORIES(${SRC} ${SRC}/jctvc
-	${3RDPARTY_DIR}/libjpeg-turbo
+	${3RDPARTY_DIR}/mozjpeg
 	${3RDPARTY_DIR}/libpng
-	${CMAKE_BINARY_DIR}/libjpeg-turbo
+	${CMAKE_BINARY_DIR}/mozjpeg
 	${CMAKE_BINARY_DIR}/libpng
 )
 
