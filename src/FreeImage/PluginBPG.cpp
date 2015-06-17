@@ -142,33 +142,33 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 		if ((flags & BPG_LOSSLESS) == BPG_LOSSLESS) {
 			add_opt(&argc, argv, "-l");
 		} else {
-			char *chroma = new char[3];
+			const char *chroma;
 			if ((flags & BPG_SUBSAMPLING_420) == BPG_SUBSAMPLING_420) {
-				strcpy(chroma, "420");
+				chroma = "420";
 			} else if ((flags & BPG_SUBSAMPLING_422) == BPG_SUBSAMPLING_422) {
-				strcpy(chroma, "422");
+				chroma = "422";
 			} else {
-				strcpy(chroma, "444");
+				chroma = "444";
 			}
 			add_opt(&argc, argv, "-f");
 			add_opt(&argc, argv, chroma);
-			char *bt = new char[12];
+			const char *bt;
 			if ((flags & BPG_COLOR_601) == BPG_COLOR_601) {
-				strcpy(bt, "ycbcr");
+				bt = "ycbcr";
 			} else if ((flags & BPG_COLOR_709) == BPG_COLOR_709) {
-				strcpy(bt, "ycbcr_bt709");
+				bt ="ycbcr_bt709";
 			} else {
-				strcpy(bt, "ycbcr_bt2020");
+				bt ="ycbcr_bt2020";
 			}
-			char *bit = new char[2];
+			const char *bit;
 			add_opt(&argc, argv, "-c");
 			add_opt(&argc, argv, bt);
 			if ((flags & BPG_BITDEPTH_8) == BPG_BITDEPTH_8) {
-				strcpy(bit, "8");
+				bit = "8";
 			} else if ((flags & BPG_BITDEPTH_10) == BPG_BITDEPTH_10) {
-				strcpy(bit, "10");
+				bit = "10";
 			} else {
-				strcpy(bit, "12");
+				bit = "12";
 			}
 			add_opt(&argc, argv, "-b");
 			add_opt(&argc, argv, bit);
