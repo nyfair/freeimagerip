@@ -8,7 +8,7 @@ FREE_IMAGE_FORMAT fmt;
 int WINAPI GetPluginInfo(int infono, LPSTR buf, int buflen) {
 	int count = FreeImage_GetFIFCount(), i;
 	std::string ext = "";
-	for(i = 0; i < count-2; i++) {
+	for(i = 0; i < count-1; i++) {
 		ext.append("*.").append(FreeImage_GetFIFExtensionList
 							((FREE_IMAGE_FORMAT)i)).append(";");
 	}
