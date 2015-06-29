@@ -1,7 +1,4 @@
-﻿#ifndef SPI_FI_H
-#define SPI_FI_H
-
-#ifdef __cplusplus
+﻿#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -38,7 +35,7 @@ static const char *pluginfo[] = {
 	"00IN",
 	"FreeImage Susie Plugin by nyfair <nyfair2012@gmail.com>",
 	NULL,
-	"View image with freeimage.dll",
+	"View image by FreeImage.dll",
 };
 
 const unsigned int infosize = sizeof(BITMAPINFOHEADER);
@@ -47,7 +44,6 @@ typedef int (CALLBACK *SPI_PROGRESS)(int, int, long);
 /* Common Function */
 int DLL_API WINAPI GetPluginInfo(int infono, LPSTR buf, int buflen);
 int DLL_API WINAPI IsSupported(LPSTR filename, DWORD dw);
-
 int DLL_API WINAPI IsSupportedW(LPWSTR filename, DWORD dw);
 
 /* '00IN'の関数 */
@@ -69,13 +65,6 @@ int DLL_API WINAPI GetPreviewW(LPWSTR buf,long len, unsigned int flag,
 							HANDLE *pHBInfo, HANDLE *pHBm,
 							SPI_PROGRESS lpPrgressCallback, long lData);
 
-int IsSupportedEx(FREE_IMAGE_FORMAT fmt, DWORD dw);
-int GetPictureEx(FIBITMAP* dib, FREE_IMAGE_FORMAT fmt,
-				HANDLE *pHBInfo, HANDLE *pHBm,
-				SPI_PROGRESS lpPrgressCallback, long lData);
-
 #ifdef __cplusplus
 }
 #endif
-
-#endif	/* SPI_FI_H */

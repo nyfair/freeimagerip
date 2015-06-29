@@ -36,12 +36,12 @@ int WINAPI IsSupportedW(LPWSTR filename, DWORD dw) {
 	return fmt != FIF_UNKNOWN;
 }
 
-int DLL_API WINAPI GetPictureInfo(LPSTR buf, long len,
+int WINAPI GetPictureInfo(LPSTR buf, long len,
 									unsigned int flag, PictureInfo *lpInfo) {
 	return SPI_ALL_RIGHT;
 }
 
-int DLL_API WINAPI GetPictureInfoW(LPWSTR buf, long len,
+int WINAPI GetPictureInfoW(LPWSTR buf, long len,
 									unsigned int flag, PictureInfo *lpInfo) {
 	return SPI_ALL_RIGHT;
 }
