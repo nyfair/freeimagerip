@@ -10,10 +10,13 @@ Notes on releasing.
    1.4.16 is needed in order to avoid bugs in m4. These packages may
    be downloaded from the following ftp locations:
 
+     m4       - ftp://ftp.gnu.org/pub/gnu/m4
      autoconf - ftp://ftp.gnu.org/pub/gnu/autoconf
      automake - ftp://ftp.gnu.org/pub/gnu/automake
      libtool  - ftp://ftp.gnu.org/pub/gnu/libtool
-     m4       - ftp://ftp.gnu.org/pub/gnu/m4
+
+   It is recommanded building m4 before autoconf, since the latest requires
+   the former.
 
    Release builds should only be done on a system with a functioning
    and correctly set system clock and on a filesystem which accurately
@@ -21,7 +24,8 @@ Notes on releasing.
 
 1. Commit any unsaved changes. 
 
-2. Create html/vX.X.html.  Take ChangeLog entries and html-ify in there. 
+2. Create html/vX.X.html and add it to cvs with 'cvs add html/vX.X.html'.
+   Take ChangeLog entries and html-ify in there. 
    Easist thing to do is take html/vX.(X-1).html and use it as a template.
    Add that file to the list of EXTRA_DIST files in the html/Makefile.am.
 
@@ -111,7 +115,4 @@ Notes on releasing.
     	 warmerdam@upload.osgeo.org:/osgeo/download/libtiff
 
 15. Announce to list, tiff@lists.maptools.org
-
-16. Update libtiff page on freshmeat with new version announcement.
-
 
