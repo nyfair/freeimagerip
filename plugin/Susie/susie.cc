@@ -39,12 +39,12 @@ int WINAPI IsSupportedW(LPWSTR filename, DWORD dw) {
 }
 
 int WINAPI GetPictureInfo(LPSTR buf, long len,
-									unsigned int flag, PictureInfo *lpInfo) {
+									unsigned flag, PictureInfo *lpInfo) {
 	return SPI_ALL_RIGHT;
 }
 
 int WINAPI GetPictureInfoW(LPWSTR buf, long len,
-									unsigned int flag, PictureInfo *lpInfo) {
+									unsigned flag, PictureInfo *lpInfo) {
 	return SPI_ALL_RIGHT;
 }
 
@@ -55,20 +55,19 @@ int GetPictureEx(FIBITMAP* dib, HANDLE *pHBInfo, HANDLE *pHBm,
 		return SPI_ABORT;
 	int ret = SPI_ALL_RIGHT;
 
-	unsigned int width = FreeImage_GetWidth(dib);
-	unsigned int height = FreeImage_GetHeight(dib);
-	unsigned int bpp_real = FreeImage_GetBPP(dib);
-	unsigned int bpp = bpp_real > 32 ? (bpp_real % 48 ? 32 : 24) : bpp_real;
-	unsigned int factor, line_size;
-	if (bpp < 8) {
-		factor = 1;
-		line_size = bpp == 4 ? (width+1)>>1 : (width+7)>>3;
+	unsigned width = FreeImage_GetWidth(dib);
+	unsigned height = FreeImage_GetHeight(dib);
+	unsigned bpp_real = FreeImage_GetBPP(dib);
+	unsigned bpp = bpp_real > 32 ? (bpp_real % 48 ? 32 : 24) : bpp_real;
+	unsigned factor, line_size;
+	if (bpp <= 8) {
+		line_size = FreeImage_GetPitch(dib);
 	} else {
 		factor = bpp >> 3;
 		line_size = (factor*width + 3)&~3;
 	}
-	unsigned int remain = line_size - factor*width;
-	unsigned int bitmap_size = line_size * height;
+	unsigned remain = line_size - factor*width;
+	unsigned bitmap_size = line_size * height;
 
 	if(bpp_real <= 8) {
 		*pHBInfo = LocalAlloc(LMEM_MOVEABLE, infosize + (sizeof(RGBQUAD) << bpp_real));
@@ -103,9 +102,9 @@ int GetPictureEx(FIBITMAP* dib, HANDLE *pHBInfo, HANDLE *pHBm,
 		case 48:
 			pinfo->bmiHeader.biBitCount = 24;
 			FIRGB16 *rgb16;
-			for(unsigned int y = height-1; y; y--) {
+			for(unsigned y = height-1; y; y--) {
 				rgb16 = (FIRGB16 *) FreeImage_GetScanLine(dib, height-1-y);
-				for(unsigned int x = 0; x < width; x++) {
+				for(unsigned x = 0; x < width; x++) {
 					((BYTE *)bitmap)[0] = (BYTE)(rgb16[x].blue >> 8);
 					((BYTE *)bitmap)[1] = (BYTE)(rgb16[x].green >> 8);
 					((BYTE *)bitmap)[2] = (BYTE)(rgb16[x].red >> 8);
@@ -117,9 +116,9 @@ int GetPictureEx(FIBITMAP* dib, HANDLE *pHBInfo, HANDLE *pHBm,
 		case 64:
 			pinfo->bmiHeader.biBitCount = 32;
 			FIRGBA16 *rgba16;
-			for(unsigned int y = height-1; y; y--) {
+			for(unsigned y = height-1; y; y--) {
 				rgba16 = (FIRGBA16 *) FreeImage_GetScanLine(dib, height-1-y);
-				for(unsigned int x = 0; x < width; x++) {
+				for(unsigned x = 0; x < width; x++) {
 					((BYTE *)bitmap)[0] = (BYTE)(rgba16[x].blue >> 8);
 					((BYTE *)bitmap)[1] = (BYTE)(rgba16[x].green >> 8);
 					((BYTE *)bitmap)[2] = (BYTE)(rgba16[x].red >> 8);
@@ -131,9 +130,9 @@ int GetPictureEx(FIBITMAP* dib, HANDLE *pHBInfo, HANDLE *pHBm,
 		case 96:
 			pinfo->bmiHeader.biBitCount = 24;
 			FIRGBF *rgbf;
-			for(unsigned int y = height-1; y; y--) {
+			for(unsigned y = height-1; y; y--) {
 				rgbf = (FIRGBF *) FreeImage_GetScanLine(dib, height-1-y);
-				for(unsigned int x = 0; x < width; x++) {
+				for(unsigned x = 0; x < width; x++) {
 					((BYTE *)bitmap)[0] = (BYTE)(rgbf[x].blue * 256);
 					((BYTE *)bitmap)[1] = (BYTE)(rgbf[x].green * 256);
 					((BYTE *)bitmap)[2] = (BYTE)(rgbf[x].red * 256);
@@ -145,9 +144,9 @@ int GetPictureEx(FIBITMAP* dib, HANDLE *pHBInfo, HANDLE *pHBm,
 		case 128:
 			pinfo->bmiHeader.biBitCount = 32;
 			FIRGBAF *rgbaf;
-			for(unsigned int y = height-1; y; y--) {
+			for(unsigned y = height-1; y; y--) {
 				rgbaf = (FIRGBAF *) FreeImage_GetScanLine(dib, height-1-y);
-				for(unsigned int x = 0; x < width; x++) {
+				for(unsigned x = 0; x < width; x++) {
 					((BYTE *)bitmap)[0] = (BYTE)(rgbaf[x].blue * 256);
 					((BYTE *)bitmap)[1] = (BYTE)(rgbaf[x].green * 256);
 					((BYTE *)bitmap)[2] = (BYTE)(rgbaf[x].red * 256);
@@ -169,7 +168,7 @@ int GetPictureEx(FIBITMAP* dib, HANDLE *pHBInfo, HANDLE *pHBm,
 	return ret;
 }
 
-int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
+int WINAPI GetPicture(LPSTR buf, long len, unsigned flag,
 						HANDLE *pHBInfo, HANDLE *pHBm,
 						SPI_PROGRESS lpPrgressCallback, long lData) {
 	FIBITMAP* dib;
@@ -188,7 +187,7 @@ int WINAPI GetPicture(LPSTR buf, long len, unsigned int flag,
 	return GetPictureEx(dib, pHBInfo, pHBm, lpPrgressCallback, lData);
 }
 
-int WINAPI GetPictureW(LPWSTR buf, long len, unsigned int flag,
+int WINAPI GetPictureW(LPWSTR buf, long len, unsigned flag,
 						HANDLE *pHBInfo, HANDLE *pHBm,
 						SPI_PROGRESS lpPrgressCallback, long lData) {
 	FIBITMAP* dib;
@@ -207,13 +206,13 @@ int WINAPI GetPictureW(LPWSTR buf, long len, unsigned int flag,
 	return GetPictureEx(dib, pHBInfo, pHBm, lpPrgressCallback, lData);
 }
 
-int WINAPI GetPreview(LPSTR buf, long len, unsigned int flag,
+int WINAPI GetPreview(LPSTR buf, long len, unsigned flag,
 						HANDLE *pHBInfo, HANDLE *pHBm,
 						SPI_PROGRESS lpPrgressCallback, long lData) {
 	return SPI_NO_FUNCTION;
 }
 
-int WINAPI GetPreviewW(LPWSTR buf, long len, unsigned int flag,
+int WINAPI GetPreviewW(LPWSTR buf, long len, unsigned flag,
 						HANDLE *pHBInfo, HANDLE *pHBm,
 						SPI_PROGRESS lpPrgressCallback, long lData) {
 	return SPI_NO_FUNCTION;
