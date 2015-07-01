@@ -6,23 +6,25 @@
 FREE_IMAGE_FORMAT fmt;
 
 int WINAPI GetPluginInfo(int infono, LPSTR buf, int buflen) {
-	int count = FreeImage_GetFIFCount(), i;
-	std::string ext = "";
-	for(i = 0; i < count-1; i++) {
-		ext.append("*.").append(FreeImage_GetFIFExtensionList
-							((FREE_IMAGE_FORMAT)i)).append(";");
-	}
-	ext.append("*.").append(FreeImage_GetFIFExtensionList
-						((FREE_IMAGE_FORMAT)(count-1)));
-	while(i = ext.find(",")) {
-		if(i < 0) break;
-		ext.replace(i, 1, ";*.", 3);
-	}
-	pluginfo[2] = ext.data();
-	
 	if(infono < 0 || infono >= (sizeof(pluginfo) / sizeof(char *)))
 		return FALSE;
-	lstrcpyn(buf, pluginfo[infono], buflen);
+	if(infono == 2) {
+		int count = FreeImage_GetFIFCount(), i;
+		std::string ext = "";
+		for(i = 0; i < count-1; i++) {
+			ext.append("*.").append(FreeImage_GetFIFExtensionList
+								((FREE_IMAGE_FORMAT)i)).append(";");
+		}
+		ext.append("*.").append(FreeImage_GetFIFExtensionList
+							((FREE_IMAGE_FORMAT)(count-1)));
+		while(i = ext.find(",")) {
+			if(i < 0) break;
+			ext.replace(i, 1, ";*.", 3);
+		}
+		lstrcpyn(buf, ext.data(), buflen);
+	} else {
+		lstrcpyn(buf, pluginfo[infono], buflen);
+	}
 	return lstrlen(buf);
 }
 
