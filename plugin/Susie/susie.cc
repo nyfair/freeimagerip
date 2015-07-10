@@ -1,27 +1,58 @@
 #include <windows.h>
-#include <string>
 #include "FreeImage.h"
 #include "susie.h"
 
+#define CONFLEN 1024
+#define FNLEN 256
+
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 FREE_IMAGE_FORMAT fmt;
+
+void buildExtInfo(char* buf, char* conf) {
+	char *fifext;
+	GetModuleFileName((HINSTANCE)&__ImageBase, buf, FNLEN);
+	char *pExt = strrchr(buf, '.');
+	strcpy(pExt, ".ini");
+
+	if (GetPrivateProfileSection("extensions", conf, CONFLEN, buf) < 1) {
+		int count = FreeImage_GetFIFCount();
+		char fifid[2], exts[32];
+		for (int i = 0; i < count; i++) {
+			itoa(i+1, fifid, 10);
+			strcpy(exts, FreeImage_GetFIFExtensionList((FREE_IMAGE_FORMAT)i));
+			fifext = strtok(exts, ",");
+			while (fifext != NULL) {
+				WritePrivateProfileString("extensions", fifext, fifid, buf);
+				fifext = strtok(NULL, ",");
+			}
+		}
+	}
+
+	GetPrivateProfileSection("extensions", conf, CONFLEN, buf);
+	unsigned offset = 0;
+	while (conf[0] != NULL) {
+		pExt = strchr(conf, '=');
+		if (pExt[1] != '0') {
+			strcpy(buf + offset, "*.");
+			offset += 2;
+			strncpy(buf + offset, conf, pExt - conf);
+			offset += pExt - conf;
+			strcpy(buf + offset, " ");
+			offset++;
+		}
+		conf += strlen(conf) + 1;
+	}
+	strcpy(buf + offset -1, "\0");
+}
 
 int WINAPI GetPluginInfo(int infono, LPSTR buf, int buflen) {
 	if(infono < 0 || infono >= (sizeof(pluginfo) / sizeof(char *)))
 		return FALSE;
 	if(infono == 2) {
-		int count = FreeImage_GetFIFCount(), i;
-		std::string ext = "";
-		for(i = 0; i < count-1; i++) {
-			ext.append("*.").append(FreeImage_GetFIFExtensionList
-								((FREE_IMAGE_FORMAT)i)).append(";");
-		}
-		ext.append("*.").append(FreeImage_GetFIFExtensionList
-							((FREE_IMAGE_FORMAT)(count-1)));
-		while(i = ext.find(",")) {
-			if(i < 0) break;
-			ext.replace(i, 1, ";*.", 3);
-		}
-		lstrcpyn(buf, ext.data(), buflen);
+		char extbuf[FNLEN];
+		char conf[CONFLEN];
+		buildExtInfo(extbuf, conf);
+		lstrcpyn(buf, extbuf, buflen);
 	} else {
 		lstrcpyn(buf, pluginfo[infono], buflen);
 	}
