@@ -4,6 +4,7 @@ New Feature:
 +asm accelerate for jpeg and png
 +susie plugin on windows
 +qt plugin
++windows context menu previewer
 
 -keep image metatag
 -multipage image suport
