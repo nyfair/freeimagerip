@@ -37,7 +37,7 @@ void buildExtInfo(char* buf, char* conf) {
 			offset += 2;
 			strncpy(buf + offset, conf, pExt - conf);
 			offset += pExt - conf;
-			strcpy(buf + offset, " ");
+			strcpy(buf + offset, ";");
 			offset++;
 		}
 		conf += strlen(conf) + 1;
@@ -224,7 +224,7 @@ int WINAPI GetPictureW(LPWSTR buf, long len, unsigned flag,
 	FIBITMAP* dib;
 	if((flag & 7) == 0) {
 	/* buf is filename */
-		fmt = FreeImage_GetFIFFromFilenameU(buf);
+		fmt = FreeImage_GetFileTypeU(buf);
 		dib = FreeImage_LoadU(fmt, buf);
 	} else {
 	/* buf is memory */

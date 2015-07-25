@@ -6,9 +6,9 @@
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 // 
-// • Redistributions of source code must retain the above copyright notice,
+// ERedistributions of source code must retain the above copyright notice,
 //   this list of conditions and the following disclaimer.
-// • Redistributions in binary form must reproduce the above copyright notice,
+// ERedistributions in binary form must reproduce the above copyright notice,
 //   this list of conditions and the following disclaimer in the documentation
 //   and/or other materials provided with the distribution.
 // 
@@ -285,7 +285,7 @@ Int inputMBRow_RGB24_6(CWMImageStrCodec* pSC)
 
     U8* const pbY = (U8*)pSC->p1MBbuffer[0];
     U8* const pbU = (U8*)pSC->p1MBbuffer[1];
-    // U8* const pbV = (U8*)pSC->p1MBbuffer[2];
+    U8* const pbV = (U8*)pSC->p1MBbuffer[2];
 
     const size_t cmbColumn = (pSC->WMII.cWidth + 15) / 16;
 
