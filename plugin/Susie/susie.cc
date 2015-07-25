@@ -60,13 +60,11 @@ int WINAPI GetPluginInfo(int infono, LPSTR buf, int buflen) {
 }
 
 int WINAPI IsSupported(LPSTR filename, DWORD dw) {
-	fmt = FreeImage_GetFIFFromFilename(filename);
-	return fmt != FIF_UNKNOWN;
+	return TRUE;
 }
 
 int WINAPI IsSupportedW(LPWSTR filename, DWORD dw) {
-	fmt = FreeImage_GetFIFFromFilenameU(filename);
-	return fmt != FIF_UNKNOWN;
+	return TRUE;
 }
 
 int WINAPI GetPictureInfo(LPSTR buf, long len,
