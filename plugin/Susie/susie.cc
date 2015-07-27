@@ -18,7 +18,7 @@ void buildExtInfo(char* buf, char* conf) {
 		int count = FreeImage_GetFIFCount();
 		char fifid[2], exts[32];
 		for (int i = 0; i < count; i++) {
-			itoa(i+1, fifid, 10);
+			_itoa(i+1, fifid, 10);
 			strcpy(exts, FreeImage_GetFIFExtensionList((FREE_IMAGE_FORMAT)i));
 			fifext = strtok(exts, ",");
 			while (fifext != NULL) {
