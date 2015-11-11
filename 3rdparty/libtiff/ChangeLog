@@ -1,4 +1,188 @@
+2015-09-12  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* libtiff 4.0.6 released.
+
+	* html/v4.0.6.html: Added release notes for 4.0.6.
+
+2015-09-06  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* tools/tiffgt.c: Silence glut API deprecation warnings on MacOS
+	X.  Patch by Roger Leigh.
+
+	* Makefile.am: Added a 'coverity' rule to assist with Coverity
+	submissions.
+
+	* tools/tiff2pdf.c: Fix compiler warning about unused function
+	when JPEG is not available.
+
+	* tools/fax2ps.c (main): Detect failure to write to temporary
+	file.
+
+2015-09-05  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* libtiff/tif_dirread.c (TIFFReadDirEntryCheckRangeSlongSlong8):
+	Change implementation so that it does not sometimes overflow the
+	range of a 32-bit int and to avoid a signed vs unsigned compare
+	compiler warning.
+	(TIFF_INT64_MAX): Avoid use of platform-specific large constants.
+	(TIFF_UINT32_MAX): Avoid use of platform-specific large constants.
+
+2015-09-01  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* Makefile.am (distcheck-hook), configure.ac: Applied patches by
+	Roger Leigh (via tiff mailing list on 2015-09-01) to fix issue
+	with BSD make and to make use of cmake in 'distcheck' target
+	conditional on if cmake is available.
+
+	* CMakeLists.txt, Makefile.am, configure.ac: Applied patches by
+	Roger Leigh (via tiff mailing list on 2015-09-01).
+
+	CMake build is now included in 'distcheck' target.
+
+	Builds with CMake 2.8.9 and newer.
+
+	Tar is now resquested to use POSIX PAX format.
+
+2015-08-31  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* CMakeLists.txt, libtiff/test/Makefile.am: Applied patches by
+	Roger Leigh (via tiff mailing list on 2015-08-31.
+
+	CMake reads all version information directly from configure.ac to
+	avoid duplication of values.  This basically greps over the file
+	for the LIBTIFF_* variables, then translates them to the form
+	needed for cmake. This includes the release version and libtool
+	shared library version information.
+
+	Make shared/static library building configurable.  Currently it
+	always builds shared libraries, with static libs having a _static
+	suffix (copying zlib, but it means it's got a non-standard name).
+	CMake has a -DBUILD_SHARED_LIBS=ON|OFF option to select one or the
+	other, which is now used instead.  There's now a single "tiff"
+	target to build either shared or static as required, and all the
+	tests and tools are linked with this. Note: the Windows tests fail
+	when linked with a static libtiff (says: libtiff.dll not found).
+	Not really a regression since this was not tested up to this
+	point, and it's likely the unit tests haven't (ever?) been run on
+	Windows with a static libtiff, so there's some additional
+	portability issue here to address.  Works fine on UNIX systems,
+	and fine on Windows with the default to build a DLL.
+
+	Add a missing file which wasn't being distributed, causing unit
+	tests to fail.  Note that "find . -name '*.cmake'" lists all the
+	CMake files which need distributing in addition to all the
+	CMakeLists.txt files (which now are distributed).
+
+2015-08-31  Even Rouault <even.rouault at spatialys.com>
+
+	* libtiff/tif_predict.c: pedantic change to add explicit masking
+	with 0xff before casting to uchar in floating-point horizontal
+	differencing and accumulation routines.
+
+2015-08-31  Even Rouault <even.rouault at spatialys.com>
+
+	* libtiff/tif_predict.c: fix generation of output with 16 bit
+	or 32 bit integer, when byte swapping is needed, in
+	horizontal predictor (#2521). Also fixes decoding when there is
+	a single pixel to code (unlikely case...) and byte swapping is
+	involved.
+
+2015-08-30  Even Rouault <even.rouault at spatialys.com>
+
+	* libtiff/tif_lzw.c: make nextdata a unsigned type to avoid
+	undefined behaviour with shifts (gcc -fsanitize=shift)
+
+2015-08-30  Even Rouault <even.rouault at spatialys.com>
+
+	* libtiff/tif_fax3.c, libtiff/tif_lzw.c, libtiff/tif_predict.c:
+	add explicit masking with 0xff before casting
+	to unsigned char (make icc -check=conversions happy)
+
+	* libtiff/tif_predict.c: operate on unsigned datatypes when
+	computing/applying differences to avoid undefined behaviour of
+	signed types (C standard compliance)
+
+2015-08-30  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* configure.ac: libtiff 4.0.5 released.
+
+2015-08-29  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* CMakeLists.txt: Applied patch by Roger Leigh (via tiff mailing
+	list on 2015-08-29) to add ld-version-script option to cmake build
+	to match autoconf.  Note: defaults to 'on' to be ABI-compatible by
+	default with common Linux distribution builds.  Note that the
+	autoconf configure script defaults to 'off'.
+
+	* html/build.html: Applied patch by Roger Leigh (via tiff mailing
+	list on 2015-08-29) to describe how to use CMake to build libtiff.
+
+2015-08-28  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* html/v4.0.5.html: Added HTML file describing the changes which
+	will appear in the 4.0.5 release.
+
+2015-08-23  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* libtiff/tiffiop.h: For MinGW comiles, make sure that build
+	supports necessary __MSVCRT_VERSION__ (at least at least 0x800).
+	Otherwise large files can not be supported for POSIX-style I/O.
+
+	* tools/fax2tiff.c (main): Eliminate a compiler warning in 64-bit
+	builds about cast to thandle_t.
+
+	* test/rewrite_tag.c (main): Does not require any arguments.
+
+2015-08-20  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* tools/CMakeLists.txt, port/snprintf.c: Patch by Roger Leigh to
+	fix build issues when using Cmake due to Windows large file
+	changes.
+
+2015-08-18  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* libtiff/tiffiop.h: First cut at supporting large files under
+	Microsoft Windows using tif_unix.c and the libtiff tools.  This
+	only works if the Windows CDK is new enough to support the APIs
+	used (Visual C++ 2005 or later).  Support for large files is not
+	actually tested yet.
+
+2015-08-15  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* libtiff/tif_jpeg.c: Applied patch by Räisä Olli to assure that
+	client_data is initialized to a known value, and to report an
+	error on two memory allocation failures.
+
+2015-08-13  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* CMakeLists.txt: Applied patch by Roger Leigh to fix libtiffxx
+	symbol versioning.  Patch was mailed to libtiff list on Thu, 13
+	Aug 2015.
+
+2015-07-04  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* cmake: Add d suffix to debug libraries with MSVC.  Patch #3 of 3
+	by Roger Leigh posted to tiff list on Wed, 1 Jul 2015 15:58:20
+	+0100.
+
+	* cmake: Add extra warning flags.  Patch #2 of 3 by Roger Leigh
+	posted to tiff list on Wed, 1 Jul 2015 15:58:20 +0100.
+
+	* cmake: Correct snprintf fallback for VS2015.  Patch #1 of 3 by
+	Roger Leigh posted to tiff list on Wed, 1 Jul 2015 15:58:20 +0100.
+
+2015-06-24  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* CMakeLists.txt: Add CMake patchset by Roger Leigh as posted to
+	libtiff mailing list on Mon, 22 Jun 2015 21:21:01 +0100. Several
+	corrections to ensure that the autotools build still works were
+	added by me.  I have not yet tested the build using 'cmake' or
+	MSVC with 'nmake'.
+
 2015-06-21  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+
+	* test/Makefile.am: tiff2rgba-quad-tile.jpg.sh depends on the JPEG
+	library so only execute if JPEG is available.
 
 	* libtiff 4.0.4 released.
 
@@ -66,20 +250,20 @@
 2015-06-14  Lee Howard  <faxguy@howardsilvan.com>
 
 	* libtiff/tif_unix.c: contribution from Vadim Zeitlin on
-	Bugzilla Bug #2510 fixes several harmless but still annoying 
+	Bugzilla Bug #2510 fixes several harmless but still annoying
 	warnings
 
 	* configure: contribution from Ludolf Holzheid on Bugzilla
-	Bug #2498.  Adds an option to select the file I/O style on 
+	Bug #2498.  Adds an option to select the file I/O style on
 	Windows hosts.
 
-	* libtiff/tif_getimage.c: contribution from Gary Cramblitt 
+	* libtiff/tif_getimage.c: contribution from Gary Cramblitt
 	on Bugzilla Bug #2409.  Correct reading of certain tiled TIFFs.
 
 	* configure, configure.ac: contribution from Marcos H. Woehrmann
 	on Bugzilla Bug #2405.  Correct shell equality operator.
 
-	* tools/tiffgt.c (raster_draw): contribution from Jay Berkenbilt 
+	* tools/tiffgt.c (raster_draw): contribution from Jay Berkenbilt
 	on Bugzilla Bug #2401.  Appropriately call glFlush().
 
 	* tools/tiff2pdf.c: change ColorTransform from "0" to "1"

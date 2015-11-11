@@ -25,7 +25,7 @@ dnl OF THIS SOFTWARE.
 dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.64)
-AC_INIT([LibTIFF Software],[4.0.4],[tiff@lists.maptools.org],[tiff])
+AC_INIT([LibTIFF Software],[4.0.6],[tiff@lists.maptools.org],[tiff])
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_MACRO_DIR(m4)
 AC_LANG(C)
@@ -33,7 +33,7 @@ AC_LANG(C)
 dnl Compute the canonical host (run-time) system type variable
 AC_CANONICAL_HOST
 
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE(tar-pax)
 dnl Do not rebuild generated files every time
 AM_MAINTAINER_MODE
 
@@ -41,7 +41,7 @@ dnl Versioning.
 dnl Don't fill the ALPHA_VERSION field, if not applicable.
 LIBTIFF_MAJOR_VERSION=4
 LIBTIFF_MINOR_VERSION=0
-LIBTIFF_MICRO_VERSION=4
+LIBTIFF_MICRO_VERSION=6
 LIBTIFF_ALPHA_VERSION=
 LIBTIFF_VERSION=$LIBTIFF_MAJOR_VERSION.$LIBTIFF_MINOR_VERSION.$LIBTIFF_MICRO_VERSION$LIBTIFF_ALPHA_VERSION
 dnl This will be used with the 'make release' target
@@ -77,7 +77,7 @@ dnl     increment age.
 dnl  6. If any interfaces have been removed since the last public release,
 dnl     then set age to 0.                                
 LIBTIFF_CURRENT=7
-LIBTIFF_REVISION=2
+LIBTIFF_REVISION=4
 LIBTIFF_AGE=2
 LIBTIFF_VERSION_INFO=$LIBTIFF_CURRENT:$LIBTIFF_REVISION:$LIBTIFF_AGE
 
@@ -109,8 +109,11 @@ AM_PROG_CC_C_O
 dnl We want warnings. As many warnings as possible.
 VL_PROG_CC_WARNINGS()
 
+dnl Checks for programs
 AC_PROG_INSTALL
 AC_PROG_LN_S
+# Used only for validating the source distribution during distcheck
+AC_PATH_PROG(CMAKE, cmake)
 
 
 # Check if LD supports linker scripts, and define automake conditional
@@ -181,6 +184,10 @@ AC_TYPE_OFF_T
 AC_TYPE_SIZE_T
 AC_HEADER_TIME
 AC_STRUCT_TM
+
+dnl If the `fseeko' function is available, define `HAVE_FSEEKO'. Define
+dnl `_LARGEFILE_SOURCE' if necessary.
+AC_FUNC_FSEEKO
 
 dnl Check if optarg (and presumably related externs) already declared in headers
 AC_CHECK_DECLS([optarg])
@@ -414,11 +421,12 @@ AC_CHECK_TYPES([int8, int16, int32],,,
 ])
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS([floor isascii memmove memset mmap pow setmode sqrt\
- strchr strrchr strstr strtol strtoull])
+AC_CHECK_FUNCS([floor isascii memmove memset mmap pow setmode snprintf sqrt \
+strchr strrchr strstr strtol strtoul strtoull])
 
 dnl Will use local replacements for unavailable functions
 AC_REPLACE_FUNCS(getopt)
+AC_REPLACE_FUNCS(snprintf)
 AC_REPLACE_FUNCS(strcasecmp)
 AC_REPLACE_FUNCS(strtoul)
 AC_REPLACE_FUNCS(strtoull)

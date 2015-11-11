@@ -377,14 +377,13 @@ FI_ENUM(FREE_IMAGE_FORMAT) {
 	FIF_BMP			= 2,
 	FIF_GIF			= 3,
 	FIF_TARGA		= 4,
-	FIF_BPG			= 5,
-	FIF_WEBP		= 6,
-	FIF_JXR			= 7,
-	FIF_TIFF		= 8,
-	FIF_PSD			= 9,
-	FIF_ICO			= 10,
-	FIF_DDS			= 11,
-	FIF_HDR			= 12
+	FIF_WEBP		= 5,
+	FIF_JXR			= 6,
+	FIF_TIFF		= 7,
+	FIF_PSD			= 8,
+	FIF_ICO			= 9,
+	FIF_DDS			= 10,
+	FIF_HDR			= 11
 };
 
 /** Image type used in FreeImage.
@@ -614,17 +613,6 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define WEBP_DEFAULT		0		// save with quality 75 & 4:2:0
 #define WEBP_LOSSLESS		100		// save lossless vp8 photo
 #define DDS_DEFAULT			0
-#define BPG_DEFAULT			0		// save with quality 80(qp=100-quality=20) & 4:4:4 & bt.2020 & 12bit
-#define BPG_LOSSLESS		100 	// save lossless
-#define BPG_SUBSAMPLING_420	0x100	// save with medium 2x2 medium chroma subsampling (4:2:0)
-#define BPG_SUBSAMPLING_422	0x200	// save with low 2x1 chroma subsampling (4:2:2)
-#define BPG_SUBSAMPLING_444	0x400	// save with no chroma subsampling (4:4:4)
-#define BPG_COLOR_601		0x1000	// save with ITU-R BT.601
-#define BPG_COLOR_709		0x2000	// save with ITU-R BT.709
-#define BPG_COLOR_2020		0x4000	// save with ITU-R BT.2020
-#define BPG_BITDEPTH_8		0x10000	// save with 8bit
-#define BPG_BITDEPTH_10		0x20000	// save with 10bit
-#define BPG_BITDEPTH_12		0x40000	// save with 12bit
 
 // Background filling options ---------------------------------------------------------
 // Constants used in FreeImage_FillBackground and FreeImage_EnlargeCanvas

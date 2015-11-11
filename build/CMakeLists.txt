@@ -39,7 +39,6 @@ OPTION(QT_PLUGIN "Build QT plugin" OFF)
 OPTION(CONV_TEST "Build a simple convert test program" OFF)
 
 ADD_SUBDIRECTORY(plugin)
-ADD_SUBDIRECTORY(libbpg)
 ADD_SUBDIRECTORY(libjxr)
 ADD_SUBDIRECTORY(libpng)
 ADD_SUBDIRECTORY(libtiff)
@@ -47,12 +46,11 @@ ADD_SUBDIRECTORY(libwebp)
 ADD_SUBDIRECTORY(mozjpeg)
 ADD_SUBDIRECTORY(zlib)
 
-ADD_DEPENDENCIES(freeimage libbpg libjxr libpng libtiff libwebp mozjpeg zlib)
-TARGET_LINK_LIBRARIES(freeimage libbpg libjxr libpng libtiff libwebp mozjpeg zlib)
+ADD_DEPENDENCIES(freeimage libjxr libpng libtiff libwebp mozjpeg zlib)
+TARGET_LINK_LIBRARIES(freeimage libjxr libpng libtiff libwebp mozjpeg zlib)
 
 INCLUDE_DIRECTORIES(
 	${PROJECT_DIR}
-	${3RDPARTY_DIR}/libbpg
 	${3RDPARTY_DIR}/libpng
 	${3RDPARTY_DIR}/libjxr/common/include
 	${3RDPARTY_DIR}/libjxr/image/sys
