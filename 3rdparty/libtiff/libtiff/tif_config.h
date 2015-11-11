@@ -88,5 +88,4 @@ If your big endian system isn't being detected, add an OS specific check
 # endif
 #endif
 
-
 #endif // TIF_CONFIG_H
