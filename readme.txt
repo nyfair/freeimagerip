@@ -10,7 +10,7 @@ New Feature:
 -multipage image suport
 
 [3rd Party]
-libpng 1.6.18		http://libmng.com/pub/png/libpng.html
+libpng 1.6.19		http://libmng.com/pub/png/libpng.html
 libtiff 4.0.6		http://www.remotesensing.org/libtiff
 libwebp 0.4.4		https://github.com/webmproject/libwebp
 mozjpeg 3.1		https://github.com/mozilla/mozjpeg
