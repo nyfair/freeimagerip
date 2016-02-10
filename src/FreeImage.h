@@ -31,7 +31,7 @@
 // Version information ------------------------------------------------------
 
 #define FREEIMAGE_MAJOR_VERSION   3
-#define FREEIMAGE_MINOR_VERSION   17
+#define FREEIMAGE_MINOR_VERSION   18
 #define FREEIMAGE_RELEASE_SERIAL  0
 
 // Compiler options ---------------------------------------------------------
@@ -592,26 +592,29 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define PNG_DEFAULT			9			// save with maximum ZLib compression
 #define PNG_NO_COMPRESSION	10			// save without compression
 #define PNG_IGNOREGAMMA		1			// loading: avoid gamma correction
-#define PNG_INTERLACED		0x0200	// save using Adam7 interlacing (use | to combine with other save flags)
+#define PNG_INTERLACED		0x0200		// save using Adam7 interlacing (use | to combine with other save flags)
 #define PSD_DEFAULT		 	0
+#define PSD_NONE			0x0100		// save without any compression
+#define PSD_RLE				0x0200		// save using RLE compression
+#define PSD_PSB				0x2000  	// save using Adobe Large Document Format (use | to combine with other save flags)
 #define TARGA_DEFAULT		0
-#define TARGA_LOAD_RGB888 	1		// If set the loader converts RGB555 and ARGB8888 -> RGB888.
-#define TARGA_SAVE_RLE		2		// If set, the writer saves with RLE compression
-#define TIFF_DEFAULT        0
-#define TIFF_PACKBITS       0x0100  // save using PACKBITS compression
-#define TIFF_DEFLATE        0x0200  // save using DEFLATE compression (a.k.a. ZLIB compression)
-#define TIFF_ADOBE_DEFLATE  0x0400  // save using ADOBE DEFLATE compression
-#define TIFF_NONE           0x0800  // save without any compression
-#define TIFF_CCITTFAX3		0x1000  // save using CCITT Group 3 fax encoding
-#define TIFF_CCITTFAX4		0x2000  // save using CCITT Group 4 fax encoding
-#define TIFF_LZW			0x4000	// save using LZW compression
-#define TIFF_JPEG			0x8000	// save using JPEG compression
-#define TIFF_LOGLUV			0x10000	// save using LogLuv compression
-#define JXR_DEFAULT			0		// save with quality 80 & 4:4:4
-#define JXR_LOSSLESS		100 	// save lossless
-#define JXR_PROGRESSIVE		0x4000	// save as a progressive-JXR (use | to combine with other save flags)
-#define WEBP_DEFAULT		0		// save with quality 75 & 4:2:0
-#define WEBP_LOSSLESS		100		// save lossless vp8 photo
+#define TARGA_LOAD_RGB888 	1			// If set, the loader converts RGB555 and ARGB8888 -> RGB888.
+#define TARGA_SAVE_RLE		2			// If set, the writer saves with RLE compression
+#define TIFF_DEFAULT		0
+#define TIFF_PACKBITS		0x0100		// save using PACKBITS compression
+#define TIFF_DEFLATE        0x0200		// save using DEFLATE compression (a.k.a. ZLIB compression)
+#define TIFF_ADOBE_DEFLATE  0x0400		// save using ADOBE DEFLATE compression
+#define TIFF_NONE			0x0800		// save without any compression
+#define TIFF_CCITTFAX3		0x1000		// save using CCITT Group 3 fax encoding
+#define TIFF_CCITTFAX4		0x2000		// save using CCITT Group 4 fax encoding
+#define TIFF_LZW			0x4000		// save using LZW compression
+#define TIFF_JPEG			0x8000		// save using JPEG compression
+#define TIFF_LOGLUV			0x10000		// save using LogLuv compression
+#define JXR_DEFAULT			0			// save with quality 80 & 4:4:4
+#define JXR_LOSSLESS		100			// save lossless
+#define JXR_PROGRESSIVE		0x4000		// save as a progressive-JXR (use | to combine with other save flags)
+#define WEBP_DEFAULT		0			// save with quality 75 & 4:2:0
+#define WEBP_LOSSLESS		100			// save lossless vp8 photo
 #define DDS_DEFAULT			0
 
 // Background filling options ---------------------------------------------------------
@@ -792,8 +795,11 @@ DLL_API void DLL_CALLCONV FreeImage_ConvertLine16To24_555(BYTE *target, BYTE *so
 DLL_API void DLL_CALLCONV FreeImage_ConvertLine16To24_565(BYTE *target, BYTE *source, int width_in_pixels);
 DLL_API void DLL_CALLCONV FreeImage_ConvertLine32To24(BYTE *target, BYTE *source, int width_in_pixels);
 DLL_API void DLL_CALLCONV FreeImage_ConvertLine1To32(BYTE *target, BYTE *source, int width_in_pixels, RGBQUAD *palette);
+DLL_API void DLL_CALLCONV FreeImage_ConvertLine1To32MapTransparency(BYTE *target, BYTE *source, int width_in_pixels, RGBQUAD *palette, BYTE *table, int transparent_pixels);
 DLL_API void DLL_CALLCONV FreeImage_ConvertLine4To32(BYTE *target, BYTE *source, int width_in_pixels, RGBQUAD *palette);
+DLL_API void DLL_CALLCONV FreeImage_ConvertLine4To32MapTransparency(BYTE *target, BYTE *source, int width_in_pixels, RGBQUAD *palette, BYTE *table, int transparent_pixels);
 DLL_API void DLL_CALLCONV FreeImage_ConvertLine8To32(BYTE *target, BYTE *source, int width_in_pixels, RGBQUAD *palette);
+DLL_API void DLL_CALLCONV FreeImage_ConvertLine8To32MapTransparency(BYTE *target, BYTE *source, int width_in_pixels, RGBQUAD *palette, BYTE *table, int transparent_pixels);
 DLL_API void DLL_CALLCONV FreeImage_ConvertLine16To32_555(BYTE *target, BYTE *source, int width_in_pixels);
 DLL_API void DLL_CALLCONV FreeImage_ConvertLine16To32_565(BYTE *target, BYTE *source, int width_in_pixels);
 DLL_API void DLL_CALLCONV FreeImage_ConvertLine24To32(BYTE *target, BYTE *source, int width_in_pixels);
