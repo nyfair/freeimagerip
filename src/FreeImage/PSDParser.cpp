@@ -47,44 +47,44 @@
 #define PSDP_LAB			9
 
 // PSD compression schemes
-#define PSDP_COMPRESSION_NONE			0	// Raw data
-#define PSDP_COMPRESSION_RLE			1	// RLE compression (same as TIFF packed bits)
-#define PSDP_COMPRESSION_ZIP			2	// ZIP compression without prediction
-#define PSDP_COMPRESSION_ZIP_PREDICTION	3	// ZIP compression with prediction
+#define PSDP_COMPRESSION_NONE			0	//! Raw data
+#define PSDP_COMPRESSION_RLE			1	//! RLE compression (same as TIFF packed bits)
+#define PSDP_COMPRESSION_ZIP			2	//! ZIP compression without prediction
+#define PSDP_COMPRESSION_ZIP_PREDICTION	3	//! ZIP compression with prediction
 
-// PSD image resources
+/**
+PSD image resources
+*/
 enum {
-	// Obsolete - Photoshop 2.0
+	//! Obsolete - Photoshop 2.0
 	PSDP_RES_RESOLUTION_INFO_V2		= 1000,
-	// ResolutionInfo structure
+	//! ResolutionInfo structure
 	PSDP_RES_RESOLUTION_INFO		= 1005,
-	// DisplayInfo structure
+	//! DisplayInfo structure
 	PSDP_RES_DISPLAY_INFO			= 1007,
-	// IPTC-NAA record
+	//! IPTC-NAA record
 	PSDP_RES_IPTC_NAA				= 1028,
-	// (Photoshop 4.0) Thumbnail resource for Photoshop 4.0 only
+	//! (Photoshop 4.0) Thumbnail resource for Photoshop 4.0 only
 	PSDP_RES_THUMBNAIL_PS4			= 1033,
-	// (Photoshop 4.0) Copyright flag
+	//! (Photoshop 4.0) Copyright flag
 	PSDP_RES_COPYRIGHT				= 1034,
-	// (Photoshop 5.0) Thumbnail resource (supersedes resource 1033)
+	//! (Photoshop 5.0) Thumbnail resource (supersedes resource 1033)
 	PSDP_RES_THUMBNAIL				= 1036,
-	// (Photoshop 5.0) Global Angle
+	//! (Photoshop 5.0) Global Angle
 	PSDP_RES_GLOBAL_ANGLE			= 1037,
-	// ICC profile
+	//! ICC profile
 	PSDP_RES_ICC_PROFILE			= 1039,
-	// (Photoshop 6.0) Indexed Color Table Count
-	// 2 bytes for the number of colors in table that are actually defined
+	//! (Photoshop 6.0) Indexed Color Table Count; 2 bytes for the number of colors in table that are actually defined
 	PSDP_RES_INDEXED_COLORS			= 1046,
-	// (Photoshop 6.0) Transparency Index.
-	// 2 bytes for the index of transparent color, if any.
+	//! (Photoshop 6.0) Transparency Index. 2 bytes for the index of transparent color, if any.
 	PSDP_RES_TRANSPARENCY_INDEX		= 1047,
-	// (Photoshop 7.0) EXIF data 1
+	//! (Photoshop 7.0) EXIF data 1
 	PSDP_RES_EXIF1					= 1058,
-	// (Photoshop 7.0) EXIF data 3
+	//! (Photoshop 7.0) EXIF data 3
 	PSDP_RES_EXIF3					= 1059,
-	// (Photoshop 7.0) XMP metadata
+	//! (Photoshop 7.0) XMP metadata
 	PSDP_RES_XMP					= 1060,
-	// (Photoshop CS3) DisplayInfo structure
+	//! (Photoshop CS3) DisplayInfo structure
 	PSDP_RES_DISPLAY_INFO_FLT		= 1077,
 };
 
@@ -97,11 +97,13 @@ class PSDGetValue {
 public:
 	static inline int get(const BYTE * iprBuffer) {} // error
 };
+
 template <>
 class PSDGetValue<1> {
 public:
 	static inline BYTE get(const BYTE * iprBuffer) { return iprBuffer[0]; }
 };
+
 template <>
 class PSDGetValue<2> {
 public:
@@ -113,6 +115,7 @@ public:
 		return (int)v;
 	}
 };
+
 template <>
 class PSDGetValue<4> {
 public:
@@ -124,6 +127,7 @@ public:
 		return v;
 	}
 };
+
 template <>
 class PSDGetValue<8> {
 public:
@@ -135,12 +139,13 @@ public:
 		return v;
 	}
 };
-#define psdGetValue(PTR,SIZE) PSDGetValue<SIZE>::get((PTR))
-#define psdGetLongValue(PTR,SIZE) PSDGetValue<SIZE>::get((PTR))
+
+#define psdGetValue(PTR, SIZE)		PSDGetValue<SIZE>::get((PTR))
+#define psdGetLongValue(PTR, SIZE)	PSDGetValue<SIZE>::get((PTR))
 
 // --------------------------------------------------------------------------
 
-static inline UINT64
+static UINT64
 psdReadSize(FreeImageIO *io, fi_handle handle, const psdHeaderInfo& header) {
 	if(header._Version == 1) {
 		BYTE Length[4];
@@ -160,11 +165,13 @@ class PSDSetValue {
 public:
 	static inline void set(BYTE * iprBuffer, int v) {} // error
 };
+
 template <>
 class PSDSetValue<1> {
 public:
 	static inline void set(BYTE * iprBuffer, BYTE v) { iprBuffer[0] = v; }
 };
+
 template <>
 class PSDSetValue<2> {
 public:
@@ -175,6 +182,7 @@ public:
 		((WORD*)iprBuffer)[0] = v;
 	}
 };
+
 template <>
 class PSDSetValue<4> {
 public:
@@ -185,6 +193,7 @@ public:
 		((DWORD*)iprBuffer)[0] = v;
 	}
 };
+
 template <>
 class PSDSetValue<8> {
 public:
@@ -195,8 +204,9 @@ public:
 		((UINT64*)iprBuffer)[0] = v;
 	}
 };
-#define psdSetValue(PTR,SIZE,V) PSDSetValue<SIZE>::set((PTR),(V))
-#define psdSetLongValue(PTR,SIZE,V) PSDSetValue<SIZE>::set((PTR),(V))
+
+#define psdSetValue(PTR, SIZE, V)		PSDSetValue<SIZE>::set((PTR), (V))
+#define psdSetLongValue(PTR, SIZE, V)	PSDSetValue<SIZE>::set((PTR), (V))
 
 // --------------------------------------------------------------------------
 
@@ -381,22 +391,27 @@ int psdResolutionInfo::Read(FreeImageIO *io, fi_handle handle) {
 	n = (int)io->read_proc(ShortValue, sizeof(ShortValue), 1, handle);
 	nBytes += n * sizeof(ShortValue);
 	_hRes = (short)psdGetValue(ShortValue, sizeof(_hRes) );
+
 	// 1=display horizontal resolution in pixels per inch; 2=display horizontal resolution in pixels per cm.
 	n = (int)io->read_proc(IntValue, sizeof(IntValue), 1, handle);
 	nBytes += n * sizeof(IntValue);
 	_hResUnit = psdGetValue(IntValue, sizeof(_hResUnit) );
+
 	// Display width as 1=inches; 2=cm; 3=points; 4=picas; 5=columns.
 	n = (int)io->read_proc(ShortValue, sizeof(ShortValue), 1, handle);
 	nBytes += n * sizeof(ShortValue);
 	_widthUnit = (short)psdGetValue(ShortValue, sizeof(_widthUnit) );
+
 	// Vertical resolution in pixels per inch.
 	n = (int)io->read_proc(ShortValue, sizeof(ShortValue), 1, handle);
 	nBytes += n * sizeof(ShortValue);
 	_vRes = (short)psdGetValue(ShortValue, sizeof(_vRes) );
+
 	// 1=display vertical resolution in pixels per inch; 2=display vertical resolution in pixels per cm.
 	n = (int)io->read_proc(IntValue, sizeof(IntValue), 1, handle);
 	nBytes += n * sizeof(IntValue);
 	_vResUnit = psdGetValue(IntValue, sizeof(_vResUnit) );
+
 	// Display height as 1=inches; 2=cm; 3=points; 4=picas; 5=columns.
 	n = (int)io->read_proc(ShortValue, sizeof(ShortValue), 1, handle);
 	nBytes += n * sizeof(ShortValue);
@@ -408,34 +423,40 @@ int psdResolutionInfo::Read(FreeImageIO *io, fi_handle handle) {
 bool psdResolutionInfo::Write(FreeImageIO *io, fi_handle handle) {
 	BYTE IntValue[4], ShortValue[2];
 
-	if(!psdImageResource().Write(io, handle, PSDP_RES_RESOLUTION_INFO, 16))
+	if (!psdImageResource().Write(io, handle, PSDP_RES_RESOLUTION_INFO, 16)) {
 		return false;
+	}
 
 	// Horizontal resolution in pixels per inch.
 	psdSetValue(ShortValue, sizeof(ShortValue), _hRes);
 	if(io->write_proc(ShortValue, sizeof(ShortValue), 1, handle) != 1) {
 		return false;
 	}
+
 	// 1=display horizontal resolution in pixels per inch; 2=display horizontal resolution in pixels per cm.
 	psdSetValue(IntValue, sizeof(IntValue), _hResUnit);
 	if(io->write_proc(IntValue, sizeof(IntValue), 1, handle) != 1) {
 		return false;
 	}
+
 	// Display width as 1=inches; 2=cm; 3=points; 4=picas; 5=columns.
 	psdSetValue(ShortValue, sizeof(ShortValue), _widthUnit);
 	if(io->write_proc(ShortValue, sizeof(ShortValue), 1, handle) != 1) {
 		return false;
 	}
+
 	// Vertical resolution in pixels per inch.
 	psdSetValue(ShortValue, sizeof(ShortValue), _vRes);
 	if(io->write_proc(ShortValue, sizeof(ShortValue), 1, handle) != 1) {
 		return false;
 	}
+
 	// 1=display vertical resolution in pixels per inch; 2=display vertical resolution in pixels per cm.
 	psdSetValue(IntValue, sizeof(IntValue), _vResUnit);
 	if(io->write_proc(IntValue, sizeof(IntValue), 1, handle) != 1) {
 		return false;
 	}
+
 	// Display height as 1=inches; 2=cm; 3=points; 4=picas; 5=columns.
 	psdSetValue(ShortValue, sizeof(ShortValue), _heightUnit);
 	if(io->write_proc(ShortValue, sizeof(ShortValue), 1, handle) != 1) {
@@ -453,6 +474,7 @@ void psdResolutionInfo::GetResolutionInfo(unsigned &res_x, unsigned &res_y) {
 		// convert pixels / cm to pixel / m
 		res_x = (unsigned) (_hRes * 100.0 + 0.5);
 	}
+
 	if(_vResUnit == 1) {
 		// convert pixels / inch to pixel / m
 		res_y = (unsigned) (_vRes / 0.0254000 + 0.5);
@@ -570,6 +592,7 @@ int psdDisplayInfo::Read(FreeImageIO *io, fi_handle handle) {
 
 	n = (int)io->read_proc(c, sizeof(c), 1, handle);
 	nBytes += n * sizeof(c);
+
 	_padding = (BYTE)psdGetValue(c, sizeof(c));
 	if(_padding != 0) {
 		throw "Invalid DisplayInfo::Padding value";
@@ -606,242 +629,6 @@ bool psdDisplayInfo::Write(FreeImageIO *io, fi_handle handle) {
 	psdSetValue(c, sizeof(c), 0);
 	if(io->write_proc(c, sizeof(c), 1, handle) != 1) {
 		return false;
-	}
-
-	return true;
-}
-
-// --------------------------------------------------------------------------
-
-psdThumbnail::psdThumbnail() :
-_Format(-1), _Width(-1), _Height(-1), _WidthBytes(-1), _Size(-1), _CompressedSize(-1), _BitPerPixel(-1), _Planes(-1), _dib(NULL), _owned(true) {
-}
-
-psdThumbnail::~psdThumbnail() {
-	if (_owned) FreeImage_Unload(_dib);
-}
-
-void
-psdThumbnail::Init() {
-	if (_dib != NULL) {
-		_Format = 1;
-		_Width = (int)FreeImage_GetWidth(_dib);
-		_Height = (int)FreeImage_GetHeight(_dib);
-		_BitPerPixel = 24;
-		_Planes = 1;
-		_WidthBytes = (_Width * _BitPerPixel + 31) / 32 * 4;
-		_Size = _WidthBytes * _Height * _Planes;
-		_CompressedSize = _Size;
-	}
-}
-
-int psdThumbnail::Read(FreeImageIO *io, fi_handle handle, int iResourceSize, bool isBGR) {
-	BYTE ShortValue[2], IntValue[4];
-	int nBytes=0, n;
-
-	// remove the header size (28 bytes) from the total data size
-	int iTotalData = iResourceSize - 28;
-
-	const long block_end = io->tell_proc(handle) + iTotalData;
-
-	n = (int)io->read_proc(IntValue, sizeof(IntValue), 1, handle);
-	nBytes += n * sizeof(IntValue);
-	_Format = psdGetValue(IntValue, sizeof(_Format) );
-
-	n = (int)io->read_proc(IntValue, sizeof(IntValue), 1, handle);
-	nBytes += n * sizeof(IntValue);
-	_Width = psdGetValue(IntValue, sizeof(_Width) );
-
-	n = (int)io->read_proc(IntValue, sizeof(IntValue), 1, handle);
-	nBytes += n * sizeof(IntValue);
-	_Height = psdGetValue(IntValue, sizeof(_Height) );
-
-	n = (int)io->read_proc(IntValue, sizeof(IntValue), 1, handle);
-	nBytes += n * sizeof(IntValue);
-	_WidthBytes = psdGetValue(IntValue, sizeof(_WidthBytes) );
-
-	n = (int)io->read_proc(IntValue, sizeof(IntValue), 1, handle);
-	nBytes += n * sizeof(IntValue);
-	_Size = psdGetValue(IntValue, sizeof(_Size) );
-
-	n = (int)io->read_proc(IntValue, sizeof(IntValue), 1, handle);
-	nBytes += n * sizeof(IntValue);
-	_CompressedSize = psdGetValue(IntValue, sizeof(_CompressedSize) );
-
-	n = (int)io->read_proc(ShortValue, sizeof(ShortValue), 1, handle);
-	nBytes += n * sizeof(ShortValue);
-	_BitPerPixel = (short)psdGetValue(ShortValue, sizeof(_BitPerPixel) );
-
-	n = (int)io->read_proc(ShortValue, sizeof(ShortValue), 1, handle);
-	nBytes += n * sizeof(ShortValue);
-	_Planes = (short)psdGetValue(ShortValue, sizeof(_Planes) );
-
-	const long JFIF_startpos = io->tell_proc(handle);
-
-	if(_dib) {
-		FreeImage_Unload(_dib);
-	}
-
-	if(_Format == 1) {
-		// kJpegRGB thumbnail image
-		_dib = FreeImage_LoadFromHandle(FIF_JPEG, io, handle);
-		if(isBGR) {
-			SwapRedBlue32(_dib);
-		}
-		// HACK: manually go to end of thumbnail, because (for some reason) LoadFromHandle consumes more bytes then available!
-		io->seek_proc(handle, block_end, SEEK_SET);
-	}
-	else {
-		// kRawRGB thumbnail image
-		_dib = FreeImage_Allocate(_Width, _Height, _BitPerPixel);
-		BYTE* dst_line_start = FreeImage_GetScanLine(_dib, _Height - 1);//<*** flipped
-		BYTE* line_start = new BYTE[_WidthBytes];
-		const unsigned dstLineSize = FreeImage_GetPitch(_dib);
-		for(unsigned h = 0; h < (unsigned)_Height; ++h, dst_line_start -= dstLineSize) {//<*** flipped
-			io->read_proc(line_start, _WidthBytes, 1, handle);
-			iTotalData -= _WidthBytes;
-			memcpy(dst_line_start, line_start, _Width * _BitPerPixel / 8);
-		}
-#if FREEIMAGE_COLORORDER == FREEIMAGE_COLORORDER_BGR
-		SwapRedBlue32(_dib);
-#endif
-		SAFE_DELETE_ARRAY(line_start);
-
-		// skip any remaining data
-		io->seek_proc(handle, iTotalData, SEEK_CUR);
-		return iResourceSize;
-	}
-
-	nBytes += (block_end - JFIF_startpos);
-
-	return nBytes;
-}
-
-bool psdThumbnail::Write(FreeImageIO *io, fi_handle handle, bool isBGR) {
-	BYTE ShortValue[2], IntValue[4];
-
-	const long res_start_pos = io->tell_proc(handle);
-	const int ID = isBGR ? PSDP_RES_THUMBNAIL_PS4 : PSDP_RES_THUMBNAIL;
-	if(!psdImageResource().Write(io, handle, ID, 0))
-		return false;
-
-	psdSetValue(IntValue, sizeof(IntValue), _Format);
-	if(io->write_proc(IntValue, sizeof(IntValue), 1, handle) != 1) {
-		return false;
-	}
-	psdSetValue(IntValue, sizeof(IntValue), _Width);
-	if(io->write_proc(IntValue, sizeof(IntValue), 1, handle) != 1) {
-		return false;
-	}
-	psdSetValue(IntValue, sizeof(IntValue), _Height);
-	if(io->write_proc(IntValue, sizeof(IntValue), 1, handle) != 1) {
-		return false;
-	}
-	psdSetValue(IntValue, sizeof(IntValue), _WidthBytes);
-	if(io->write_proc(IntValue, sizeof(IntValue), 1, handle) != 1) {
-		return false;
-	}
-	psdSetValue(IntValue, sizeof(IntValue), _Size);
-	if(io->write_proc(IntValue, sizeof(IntValue), 1, handle) != 1) {
-		return false;
-	}
-	const long compressed_pos = io->tell_proc(handle);
-	psdSetValue(IntValue, sizeof(IntValue), _CompressedSize);
-	if(io->write_proc(IntValue, sizeof(IntValue), 1, handle) != 1) {
-		return false;
-	}
-	psdSetValue(ShortValue, sizeof(ShortValue), _BitPerPixel);
-	if(io->write_proc(ShortValue, sizeof(ShortValue), 1, handle) != 1) {
-		return false;
-	}
-	psdSetValue(ShortValue, sizeof(ShortValue), _Planes);
-	if(io->write_proc(ShortValue, sizeof(ShortValue), 1, handle) != 1) {
-		return false;
-	}
-	if(_Format == 1) {
-		// kJpegRGB thumbnail image
-		if(isBGR) {
-			SwapRedBlue32(_dib);
-		}
-		const long start_pos = io->tell_proc(handle);
-		FreeImage_SaveToHandle(FIF_JPEG, _dib, io, handle, JPEG_DEFAULT);
-		const long current_pos = io->tell_proc(handle);
-		_CompressedSize = (int)(current_pos - start_pos);
-		io->seek_proc(handle, compressed_pos, SEEK_SET);
-		psdSetValue(IntValue, sizeof(IntValue), _CompressedSize);
-		if(io->write_proc(IntValue, sizeof(IntValue), 1, handle) != 1) {
-			return false;
-		}
-		io->seek_proc(handle, current_pos, SEEK_SET);
-	}
-	else {
-		// kRawRGB thumbnail image
-		// ### Unimplemented (should be trivial)
-		_CompressedSize = 0;
-	}
-
-	int len = 28 + _CompressedSize;
-
-	// Fix length of resource
-	io->seek_proc(handle, res_start_pos + 8, SEEK_SET);
-	psdSetValue(IntValue, sizeof(IntValue), len);
-	if(io->write_proc(IntValue, sizeof(IntValue), 1, handle) != 1) {
-		return false;
-	}
-	io->seek_proc(handle, 0, SEEK_END);
-
-	if((len % 2) != 0) {
-		BYTE data[1];
-		data[0] = 0;
-		if(io->write_proc(data, sizeof(data), 1, handle) != 1) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
-//---------------------------------------------------------------------------
-
-psdICCProfile::psdICCProfile() : _ProfileSize(0), _ProfileData(NULL), _owned(true) {
-}
-
-psdICCProfile::~psdICCProfile() {
-	clear();
-}
-
-void psdICCProfile::clear() { if (_owned) { SAFE_DELETE_ARRAY(_ProfileData); } else { _ProfileData = NULL; } _ProfileSize = 0;}
-
-int psdICCProfile::Read(FreeImageIO *io, fi_handle handle, int size) {
-	int nBytes = 0, n;
-
-	clear();
-
-	_ProfileData = new (std::nothrow) BYTE[size];
-	if(NULL != _ProfileData) {
-		n = (int)io->read_proc(_ProfileData, 1, size, handle);
-		_ProfileSize = size;
-		nBytes += n * sizeof(BYTE);
-	}
-
-	return nBytes;
-}
-
-bool psdICCProfile::Write(FreeImageIO *io, fi_handle handle) {
-	if(!psdImageResource().Write(io, handle, PSDP_RES_ICC_PROFILE, _ProfileSize))
-		return false;
-
-	if(NULL != _ProfileData) {
-		if(io->write_proc(_ProfileData, 1, _ProfileSize, handle) != _ProfileSize) {
-			return false;
-		}
-		if((_ProfileSize % 2) != 0) {
-			BYTE data[1];
-			data[0] = 0;
-			if(io->write_proc(data, sizeof(data), 1, handle) != 1) {
-				return false;
-			}
-		}
 	}
 
 	return true;
@@ -1075,10 +862,6 @@ bool psdParser::ReadImageResources(FreeImageIO *io, fi_handle handle, LONG lengt
 						nBytes += _displayInfo.Read(io, handle);
 						break;
 
-					// IPTC-NAA record
-					case PSDP_RES_IPTC_NAA:
-						nBytes += _iptc.Read(io, handle, oResource._Size);
-						break;
 					// (Photoshop 4.0) Copyright flag
 					// Boolean indicating whether image is copyrighted. Can be set via Property suite or by user in File Info...
 					case PSDP_RES_COPYRIGHT:
@@ -1087,17 +870,6 @@ bool psdParser::ReadImageResources(FreeImageIO *io, fi_handle handle, LONG lengt
 						_bCopyright = (1 == psdGetValue(ShortValue, sizeof(ShortValue)));
 						break;
 
-					// (Photoshop 4.0) Thumbnail resource for Photoshop 4.0 only
-					case PSDP_RES_THUMBNAIL_PS4:
-					// (Photoshop 5.0) Thumbnail resource (supersedes resource 1033)
-					case PSDP_RES_THUMBNAIL:
-					{
-						_bThumbnailFilled = true;
-						bool bBGR = (PSDP_RES_THUMBNAIL_PS4 == oResource._ID);
-						nBytes += _thumbnail.Read(io, handle, oResource._Size, bBGR);
-						break;
-					}
-
 					// (Photoshop 5.0) Global Angle
 					// 4 bytes that contain an integer between 0 and 359, which is the global
 					// lighting angle for effects layer. If not present, assumed to be 30.
@@ -1105,11 +877,6 @@ bool psdParser::ReadImageResources(FreeImageIO *io, fi_handle handle, LONG lengt
 						n = (int)io->read_proc(IntValue, sizeof(IntValue), 1, handle);
 						nBytes += n * sizeof(IntValue);
 						_GlobalAngle = psdGetValue(IntValue, sizeof(_GlobalAngle) );
-						break;
-
-					// ICC profile
-					case PSDP_RES_ICC_PROFILE:
-						nBytes += _iccProfile.Read(io, handle, oResource._Size);
 						break;
 
 					// (Photoshop 6.0) Indexed Color Table Count
@@ -1249,14 +1016,16 @@ void psdParser::UnpackRLE(BYTE* line, const BYTE* rle_line, BYTE* line_end, unsi
 }
 
 FIBITMAP* psdParser::ReadImageData(FreeImageIO *io, fi_handle handle) {
-	if(handle == NULL)
+	if (handle == NULL) {
 		return NULL;
+	}
 
 	bool header_only = (_fi_flags & FIF_LOAD_NOPIXELS) == FIF_LOAD_NOPIXELS;
 
 	WORD nCompression = 0;
-	if(io->read_proc(&nCompression, sizeof(nCompression), 1, handle) != 1)
+	if (io->read_proc(&nCompression, sizeof(nCompression), 1, handle) != 1) {
 		return NULL;
+	}
 
 #ifndef FREEIMAGE_BIGENDIAN
 	SwapShort(&nCompression);
@@ -1345,6 +1114,8 @@ FIBITMAP* psdParser::ReadImageData(FreeImageIO *io, fi_handle handle) {
 	if(!bitmap) {
 		throw FI_MSG_ERROR_DIB_MEMORY;
 	}
+
+	// @todo Add some metadata model
 
 	if(header_only) {
 		return bitmap;
@@ -1512,12 +1283,8 @@ FIBITMAP* psdParser::ReadImageData(FreeImageIO *io, fi_handle handle) {
 			FreeImage_Invert(bitmap);
 		}
 
-		// convert to RGB
 
 		ConvertCMYKtoRGBA(bitmap);
-
-		// The ICC Profile is no longer valid
-		_iccProfile.clear();
 
 		// remove the pending A if not present in source
 		if(nChannels == 4 || nChannels == 3 ) {
@@ -1528,7 +1295,7 @@ FIBITMAP* psdParser::ReadImageData(FreeImageIO *io, fi_handle handle) {
 			} // else: silently fail
 		}
 	}
-	else if ( mode == PSDP_LAB ) {
+	else if (mode == PSDP_LAB) {
 		ConvertLABtoRGB(bitmap);
 	}
 	else {
@@ -1578,8 +1345,7 @@ bool psdParser::WriteLayerAndMaskInfoSection(FreeImageIO *io, fi_handle handle)	
 	return true;
 }
 
-void psdParser::WriteImageLine(BYTE* dst, const BYTE* src, unsigned lineSize, unsigned srcBpp, unsigned bytes)
-{
+void psdParser::WriteImageLine(BYTE* dst, const BYTE* src, unsigned lineSize, unsigned srcBpp, unsigned bytes) {
 	switch (bytes) {
 	case 4:
 		{
@@ -1627,8 +1393,7 @@ void psdParser::WriteImageLine(BYTE* dst, const BYTE* src, unsigned lineSize, un
 	}
 }
 
-unsigned psdParser::PackRLE(BYTE* line_start, const BYTE* src_line, unsigned srcSize)
-{
+unsigned psdParser::PackRLE(BYTE* line_start, const BYTE* src_line, unsigned srcSize) {
 	BYTE* line = line_start;
 	while (srcSize > 0) {
 		if(srcSize >= 2 && src_line[0] == src_line[1]) {
@@ -1660,15 +1425,18 @@ unsigned psdParser::PackRLE(BYTE* line_start, const BYTE* src_line, unsigned src
 }
 
 bool psdParser::WriteImageData(FreeImageIO *io, fi_handle handle, FIBITMAP* dib) {
-	if(handle == NULL)
+	if (handle == NULL) {
 		return false;
+	}
 
 	FIBITMAP* cmyk_dib = NULL;
+
 	if (_headerInfo._ColourMode == PSDP_CMYK) {
 		// CMYK values must be "inverted"
 		cmyk_dib = FreeImage_Clone(dib);
-		if (cmyk_dib == NULL)
+		if (cmyk_dib == NULL) {
 			return false;
+		}
 		dib = cmyk_dib;
 		FreeImage_Invert(dib);
 	}
@@ -1682,13 +1450,16 @@ bool psdParser::WriteImageData(FreeImageIO *io, fi_handle handle, FIBITMAP* dib)
 		nCompression = PSDP_COMPRESSION_NONE;
 	} else if((_fi_flags & PSD_RLE) == PSD_RLE) {
 		nCompression = PSDP_COMPRESSION_RLE;
-		if(_headerInfo._BitsPerChannel > 16)
+		if (_headerInfo._BitsPerChannel > 16) {
 			nCompression = PSDP_COMPRESSION_NONE;
+		}
 	}
+
 	WORD CompressionValue = nCompression;
 #ifndef FREEIMAGE_BIGENDIAN
 	SwapShort(&CompressionValue);
 #endif
+
 	if(io->write_proc(&CompressionValue, sizeof(CompressionValue), 1, handle) != 1) {
 		return false;
 	}
@@ -1723,6 +1494,7 @@ bool psdParser::WriteImageData(FreeImageIO *io, fi_handle handle, FIBITMAP* dib)
 			}//< ch
 		}
 		break;
+
 		case PSDP_COMPRESSION_RLE: // RLE compression
 		{
 			// The RLE-compressed data is preceeded by a 2-byte line size for each row in the data,
@@ -1794,17 +1566,22 @@ bool psdParser::WriteImageData(FreeImageIO *io, fi_handle handle, FIBITMAP* dib)
 			io->seek_proc(handle, 0, SEEK_END);
 		}
 		break;
+
 		case PSDP_COMPRESSION_ZIP: // ZIP without prediction
 		case PSDP_COMPRESSION_ZIP_PREDICTION: // ZIP with prediction
 		{
 		}
 		break;
+
 		default: // Unknown format
 			break;
 	}
+
 	SAFE_DELETE_ARRAY(line_start);
-	if (cmyk_dib != NULL)
+
+	if (cmyk_dib != NULL) {
 		FreeImage_Unload(cmyk_dib);
+	}
 
 	return true;
 }
@@ -1863,7 +1640,9 @@ FIBITMAP* psdParser::Load(FreeImageIO *io, fi_handle handle, int s_format_id, in
 }
 
 bool psdParser::Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
-	if(!dib || !handle) return false;
+	if (!dib || !handle) {
+		return false;
+	}
 
 	_fi_flags = flags;
 
@@ -1942,7 +1721,10 @@ bool psdParser::Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags
 			_colourModeData._plColourData[i + 2*256] = pal[i].rgbBlue;
 		}
 	}
-	if(!_colourModeData.Write(io, handle)) return false;
+
+	if (!_colourModeData.Write(io, handle)) {
+		return false;
+	}
 
 	BYTE IntValue[4];
 	const long res_start_pos = io->tell_proc(handle);
@@ -1957,7 +1739,9 @@ bool psdParser::Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags
 	_resolutionInfo._vRes = (short) (0.5 + 0.0254 * FreeImage_GetDotsPerMeterY(dib));
 	_resolutionInfo._vResUnit = 1; // inches
 	_resolutionInfo._heightUnit = 1; // inches
-	if(!_resolutionInfo.Write(io, handle)) return false;
+	if (!_resolutionInfo.Write(io, handle)) {
+		return false;
+	}
 
 	// psdResolutionInfo_v2 is obsolete - Photoshop 2.0
 
@@ -1966,7 +1750,9 @@ bool psdParser::Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags
 	_displayInfo._Opacity = 100;
 	_displayInfo._Kind = 0;
 	_displayInfo._padding = 0;
-	if(!_displayInfo.Write(io, handle)) return false;
+	if (!_displayInfo.Write(io, handle)) {
+		return false;
+	}
 
 	// Fix length of resources
 	const long current_pos = io->tell_proc(handle);
@@ -1977,8 +1763,12 @@ bool psdParser::Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags
 	}
 	io->seek_proc(handle, current_pos, SEEK_SET);
 
-	if(!WriteLayerAndMaskInfoSection(io, handle)) return false;
-	if(!WriteImageData(io, handle, dib)) return false;
+	if (!WriteLayerAndMaskInfoSection(io, handle)) {
+		return false;
+	}
+	if (!WriteImageData(io, handle, dib)) {
+		return false;
+	}
 
 	return true;
 }

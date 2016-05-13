@@ -55,13 +55,17 @@ public:
 	short _ColourMode;	//! Colour mode of the file, Bitmap=0, Grayscale=1, Indexed=2, RGB=3, CMYK=4, Multichannel=7, Duotone=8, Lab=9. 
 
 public:
+	//! Default constructor
 	psdHeaderInfo();
+	//! Destructor
 	~psdHeaderInfo();
 	/**
+	Read the psdHeader structure
 	@return Returns true if successful, false otherwise
 	*/
 	bool Read(FreeImageIO *io, fi_handle handle);
 	/**
+	Write the psdHeader structure
 	@return Returns true if successful, false otherwise
 	*/
 	bool Write(FreeImageIO *io, fi_handle handle);
@@ -198,67 +202,6 @@ public:
 	bool Write(FreeImageIO *io, fi_handle handle);
 };
 
-/**
-Table 2-5: Thumbnail resource header
-Adobe Photoshop 5.0 and later stores thumbnail information for preview
-display in an image resource block. These resource blocks consist of an initial
-28 byte header, followed by a JFIF thumbnail in RGB (red, green, blue) order
-for both Macintosh and Windows. Adobe Photoshop 4.0 stored the
-thumbnail information in the same format except the data section is BGR
-(blue, green, red). The Adobe Photoshop 4.0 format is at resource ID 1033
-and the Adobe Photoshop 5.0 format is at resource ID 1036.
-*/
-class psdThumbnail {
-public:
-	int _Format;			//! = 1 (kJpegRGB). Also supports kRawRGB (0).
-	int _Width;				//! Width of thumbnail in pixels.
-	int _Height;			//! Height of thumbnail in pixels.
-	int _WidthBytes;		//! Padded row bytes as (width * bitspixel + 31) / 32 * 4.
-	int _Size;				//! Total size as widthbytes * height * planes
-	int _CompressedSize;	//! Size after compression. Used for consistentcy check. 
-	short _BitPerPixel;		//! = 24. Bits per pixel.
-	short _Planes;			//! = 1. Number of planes.
-	FIBITMAP * _dib;		//! JFIF data as uncompressed dib. Note: For resource ID 1033 the data is in BGR format.
-	bool _owned;
-	
-public:
-	psdThumbnail();
-	~psdThumbnail();
-	FIBITMAP* getDib() { return _dib; }
-	void Init();
-	/**
-	@return Returns the number of bytes read
-	*/
-	int Read(FreeImageIO *io, fi_handle handle, int iResourceSize, bool isBGR);
-	/**
-	@return Returns true if successful, false otherwise
-	*/
-	bool Write(FreeImageIO *io, fi_handle handle, bool isBGR);
-
-private:
-	psdThumbnail(const psdThumbnail&);
-	psdThumbnail& operator=(const psdThumbnail&);
-};
-
-class psdICCProfile {
-public:
-	int _ProfileSize;
-	BYTE * _ProfileData;
-	bool _owned;
-public:
-	psdICCProfile();
-	~psdICCProfile();
-	void clear();
-	/**
-	@return Returns the number of bytes read
-	*/
-	int Read(FreeImageIO *io, fi_handle handle, int size);
-	/**
-	@return Returns true if successful, false otherwise
-	*/
-	bool Write(FreeImageIO *io, fi_handle handle);
-};
-
 class psdData {
 public:
 	unsigned _Size;
@@ -288,8 +231,6 @@ private:
 	psdResolutionInfo		_resolutionInfo;
 	psdResolutionInfo_v2	_resolutionInfo_v2;
 	psdDisplayInfo			_displayInfo;
-	psdThumbnail			_thumbnail;
-	psdICCProfile			_iccProfile;
 	psdData					_iptc;
 	psdData					_exif1;
 	psdData					_exif3;
@@ -326,12 +267,6 @@ public:
 	bool Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data);
 	/** Also used by the TIFF plugin */
 	bool ReadImageResources(FreeImageIO *io, fi_handle handle, LONG length=0);
-	/** Used by the TIFF plugin */
-	FIBITMAP* GetThumbnail() {
-		return _thumbnail.getDib();
-	}
 };
 
 #endif // FREEIMAGE_PSDPARSER_H
-
-
