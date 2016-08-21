@@ -24,7 +24,6 @@
 
 #include "webp/decode.h"
 #include "webp/encode.h"
-#include "enc/vp8enci.h"
 #include "webp/mux.h"
 
 // ==========================================================

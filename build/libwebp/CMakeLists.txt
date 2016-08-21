@@ -17,18 +17,38 @@ SET(SOURCE_FILES
 	${SRC}/dsp/alpha_processing_mips_dsp_r2.c
 	${SRC}/dsp/alpha_processing_sse2.c
 	${SRC}/dsp/alpha_processing_sse41.c
+	${SRC}/dsp/argb.c
+	${SRC}/dsp/argb_mips_dsp_r2.c
+	${SRC}/dsp/argb_sse2.c
+	${SRC}/dsp/cost.c
+	${SRC}/dsp/cost_mips_dsp_r2.c
+	${SRC}/dsp/cost_mips32.c
+	${SRC}/dsp/cost_sse2.c
 	${SRC}/dsp/cpu.c
 	${SRC}/dsp/dec.c
 	${SRC}/dsp/dec_clip_tables.c
 	${SRC}/dsp/dec_mips32.c
 	${SRC}/dsp/dec_mips_dsp_r2.c
+	${SRC}/dsp/dec_msa.c
 	${SRC}/dsp/dec_neon.c
 	${SRC}/dsp/dec_sse2.c
 	${SRC}/dsp/dec_sse41.c
+	${SRC}/dsp/enc.c
+	${SRC}/dsp/enc_avx2.c
+	${SRC}/dsp/enc_mips_dsp_r2.c
+	${SRC}/dsp/enc_mips32.c
+	${SRC}/dsp/enc_neon.c
+	${SRC}/dsp/enc_sse2.c
+	${SRC}/dsp/enc_sse41.c
 	${SRC}/dsp/filters.c
 	${SRC}/dsp/filters_mips_dsp_r2.c
 	${SRC}/dsp/filters_sse2.c
 	${SRC}/dsp/lossless.c
+	${SRC}/dsp/lossless_enc.c
+	${SRC}/dsp/lossless_enc_mips32.c
+	${SRC}/dsp/lossless_enc_neon.c
+	${SRC}/dsp/lossless_enc_sse2.c
+	${SRC}/dsp/lossless_enc_sse41.c
 	${SRC}/dsp/lossless_mips_dsp_r2.c
 	${SRC}/dsp/lossless_neon.c
 	${SRC}/dsp/lossless_sse2.c
@@ -45,26 +65,6 @@ SET(SOURCE_FILES
 	${SRC}/dsp/yuv_mips32.c
 	${SRC}/dsp/yuv_mips_dsp_r2.c
 	${SRC}/dsp/yuv_sse2.c
-	${SRC}/dsp/argb.c
-	${SRC}/dsp/argb_mips_dsp_r2.c
-	${SRC}/dsp/argb_sse2.c
-	${SRC}/dsp/cost.c
-	${SRC}/dsp/cost_mips32.c
-	${SRC}/dsp/cost_mips_dsp_r2.c
-	${SRC}/dsp/cost_sse2.c
-	${SRC}/dsp/enc.c
-	${SRC}/dsp/enc_avx2.c
-	${SRC}/dsp/enc_mips32.c
-	${SRC}/dsp/enc_mips_dsp_r2.c
-	${SRC}/dsp/enc_neon.c
-	${SRC}/dsp/enc_sse2.c
-	${SRC}/dsp/enc_sse41.c
-	${SRC}/dsp/lossless_enc.c
-	${SRC}/dsp/lossless_enc_mips32.c
-	${SRC}/dsp/lossless_enc_mips_dsp_r2.c
-	${SRC}/dsp/lossless_enc_neon.c
-	${SRC}/dsp/lossless_enc_sse2.c
-	${SRC}/dsp/lossless_enc_sse41.c
 	${SRC}/enc/alpha.c
 	${SRC}/enc/analysis.c
 	${SRC}/enc/backward_references.c
@@ -92,17 +92,17 @@ SET(SOURCE_FILES
 	${SRC}/mux/muxinternal.c
 	${SRC}/mux/muxread.c
 	${SRC}/utils/bit_reader.c
+	${SRC}/utils/bit_writer.c
 	${SRC}/utils/color_cache.c
 	${SRC}/utils/filters.c
 	${SRC}/utils/huffman.c
-	${SRC}/utils/quant_levels_dec.c
-	${SRC}/utils/rescaler.c
-	${SRC}/utils/random.c
-	${SRC}/utils/thread.c
-	${SRC}/utils/utils.c
-	${SRC}/utils/bit_writer.c
 	${SRC}/utils/huffman_encode.c
 	${SRC}/utils/quant_levels.c
+	${SRC}/utils/quant_levels_dec.c
+	${SRC}/utils/random.c
+	${SRC}/utils/rescaler.c
+	${SRC}/utils/thread.c
+	${SRC}/utils/utils.c
 )
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
