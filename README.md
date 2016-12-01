@@ -1,7 +1,7 @@
 # Gamecg composite library forks from FreeImage
 
 ## New Features:
-* susie plugin on windows
+* susie plugin
 * qt plugin
 * windows context menu previewer
 
