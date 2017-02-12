@@ -51,17 +51,19 @@ TARGET_LINK_LIBRARIES(freeimage libjxr libpng libtiff libwebp mozjpeg zlib)
 
 INCLUDE_DIRECTORIES(
 	${PROJECT_DIR}
-	${3RDPARTY_DIR}/libpng
 	${3RDPARTY_DIR}/libjxr/common/include
 	${3RDPARTY_DIR}/libjxr/image/sys
 	${3RDPARTY_DIR}/libjxr/image/x86
 	${3RDPARTY_DIR}/libjxr/jxrgluelib
+	${3RDPARTY_DIR}/libpng
 	${3RDPARTY_DIR}/libtiff/libtiff
 	${3RDPARTY_DIR}/libwebp/src
 	${3RDPARTY_DIR}/mozjpeg
 	${3RDPARTY_DIR}/zlib
 	${CMAKE_BINARY_DIR}/mozjpeg
 	${CMAKE_BINARY_DIR}/libpng
+	${CMAKE_BINARY_DIR}/libtiff
+	${CMAKE_BINARY_DIR}/zlib
 )
 
 IF(MSVC AND NOT X64)

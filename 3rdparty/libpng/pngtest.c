@@ -1,7 +1,7 @@
 
 /* pngtest.c - a simple test program to test libpng
  *
- * Last changed in libpng 1.6.24 [August 4, 2016]
+ * Last changed in libpng 1.6.26 [October 20, 2016]
  * Copyright (c) 1998-2002,2004,2006-2016 Glenn Randers-Pehrson
  * (Version 0.96 Copyright (c) 1996, 1997 Andreas Dilger)
  * (Version 0.88 Copyright (c) 1995, 1996 Guy Eric Schalnat, Group 42, Inc.)
@@ -42,15 +42,6 @@
 #define STDERR stdout   /* For DOS */
 
 #include "png.h"
-
-/* 1.6.1 added support for the configure test harness, which uses 77 to indicate
- * a skipped test, in earlier versions we need to succeed on a skipped test, so:
- */
-#if PNG_LIBPNG_VER >= 10601 && defined(HAVE_CONFIG_H)
-#  define SKIP 77
-#else
-#  define SKIP 0
-#endif
 
 /* Known chunks that exist in pngtest.png must be supported or pngtest will fail
  * simply as a result of re-ordering them.  This may be fixed in 1.7
@@ -973,15 +964,16 @@ test_one_file(PNG_CONST char *inname, PNG_CONST char *outname)
 #endif
 #endif
 
+#ifdef PNG_BENIGN_ERRORS_SUPPORTED
    if (strict != 0)
    {
       /* Treat png_benign_error() as errors on read */
       png_set_benign_errors(read_ptr, 0);
 
-#ifdef PNG_WRITE_SUPPORTED
+# ifdef PNG_WRITE_SUPPORTED
       /* Treat them as errors on write */
       png_set_benign_errors(write_ptr, 0);
-#endif
+# endif
 
       /* if strict is not set, then app warnings and errors are treated as
        * warnings in release builds, but not in unstable builds; this can be
@@ -994,10 +986,20 @@ test_one_file(PNG_CONST char *inname, PNG_CONST char *outname)
       /* Allow application (pngtest) errors and warnings to pass */
       png_set_benign_errors(read_ptr, 1);
 
-#ifdef PNG_WRITE_SUPPORTED
-      png_set_benign_errors(write_ptr, 1);
+      /* Turn off CRC checking while reading */
+      png_set_crc_action(read_ptr, PNG_CRC_QUIET_USE, PNG_CRC_QUIET_USE);
+
+#ifdef PNG_IGNORE_ADLER32
+      /* Turn off ADLER32 checking while reading */
+      png_set_option(read_ptr, PNG_IGNORE_ADLER32, PNG_OPTION_ON);
 #endif
+
+# ifdef PNG_WRITE_SUPPORTED
+      png_set_benign_errors(write_ptr, 1);
+# endif
+
    }
+#endif /* BENIGN_ERRORS */
 
    pngtest_debug("Initializing input and output streams");
 #ifdef PNG_STDIO_SUPPORTED
@@ -1395,6 +1397,11 @@ test_one_file(PNG_CONST char *inname, PNG_CONST char *outname)
    png_write_info(write_ptr, write_info_ptr);
 
    write_chunks(write_ptr, before_IDAT); /* after PLTE */
+
+#ifdef PNG_COMPRESSION_COMPAT
+   /* Test the 'compatibility' setting here, if it is available. */
+   png_set_compression(write_ptr, PNG_COMPRESSION_COMPAT);
+#endif
 #endif
 
 #ifdef SINGLE_ROWBUF_ALLOC
@@ -2076,9 +2083,9 @@ main(void)
    fprintf(STDERR,
        " test ignored because libpng was not built with read support\n");
    /* And skip this test */
-   return SKIP;
+   return PNG_LIBPNG_VER < 10600 ? 0 : 77;
 }
 #endif
 
 /* Generate a compiler error if there is an old png.h in the search path. */
-typedef png_libpng_version_1_6_24 Your_png_h_is_not_version_1_6_24;
+typedef png_libpng_version_1_6_28 Your_png_h_is_not_version_1_6_28;

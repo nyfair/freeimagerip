@@ -1,5 +1,15 @@
 SET(SRC ${3RDPARTY_DIR}/libtiff/libtiff)
 
+IF(MSVC)
+	FILE(COPY ${SRC}/tif_config.vc.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+	FILE(RENAME ${CMAKE_CURRENT_BINARY_DIR}/tif_config.vc.h ${CMAKE_CURRENT_BINARY_DIR}/tif_config.h)
+	FILE(COPY ${SRC}/tiffconf.vc.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+	FILE(RENAME ${CMAKE_CURRENT_BINARY_DIR}/tiffconf.vc.h ${CMAKE_CURRENT_BINARY_DIR}/tiffconf.h)
+ELSE()
+	CONFIGURE_FILE(${SRC}/tif_config.h.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/tif_config.h)
+	CONFIGURE_FILE(${SRC}/tiffconf.h.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/tiffconf.h)
+ENDIF()
+
 SET(SOURCE_FILES
 	${SRC}/tif_aux.c
 	${SRC}/tif_close.c
@@ -41,9 +51,11 @@ SET(SOURCE_FILES
 )
 
 INCLUDE_DIRECTORIES(
-	${3RDPARTY_DIR}/zlib
 	${3RDPARTY_DIR}/mozjpeg
+	${3RDPARTY_DIR}/zlib
 	${CMAKE_BINARY_DIR}/mozjpeg
+	${CMAKE_BINARY_DIR}/zlib
+	${CMAKE_CURRENT_BINARY_DIR}
 )
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
