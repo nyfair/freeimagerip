@@ -1,9 +1,6 @@
 SET(SRC ${3RDPARTY_DIR}/mozjpeg)
 
 SET(JPEG_LIB_VERSION 62)
-SET(DLL_VERSION ${JPEG_LIB_VERSION})
-SET(FULLVERSION ${DLL_VERSION}.0.0)
-
 SET(BITS_IN_JSAMPLE 8)
 SET(MEM_SRCDST_SUPPORTED 1)
 CONFIGURE_FILE(${SRC}/win/jconfig.h.in ${CMAKE_CURRENT_BINARY_DIR}/jconfig.h)
@@ -71,10 +68,11 @@ ENDIF()
 
 IF(X64)
 	SET(SOURCE_FILES ${SOURCE_FILES} ${SRC}/simd/jsimd_x86_64.c)
-	SET(SIMD_BASENAMES jfdctflt-sse-64 jccolor-sse2-64 jcgray-sse2-64
-		jcsample-sse2-64 jdcolor-sse2-64 jdmerge-sse2-64 jdsample-sse2-64
-		jfdctfst-sse2-64 jfdctint-sse2-64 jidctflt-sse2-64 jidctfst-sse2-64
-		jidctint-sse2-64 jidctred-sse2-64 jquantf-sse2-64 jquanti-sse2-64)
+  SET(SIMD_BASENAMES jfdctflt-sse-64 jccolor-sse2-64 jcgray-sse2-64
+    jchuff-sse2-64 jcsample-sse2-64 jdcolor-sse2-64 jdmerge-sse2-64
+    jdsample-sse2-64 jfdctfst-sse2-64 jfdctint-sse2-64 jidctflt-sse2-64
+    jidctfst-sse2-64 jidctint-sse2-64 jidctred-sse2-64 jquantf-sse2-64
+    jquanti-sse2-64)
 	IF(WIN32)
 		SET(NAFLAGS ${NAFLAGS} -fwin64 -DWIN64)
 	ELSEIF(APPLE)
@@ -85,12 +83,13 @@ IF(X64)
 	SET(NAFLAGS ${NAFLAGS} -D__x86_64__)
 ELSE()
 	SET(SOURCE_FILES ${SOURCE_FILES} ${SRC}/simd/jsimd_i386.c)
-	SET(SIMD_BASENAMES jsimdcpu jfdctflt-3dn jidctflt-3dn jquant-3dn jccolor-mmx
-		jcgray-mmx jcsample-mmx jdcolor-mmx jdmerge-mmx jdsample-mmx jfdctfst-mmx
-		jfdctint-mmx jidctfst-mmx jidctint-mmx jidctred-mmx jquant-mmx jfdctflt-sse
-		jidctflt-sse jquant-sse jccolor-sse2 jcgray-sse2 jcsample-sse2 jdcolor-sse2
-		jdmerge-sse2 jdsample-sse2 jfdctfst-sse2 jfdctint-sse2 jidctflt-sse2
-		jidctfst-sse2 jidctint-sse2 jidctred-sse2 jquantf-sse2 jquanti-sse2)
+  SET(SIMD_BASENAMES jsimdcpu jfdctflt-3dn jidctflt-3dn jquant-3dn jccolor-mmx
+    jcgray-mmx jcsample-mmx jdcolor-mmx jdmerge-mmx jdsample-mmx jfdctfst-mmx
+    jfdctint-mmx jidctfst-mmx jidctint-mmx jidctred-mmx jquant-mmx jfdctflt-sse
+    jidctflt-sse jquant-sse jccolor-sse2 jcgray-sse2 jchuff-sse2 jcsample-sse2
+    jdcolor-sse2 jdmerge-sse2 jdsample-sse2 jfdctfst-sse2 jfdctint-sse2
+    jidctflt-sse2 jidctfst-sse2 jidctint-sse2 jidctred-sse2 jquantf-sse2
+    jquanti-sse2)
 	IF(WIN32)
 		SET(NAFLAGS ${NAFLAGS} -fwin32 -DWIN32)
 	ELSE()
@@ -111,6 +110,10 @@ FOREACH(FILE ${SIMD_BASENAMES})
 		SET(DEPFILE ${SIMD_SRC})
 		STRING(REGEX REPLACE "jccolor" "jccolext" DEPFILE ${DEPFILE})
 	ENDIF()
+	IF(${FILE} MATCHES jcgray)
+		SET(DEPFILE ${SIMD_SRC})
+		STRING(REGEX REPLACE "jcgray" "jcgryext" DEPFILE ${DEPFILE})
+	ENDIF()
 	IF(${FILE} MATCHES jdcolor)
 		SET(DEPFILE ${SIMD_SRC})
 		STRING(REGEX REPLACE "jdcolor" "jdcolext" DEPFILE ${DEPFILE})
@@ -118,10 +121,6 @@ FOREACH(FILE ${SIMD_BASENAMES})
 	IF(${FILE} MATCHES jdmerge)
 		SET(DEPFILE ${SIMD_SRC})
 		STRING(REGEX REPLACE "jdmerge" "jdmrgext" DEPFILE ${DEPFILE})
-	ENDIF()
-	IF(${FILE} MATCHES jcgray)
-		SET(DEPFILE ${SIMD_SRC})
-		STRING(REGEX REPLACE "jcgray" "jcgryext" DEPFILE ${DEPFILE})
 	ENDIF()
 	SET(SIMD_OBJ ${CMAKE_CURRENT_BINARY_DIR}/${FILE}.obj)
 	ADD_CUSTOM_COMMAND(OUTPUT ${SIMD_OBJ}

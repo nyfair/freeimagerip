@@ -2,12 +2,13 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.56])
-AC_INIT([mozjpeg], [3.1])
+AC_INIT([mozjpeg], [3.2])
 BUILD=`date +%Y%m%d`
 
 AM_INIT_AUTOMAKE([-Wall foreign dist-bzip2])
-m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES(yes)])
 AC_PREFIX_DEFAULT(/opt/mozjpeg)
+
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 # Checks for programs.
 SAVED_CFLAGS=${CFLAGS}
@@ -22,7 +23,13 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AC_PROG_LIBTOOL
 AC_PROG_LN_S
 
-# When the prefix is /opt/mozjpeg, we assume that an "official" binary is
+AC_ARG_WITH([build-date], [Use custom build string to enable reproducible builds (default: YYMMDD)],
+  [BUILD="$with_build_date"],
+  [BUILD=`date +%Y%m%d`])
+
+PKG_PROG_PKG_CONFIG
+
+# When the prefix is /opt/libjpeg-turbo, we assume that an "official" binary is
 # being created, and thus we install things into specific locations.
 
 old_prefix=${prefix}
@@ -31,19 +38,26 @@ if test "x$prefix" = "xNONE" -a "x$ac_default_prefix" != "x"; then
 fi
 DATADIR=`eval echo ${datadir}`
 DATADIR=`eval echo $DATADIR`
-if test "$DATADIR" = "/opt/mozjpeg/share"; then
+if test "$DATADIR" = "/opt/libjpeg-turbo/share"; then
   datadir='${prefix}'
 fi
 DATADIR=`eval echo ${datarootdir}`
 DATADIR=`eval echo $DATADIR`
-if test "$DATADIR" = "/opt/mozjpeg/share"; then
+if test "$DATADIR" = "/opt/libjpeg-turbo/share"; then
   datarootdir='${prefix}'
+fi
+DOCDIR=`eval echo ${docdir}`
+DOCDIR=`eval echo $DOCDIR`
+if test "$DOCDIR" = "/opt/libjpeg-turbo/doc/libjpeg-turbo"; then
+  docdir='${datadir}/doc'
 fi
 
 old_exec_prefix=${exec_prefix}
 if test "x$exec_prefix" = "xNONE"; then
   exec_prefix=${prefix}
 fi
+
+AC_CHECK_SIZEOF(size_t)
 
 if test "x${libdir}" = 'x${exec_prefix}/lib' -o "x${libdir}" = 'x${prefix}/lib'; then
   LIBDIR=`eval echo ${libdir}`
@@ -53,10 +67,9 @@ if test "x${libdir}" = 'x${exec_prefix}/lib' -o "x${libdir}" = 'x${prefix}/lib';
       darwin*)
         ;;
       *)
-        AC_CHECK_SIZEOF(long)
-        if test "${ac_cv_sizeof_long}" = "8"; then
+        if test "${ac_cv_sizeof_size_t}" = "8"; then
           libdir='${exec_prefix}/lib64'
-        elif test "${ac_cv_sizeof_long}" = "4"; then
+        elif test "${ac_cv_sizeof_size_t}" = "4"; then
           libdir='${exec_prefix}/lib32'
         fi
         ;;
@@ -68,7 +81,7 @@ prefix=${old_prefix}
 
 # Check whether compiler supports pointers to undefined structures
 AC_MSG_CHECKING(whether compiler supports pointers to undefined structures)
-AC_TRY_COMPILE([ typedef struct undefined_structure * undef_struct_ptr; ], ,
+AC_TRY_COMPILE([ typedef struct undefined_structure *undef_struct_ptr; ], ,
   AC_MSG_RESULT(yes),
   [AC_MSG_RESULT(no)
    AC_DEFINE([INCOMPLETE_TYPES_BROKEN], [1],
@@ -219,6 +232,16 @@ AC_SUBST(MEM_SRCDST_FUNCTIONS)
 
 AC_DEFINE_UNQUOTED(MOZJPEG_VERSION, [$VERSION], [mozjpeg version])
 
+m4_define(version_triplet,m4_split(AC_PACKAGE_VERSION,[[.]]))
+m4_define(version_major,m4_argn(1,version_triplet))
+m4_define(version_minor,m4_argn(2,version_triplet))
+m4_define(version_revision,m4_argn(3,version_triplet))
+VERSION_MAJOR=version_major
+VERSION_MINOR=version_minor
+VERSION_REVISION=version_revision
+LIBJPEG_TURBO_VERSION_NUMBER=`printf "%d%03d%03d" $VERSION_MAJOR $VERSION_MINOR $VERSION_REVISION`
+AC_DEFINE_UNQUOTED(LIBJPEG_TURBO_VERSION_NUMBER, [$LIBJPEG_TURBO_VERSION_NUMBER], [libjpeg-turbo version in integer form])
+
 VERSION_SCRIPT=yes
 AC_ARG_ENABLE([ld-version-script],
   AS_HELP_STRING([--disable-ld-version-script],
@@ -274,9 +297,12 @@ AC_DEFINE_UNQUOTED([INLINE],[$ljt_cv_inline],[How to obtain function inlining.])
 AC_MSG_CHECKING([whether to include arithmetic encoding support])
 AC_ARG_WITH([arith-enc],
   AC_HELP_STRING([--without-arith-enc],
-    [Do not include arithmetic encoding support]))
+    [Do not include arithmetic encoding support when emulating the libjpeg v6b API/ABI]))
 if test "x$with_12bit" = "xyes"; then
   with_arith_enc=no
+fi
+if test "x${with_jpeg8}" = "xyes" -o "x${with_jpeg7}" = "xyes"; then
+  with_arith_enc=yes
 fi
 if test "x$with_arith_enc" = "xno"; then
   AC_MSG_RESULT(no)
@@ -290,9 +316,12 @@ AM_CONDITIONAL([WITH_ARITH_ENC], [test "x$with_arith_enc" != "xno"])
 AC_MSG_CHECKING([whether to include arithmetic decoding support])
 AC_ARG_WITH([arith-dec],
   AC_HELP_STRING([--without-arith-dec],
-    [Do not include arithmetic decoding support]))
+    [Do not include arithmetic decoding support when emulating the libjpeg v6b API/ABI]))
 if test "x$with_12bit" = "xyes"; then
   with_arith_dec=no
+fi
+if test "x${with_jpeg8}" = "xyes" -o "x${with_jpeg7}" = "xyes"; then
+  with_arith_dec=yes
 fi
 if test "x$with_arith_dec" = "xno"; then
   AC_MSG_RESULT(no)
@@ -527,6 +556,7 @@ AM_CONDITIONAL([SIMD_MIPS], [test "x$simd_arch" = "xmips"])
 AM_CONDITIONAL([SIMD_POWERPC], [test "x$simd_arch" = "xpowerpc"])
 AM_CONDITIONAL([X86_64], [test "x$host_cpu" = "xx86_64" -o "x$host_cpu" = "xamd64"])
 AM_CONDITIONAL([WITH_TURBOJPEG], [test "x$with_turbojpeg" != "xno"])
+AM_CONDITIONAL([CROSS_COMPILING], [test "x$cross_compiling" = "xyes"])
 
 AC_ARG_VAR(PKGNAME, [distribution package name (default: mozjpeg)])
 if test "x$PKGNAME" = "x"; then
@@ -543,7 +573,16 @@ case "$host_cpu" in
     RPMARCH=i386
     DEBARCH=i386
     ;;
+  *)
+    RPMARCH=`uname -m`
+    DEBARCH=$RPMARCH
+    ;;
 esac
+
+if test "${docdir}" = ""; then
+  docdir=${datadir}/doc
+  AC_SUBST(docdir)
+fi
 
 AC_SUBST(RPMARCH)
 AC_SUBST(RPM_CONFIG_ARGS)
@@ -564,6 +603,8 @@ AC_CONFIG_FILES([pkgscripts/makecygwinpkg.tmpl:release/makecygwinpkg.in])
 AC_CONFIG_FILES([pkgscripts/makedpkg.tmpl:release/makedpkg.in])
 AC_CONFIG_FILES([pkgscripts/makemacpkg.tmpl:release/makemacpkg.in])
 AC_CONFIG_FILES([pkgscripts/uninstall.tmpl:release/uninstall.in])
+AC_CONFIG_FILES([pkgscripts/libjpeg.pc:release/libjpeg.pc.in])
+AC_CONFIG_FILES([pkgscripts/libturbojpeg.pc:release/libturbojpeg.pc.in])
 if test "x$with_turbojpeg" != "xno"; then
   AC_CONFIG_FILES([tjbenchtest])
 fi

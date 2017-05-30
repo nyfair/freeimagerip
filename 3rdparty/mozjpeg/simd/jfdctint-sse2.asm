@@ -3,8 +3,7 @@
 ;
 ; Copyright 2009 Pierre Ossman <ossman@cendio.se> for Cendio AB
 ;
-; Based on
-; x86 SIMD extension for IJG JPEG library
+; Based on the x86 SIMD extension for IJG JPEG library
 ; Copyright (C) 1999-2006, MIYASAKA Masaru.
 ; For conditions of distribution and use, see copyright notice in jsimdext.inc
 ;
@@ -91,10 +90,10 @@ PW_DESCALE_P2X  times 8 dw  1 << (PASS1_BITS-1)
 ; Perform the forward DCT on one block of samples.
 ;
 ; GLOBAL(void)
-; jsimd_fdct_islow_sse2 (DCTELEM * data)
+; jsimd_fdct_islow_sse2 (DCTELEM *data)
 ;
 
-%define data(b)         (b)+8           ; DCTELEM * data
+%define data(b)         (b)+8           ; DCTELEM *data
 
 %define original_ebp    ebp+0
 %define wk(i)           ebp-(WK_NUM-(i))*SIZEOF_XMMWORD ; xmmword wk[WK_NUM]
@@ -462,11 +461,11 @@ EXTN(jsimd_fdct_islow_sse2):
         psubw   xmm6,xmm4               ; xmm6=tmp12
 
         movdqa  xmm5,xmm7
-        paddsw   xmm7,xmm2               ; xmm7=tmp10+tmp11
-        psubsw   xmm5,xmm2               ; xmm5=tmp10-tmp11
+        paddw   xmm7,xmm2               ; xmm7=tmp10+tmp11
+        psubw   xmm5,xmm2               ; xmm5=tmp10-tmp11
 
-        paddsw   xmm7,[GOTOFF(ebx,PW_DESCALE_P2X)]
-        paddsw   xmm5,[GOTOFF(ebx,PW_DESCALE_P2X)]
+        paddw   xmm7,[GOTOFF(ebx,PW_DESCALE_P2X)]
+        paddw   xmm5,[GOTOFF(ebx,PW_DESCALE_P2X)]
         psraw   xmm7,PASS1_BITS         ; xmm7=data0
         psraw   xmm5,PASS1_BITS         ; xmm5=data4
 

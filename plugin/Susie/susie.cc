@@ -16,7 +16,7 @@ void buildExtInfo(char* buf, char* conf) {
 
 	if (GetPrivateProfileSection("extensions", conf, CONFLEN, buf) < 1) {
 		int count = FreeImage_GetFIFCount();
-		char fifid[2], exts[32];
+		char fifid[2] = {'0','0'}, exts[32];
 		for (int i = 0; i < count; i++) {
 			_itoa(i+1, fifid, 10);
 			strcpy(exts, FreeImage_GetFIFExtensionList((FREE_IMAGE_FORMAT)i));
@@ -88,7 +88,8 @@ int GetPictureEx(FIBITMAP* dib, HANDLE *pHBInfo, HANDLE *pHBm,
 	unsigned height = FreeImage_GetHeight(dib);
 	unsigned bpp_real = FreeImage_GetBPP(dib);
 	unsigned bpp = bpp_real > 32 ? (bpp_real % 48 ? 32 : 24) : bpp_real;
-	unsigned factor, line_size;
+	unsigned factor = 0;
+	unsigned line_size;
 	if (bpp <= 8) {
 		line_size = FreeImage_GetPitch(dib);
 	} else {
