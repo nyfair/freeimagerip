@@ -51,10 +51,8 @@ SET(SOURCE_FILES
 	${SRC}/dsp/yuv.c
 	${SRC}/dsp/yuv_mips32.c
 	${SRC}/dsp/yuv_mips_dsp_r2.c
+	${SRC}/dsp/yuv_neon.c
 	${SRC}/dsp/yuv_sse2.c
-	${SRC}/dsp/argb.c
-	${SRC}/dsp/argb_mips_dsp_r2.c
-	${SRC}/dsp/argb_sse2.c
 	${SRC}/dsp/cost.c
 	${SRC}/dsp/cost_mips32.c
 	${SRC}/dsp/cost_mips_dsp_r2.c
@@ -74,8 +72,11 @@ SET(SOURCE_FILES
 	${SRC}/dsp/lossless_enc_neon.c
 	${SRC}/dsp/lossless_enc_sse2.c
 	${SRC}/dsp/lossless_enc_sse41.c
+    ${SRC}/dsp/ssim.c
+    ${SRC}/dsp/ssim_sse2.c
 	${SRC}/enc/alpha_enc.c
 	${SRC}/enc/analysis_enc.c
+	${SRC}/enc/backward_references_cost_enc.c
 	${SRC}/enc/backward_references_enc.c
 	${SRC}/enc/config_enc.c
 	${SRC}/enc/cost_enc.c
@@ -116,6 +117,8 @@ SET(SOURCE_FILES
 )
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
+
+INCLUDE_DIRECTORIES(${3RDPARTY_DIR}/libwebp)
 
 ADD_DEFINITIONS(-DWEBP_HAVE_AVX2 -DWEBP_USE_THREAD -DHAVE_WINCODEC_H)
 
