@@ -1,5 +1,5 @@
 /*
- * Copyright (C)2009-2016 D. R. Commander.  All Rights Reserved.
+ * Copyright (C)2009-2017 D. R. Commander.  All Rights Reserved.
  * mozjpeg Modifications:
  * Copyright (C) 2014, Mozilla Corporation.
  *
@@ -376,6 +376,29 @@ static int getSubsamp(j_decompress_ptr dinfo)
 					retval=i;  break;
 				}
 			}
+			/* Handle 4:2:2 and 4:4:0 images whose sampling factors are specified
+			   in non-standard ways. */
+			if(dinfo->comp_info[0].h_samp_factor==2 &&
+				dinfo->comp_info[0].v_samp_factor==2 &&
+				(i==TJSAMP_422 || i==TJSAMP_440))
+			{
+				int match=0;
+				for(k=1; k<dinfo->num_components; k++)
+				{
+					int href=tjMCUHeight[i]/8, vref=tjMCUWidth[i]/8;
+					if(dinfo->jpeg_color_space==JCS_YCCK && k==3)
+					{
+						href=vref=2;
+					}
+					if(dinfo->comp_info[k].h_samp_factor==href
+						&& dinfo->comp_info[k].v_samp_factor==vref)
+						match++;
+				}
+				if(match==dinfo->num_components-1)
+				{
+					retval=i;  break;
+				}
+			}
 		}
 	}
 	return retval;
@@ -578,7 +601,8 @@ static tjhandle _tjInitCompress(tjinstance *this)
 	if(setjmp(this->jerr.setjmp_buffer))
 	{
 		/* If we get here, the JPEG code has signaled an error. */
-		if(this) free(this);  return NULL;
+		if(this) free(this);
+		return NULL;
 	}
 
 	jpeg_create_compress(&this->cinfo);
@@ -756,13 +780,6 @@ DLLEXPORT int DLLCALL tjCompress2(tjhandle handle, const unsigned char *srcBuf,
 		|| jpegSubsamp<0 || jpegSubsamp>=NUMSUBOPT || jpegQual<0 || jpegQual>100)
 		_throw("tjCompress2(): Invalid argument");
 
-	if(setjmp(this->jerr.setjmp_buffer))
-	{
-		/* If we get here, the JPEG code has signaled an error. */
-		retval=-1;
-		goto bailout;
-	}
-
 	if(pitch==0) pitch=width*tjPixelSize[pixelFormat];
 
 	#ifndef JCS_EXTENSIONS
@@ -774,6 +791,16 @@ DLLEXPORT int DLLCALL tjCompress2(tjhandle handle, const unsigned char *srcBuf,
 		pitch=width*RGB_PIXELSIZE;
 	}
 	#endif
+
+	if((row_pointer=(JSAMPROW *)malloc(sizeof(JSAMPROW)*height))==NULL)
+		_throw("tjCompress2(): Memory allocation failure");
+
+	if(setjmp(this->jerr.setjmp_buffer))
+	{
+		/* If we get here, the JPEG code has signaled an error. */
+		retval=-1;
+		goto bailout;
+	}
 
 	cinfo->image_width=width;
 	cinfo->image_height=height;
@@ -791,8 +818,6 @@ DLLEXPORT int DLLCALL tjCompress2(tjhandle handle, const unsigned char *srcBuf,
 		return -1;
 
 	jpeg_start_compress(cinfo, TRUE);
-	if((row_pointer=(JSAMPROW *)malloc(sizeof(JSAMPROW)*height))==NULL)
-		_throw("tjCompress2(): Memory allocation failure");
 	for(i=0; i<height; i++)
 	{
 		if(flags&TJFLAG_BOTTOMUP)
@@ -872,13 +897,6 @@ DLLEXPORT int DLLCALL tjEncodeYUVPlanes(tjhandle handle,
 	if(subsamp!=TJSAMP_GRAY && (!dstPlanes[1] || !dstPlanes[2]))
 		_throw("tjEncodeYUVPlanes(): Invalid argument");
 
-	if(setjmp(this->jerr.setjmp_buffer))
-	{
-		/* If we get here, the JPEG code has signaled an error. */
-		retval=-1;
-		goto bailout;
-	}
-
 	if(pixelFormat==TJPF_CMYK)
 		_throw("tjEncodeYUVPlanes(): Cannot generate YUV images from CMYK pixels");
 
@@ -893,6 +911,13 @@ DLLEXPORT int DLLCALL tjEncodeYUVPlanes(tjhandle handle,
 		pitch=width*RGB_PIXELSIZE;
 	}
 	#endif
+
+	if(setjmp(this->jerr.setjmp_buffer))
+	{
+		/* If we get here, the JPEG code has signaled an error. */
+		retval=-1;
+		goto bailout;
+	}
 
 	cinfo->image_width=width;
 	cinfo->image_height=height;
@@ -968,6 +993,13 @@ DLLEXPORT int DLLCALL tjEncodeYUVPlanes(tjhandle handle,
 			outbuf[i][row]=ptr;
 			ptr+=(strides && strides[i]!=0)? strides[i]:pw[i];
 		}
+	}
+
+	if(setjmp(this->jerr.setjmp_buffer))
+	{
+		/* If we get here, the JPEG code has signaled an error. */
+		retval=-1;
+		goto bailout;
 	}
 
 	for(row=0; row<ph0; row+=cinfo->max_v_samp_factor)
@@ -1144,6 +1176,13 @@ DLLEXPORT int DLLCALL tjCompressFromYUVPlanes(tjhandle handle,
 		}
 	}
 
+	if(setjmp(this->jerr.setjmp_buffer))
+	{
+		/* If we get here, the JPEG code has signaled an error. */
+		retval=-1;
+		goto bailout;
+	}
+
 	for(row=0; row<(int)cinfo->image_height;
 		row+=cinfo->max_v_samp_factor*DCTSIZE)
 	{
@@ -1239,7 +1278,8 @@ static tjhandle _tjInitDecompress(tjinstance *this)
 	if(setjmp(this->jerr.setjmp_buffer))
 	{
 		/* If we get here, the JPEG code has signaled an error. */
-		if(this) free(this);  return NULL;
+		if(this) free(this);
+		return NULL;
 	}
 
 	jpeg_create_decompress(&this->dinfo);
@@ -1421,6 +1461,12 @@ DLLEXPORT int DLLCALL tjDecompress2(tjhandle handle,
 	if((row_pointer=(JSAMPROW *)malloc(sizeof(JSAMPROW)
 		*dinfo->output_height))==NULL)
 		_throw("tjDecompress2(): Memory allocation failure");
+	if(setjmp(this->jerr.setjmp_buffer))
+	{
+		/* If we get here, the JPEG code has signaled an error. */
+		retval=-1;
+		goto bailout;
+	}
 	for(i=0; i<(int)dinfo->output_height; i++)
 	{
 		if(flags&TJFLAG_BOTTOMUP)
@@ -1643,6 +1689,13 @@ DLLEXPORT int DLLCALL tjDecodeYUVPlanes(tjhandle handle,
 		}
 	}
 
+	if(setjmp(this->jerr.setjmp_buffer))
+	{
+		/* If we get here, the JPEG code has signaled an error. */
+		retval=-1;
+		goto bailout;
+	}
+
 	for(row=0; row<ph0; row+=dinfo->max_v_samp_factor)
 	{
 		JDIMENSION inrow=0, outrow=0;
@@ -1823,6 +1876,13 @@ DLLEXPORT int DLLCALL tjDecompressToYUVPlanes(tjhandle handle,
 		}
 	}
 
+	if(setjmp(this->jerr.setjmp_buffer))
+	{
+		/* If we get here, the JPEG code has signaled an error. */
+		retval=-1;
+		goto bailout;
+	}
+
 	if(flags&TJFLAG_FASTUPSAMPLE) dinfo->do_fancy_upsampling=FALSE;
 	if(flags&TJFLAG_FASTDCT) dinfo->dct_method=JDCT_FASTEST;
 	dinfo->raw_data_out=TRUE;
@@ -2000,6 +2060,11 @@ DLLEXPORT int DLLCALL tjTransform(tjhandle handle,
 	else if(flags&TJFLAG_FORCESSE) putenv("JSIMD_FORCESSE=1");
 	else if(flags&TJFLAG_FORCESSE2) putenv("JSIMD_FORCESSE2=1");
 
+	if((xinfo=(jpeg_transform_info *)malloc(sizeof(jpeg_transform_info)*n))
+		==NULL)
+		_throw("tjTransform(): Memory allocation failure");
+	MEMZERO(xinfo, sizeof(jpeg_transform_info)*n);
+
 	if(setjmp(this->jerr.setjmp_buffer))
 	{
 		/* If we get here, the JPEG code has signaled an error. */
@@ -2008,11 +2073,6 @@ DLLEXPORT int DLLCALL tjTransform(tjhandle handle,
 	}
 
 	jpeg_mem_src_tj(dinfo, jpegBuf, jpegSize);
-
-	if((xinfo=(jpeg_transform_info *)malloc(sizeof(jpeg_transform_info)*n))
-		==NULL)
-		_throw("tjTransform(): Memory allocation failure");
-	MEMZERO(xinfo, sizeof(jpeg_transform_info)*n);
 
 	for(i=0; i<n; i++)
 	{
@@ -2090,6 +2150,10 @@ DLLEXPORT int DLLCALL tjTransform(tjhandle handle,
 			&xinfo[i]);
 		if(!(t[i].options&TJXOPT_NOOUTPUT))
 		{
+#ifdef C_PROGRESSIVE_SUPPORTED
+			if (cinfo->num_scans != 0)     /* process -progressive; -scans can override */
+				jpeg_simple_progression(cinfo);
+#endif
 			jpeg_write_coefficients(cinfo, dstcoefs);
 			jcopy_markers_execute(dinfo, cinfo, JCOPYOPT_ALL);
 		}

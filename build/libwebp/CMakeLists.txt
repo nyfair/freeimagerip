@@ -48,11 +48,13 @@ SET(SOURCE_FILES
 	${SRC}/dsp/upsampling_msa.c
 	${SRC}/dsp/upsampling_neon.c
 	${SRC}/dsp/upsampling_sse2.c
+	${SRC}/dsp/upsampling_sse41.c
 	${SRC}/dsp/yuv.c
 	${SRC}/dsp/yuv_mips32.c
 	${SRC}/dsp/yuv_mips_dsp_r2.c
 	${SRC}/dsp/yuv_neon.c
 	${SRC}/dsp/yuv_sse2.c
+	${SRC}/dsp/yuv_sse41.c
 	${SRC}/dsp/cost.c
 	${SRC}/dsp/cost_mips32.c
 	${SRC}/dsp/cost_mips_dsp_r2.c
@@ -72,15 +74,14 @@ SET(SOURCE_FILES
 	${SRC}/dsp/lossless_enc_neon.c
 	${SRC}/dsp/lossless_enc_sse2.c
 	${SRC}/dsp/lossless_enc_sse41.c
-    ${SRC}/dsp/ssim.c
-    ${SRC}/dsp/ssim_sse2.c
+	${SRC}/dsp/ssim.c
+	${SRC}/dsp/ssim_sse2.c
 	${SRC}/enc/alpha_enc.c
 	${SRC}/enc/analysis_enc.c
 	${SRC}/enc/backward_references_cost_enc.c
 	${SRC}/enc/backward_references_enc.c
 	${SRC}/enc/config_enc.c
 	${SRC}/enc/cost_enc.c
-	${SRC}/enc/delta_palettization_enc.c
 	${SRC}/enc/filter_enc.c
 	${SRC}/enc/frame_enc.c
 	${SRC}/enc/histogram_enc.c
