@@ -1,0 +1,50 @@
+image: Visual Studio 2017
+
+environment:
+  matrix:
+    - osname: win32
+    - osname: win64
+
+install:
+  - C:\msys64\usr\bin\pacman -S --noconfirm yasm
+  - set PATH=%PATH%;C:\msys64\usr\bin
+
+before_deploy:
+  - if %osname%==win32 cmake build -G "Visual Studio 15 2017" -DSUSIE_PLUGIN=on
+  - if %osname%==win64 cmake build -G "Visual Studio 15 2017 Win64" -DFISHELLEXT=on
+  - cmake --build . --config Release
+  - move Release\*.dll .
+  - if %osname%==win32 move plugin\Release\*.spi .
+  - if %osname%==win64 move plugin\Release\*.dll .
+  - 7z a %osname%.7z *.dll *.spi
+  - md include lib
+  - move src\FreeImage.h include
+  - move Release\*.lib lib
+  - 7z a %osname%-dev.7z include lib
+  - if %osname%==win32 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars32.bat"
+  - if %osname%==win64 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+  - curl -O http://luajit.org/download/LuaJIT-2.1.0-beta3.zip
+  - curl -LO https://github.com/nyfair/fi-luajit/archive/master.zip
+  - 7z x *.zip
+  - cd LuaJIT-2.1.0-beta3\src
+  - msvcbuild amalg
+  - md lua
+  - move ..\..\fi-luajit-master\*.lua lua
+  - 7z a ..\..\%osname%-luajit-bind.7z *.exe *.dll lua
+  - cd ..\..\
+  - ps: Get-ChildItem *.7z | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+
+deploy:
+  artifact: /.*\.7z/
+  auth_token:
+    secure: J1DFsRUBaJKZ2HqHKOQEA427FUsKo6rDTxtxyUwARP7k0Ac5SgX1qn77+LYXdwk6
+  description: ''
+  on:
+    appveyor_repo_tag: true
+  provider: GitHub
+
+branches:
+  only:
+    - latest
+
+build: false
