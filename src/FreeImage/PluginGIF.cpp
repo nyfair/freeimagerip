@@ -790,7 +790,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 					io->read_proc(&b, 1, 1, handle);
 				}
 				comment.append(1, '\0');
-				sprintf(buf, "Comment%d", idx);
+				sprintf(buf, "Comment%zd", idx);
 			}
 		}
 

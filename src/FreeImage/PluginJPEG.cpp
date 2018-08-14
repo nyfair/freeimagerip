@@ -767,13 +767,6 @@ Save(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 			cinfo.Y_density = (UINT16) (0.5 + 0.0254 * FreeImage_GetDotsPerMeterY(rawdib));
 			cinfo.density_unit = 1;	// dots / inch
 
-			// baseline JPEG support
-			//if ((flags & JPEG_BASELINE) ==  JPEG_BASELINE) {
-			//	cinfo.write_JFIF_header = 0;	// No marker for non-JFIF colorspaces
-			//	cinfo.write_Adobe_marker = 0;	// write no Adobe marker by default				
-			//}
-
-
 			// set subsampling options if required
 
 			if(cinfo.in_color_space == JCS_RGB) {
