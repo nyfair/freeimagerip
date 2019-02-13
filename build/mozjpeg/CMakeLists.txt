@@ -2,9 +2,12 @@ SET(SRC ${3RDPARTY_DIR}/mozjpeg)
 
 SET(JPEG_LIB_VERSION 62)
 SET(BITS_IN_JSAMPLE 8)
-SET(MEM_SRCDST_SUPPORTED 1)
-CONFIGURE_FILE(${SRC}/win/jconfig.h.in ${CMAKE_CURRENT_BINARY_DIR}/jconfig.h)
-CONFIGURE_FILE(${SRC}/win/jconfigint.h.in ${CMAKE_CURRENT_BINARY_DIR}/jconfigint.h)
+IF(WIN32)
+	CONFIGURE_FILE(${SRC}/win/jconfig.h.in ${CMAKE_CURRENT_BINARY_DIR}/jconfig.h)
+ELSE()
+	CONFIGURE_FILE(${SRC}/jconfig.h.in ${CMAKE_CURRENT_BINARY_DIR}/jconfig.h)
+ENDIF()
+CONFIGURE_FILE(${SRC}/jconfigint.h.in ${CMAKE_CURRENT_BINARY_DIR}/jconfigint.h)
 
 SET(SOURCE_FILES
 	${SRC}/jcapimin.c
@@ -12,8 +15,9 @@ SET(SOURCE_FILES
 	${SRC}/jccoefct.c
 	${SRC}/jccolor.c
 	${SRC}/jcdctmgr.c
-	${SRC}/jcext.c
 	${SRC}/jchuff.c
+	${SRC}/jcext.c
+	${SRC}/jcicc.c
 	${SRC}/jcinit.c
 	${SRC}/jcmainct.c
 	${SRC}/jcmarker.c
@@ -32,6 +36,7 @@ SET(SOURCE_FILES
 	${SRC}/jdcolor.c
 	${SRC}/jddctmgr.c
 	${SRC}/jdhuff.c
+	${SRC}/jdicc.c
 	${SRC}/jdinput.c
 	${SRC}/jdmainct.c
 	${SRC}/jdmarker.c
@@ -57,7 +62,7 @@ SET(SOURCE_FILES
 	${SRC}/transupp.c
 )
 
-SET(NAFLAGS -I${SRC}/simd/ -I${SRC}/win)
+SET(NAFLAGS -I${SRC}/simd/nasm)
 
 IF(MSVC)
 	SET(NAFLAGS ${NAFLAGS} -DMSVC)
@@ -67,12 +72,19 @@ ELSE()
 ENDIF()
 
 IF(X64)
-	SET(SOURCE_FILES ${SOURCE_FILES} ${SRC}/simd/jsimd_x86_64.c)
-  SET(SIMD_BASENAMES jfdctflt-sse-64 jccolor-sse2-64 jcgray-sse2-64
-    jchuff-sse2-64 jcsample-sse2-64 jdcolor-sse2-64 jdmerge-sse2-64
-    jdsample-sse2-64 jfdctfst-sse2-64 jfdctint-sse2-64 jidctflt-sse2-64
-    jidctfst-sse2-64 jidctint-sse2-64 jidctred-sse2-64 jquantf-sse2-64
-    jquanti-sse2-64)
+	SET(SIMD_PATH x86_64)
+  SET(SIMD_BASENAMES
+		jsimdcpu.asm jfdctflt-sse.asm
+    jccolor-sse2.asm jcgray-sse2.asm jchuff-sse2.asm
+    jcphuff-sse2.asm jcsample-sse2.asm jdcolor-sse2.asm
+    jdmerge-sse2.asm jdsample-sse2.asm jfdctfst-sse2.asm
+    jfdctint-sse2.asm jidctflt-sse2.asm jidctfst-sse2.asm
+    jidctint-sse2.asm jidctred-sse2.asm jquantf-sse2.asm
+    jquanti-sse2.asm
+    jccolor-avx2.asm jcgray-avx2.asm jcsample-avx2.asm
+    jdcolor-avx2.asm jdmerge-avx2.asm jdsample-avx2.asm
+    jfdctint-avx2.asm jidctint-avx2.asm jquanti-avx2.asm
+	)
 	IF(WIN32)
 		SET(NAFLAGS ${NAFLAGS} -fwin64 -DWIN64)
 	ELSEIF(APPLE)
@@ -82,14 +94,25 @@ IF(X64)
 	ENDIF()
 	SET(NAFLAGS ${NAFLAGS} -D__x86_64__)
 ELSE()
-	SET(SOURCE_FILES ${SOURCE_FILES} ${SRC}/simd/jsimd_i386.c)
-  SET(SIMD_BASENAMES jsimdcpu jfdctflt-3dn jidctflt-3dn jquant-3dn jccolor-mmx
-    jcgray-mmx jcsample-mmx jdcolor-mmx jdmerge-mmx jdsample-mmx jfdctfst-mmx
-    jfdctint-mmx jidctfst-mmx jidctint-mmx jidctred-mmx jquant-mmx jfdctflt-sse
-    jidctflt-sse jquant-sse jccolor-sse2 jcgray-sse2 jchuff-sse2 jcsample-sse2
-    jdcolor-sse2 jdmerge-sse2 jdsample-sse2 jfdctfst-sse2 jfdctint-sse2
-    jidctflt-sse2 jidctfst-sse2 jidctint-sse2 jidctred-sse2 jquantf-sse2
-    jquanti-sse2)
+	SET(SIMD_PATH i386)
+  SET(SIMD_BASENAMES 
+		jsimdcpu.asm jfdctflt-3dn.asm
+    jidctflt-3dn.asm jquant-3dn.asm
+    jccolor-mmx.asm jcgray-mmx.asm jcsample-mmx.asm
+    jdcolor-mmx.asm jdmerge-mmx.asm jdsample-mmx.asm
+    jfdctfst-mmx.asm jfdctint-mmx.asm jidctfst-mmx.asm
+    jidctint-mmx.asm jidctred-mmx.asm jquant-mmx.asm
+    jfdctflt-sse.asm jidctflt-sse.asm jquant-sse.asm
+    jccolor-sse2.asm jcgray-sse2.asm jchuff-sse2.asm
+    jcphuff-sse2.asm jcsample-sse2.asm jdcolor-sse2.asm
+    jdmerge-sse2.asm jdsample-sse2.asm jfdctfst-sse2.asm
+    jfdctint-sse2.asm jidctflt-sse2.asm jidctfst-sse2.asm
+    jidctint-sse2.asm jidctred-sse2.asm jquantf-sse2.asm
+    jquanti-sse2.asm
+    jccolor-avx2.asm jcgray-avx2.asm jcsample-avx2.asm
+    jdcolor-avx2.asm jdmerge-avx2.asm jdsample-avx2.asm
+    jfdctint-avx2.asm jidctint-avx2.asm jquanti-avx2.asm
+	)
 	IF(WIN32)
 		SET(NAFLAGS ${NAFLAGS} -fwin32 -DWIN32)
 	ELSE()
@@ -105,7 +128,7 @@ FILE(GLOB INC_FILES *.inc)
 
 FOREACH(FILE ${SIMD_BASENAMES})
 	SET(DEPFILE "")
-	SET(SIMD_SRC ${SRC}/simd/${FILE}.asm)
+	SET(SIMD_SRC ${SRC}/simd/${SIMD_PATH}/${FILE})
 	IF(${FILE} MATCHES jccolor)
 		SET(DEPFILE ${SIMD_SRC})
 		STRING(REGEX REPLACE "jccolor" "jccolext" DEPFILE ${DEPFILE})
@@ -124,8 +147,8 @@ FOREACH(FILE ${SIMD_BASENAMES})
 	ENDIF()
 	SET(SIMD_OBJ ${CMAKE_CURRENT_BINARY_DIR}/${FILE}.obj)
 	ADD_CUSTOM_COMMAND(OUTPUT ${SIMD_OBJ}
-    		DEPENDS ${SIMD_SRC} ${DEPFILE} ${INC_FILES}
-    		COMMAND yasm ${NAFLAGS} ${SIMD_SRC} -o${SIMD_OBJ})
+		DEPENDS ${SIMD_SRC} ${DEPFILE} ${INC_FILES}
+		COMMAND yasm ${NAFLAGS} ${SIMD_SRC} -o${SIMD_OBJ})
 	SET(SIMD_OBJS ${SIMD_OBJS} ${SIMD_OBJ})
 ENDFOREACH()
 
