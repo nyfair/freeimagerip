@@ -58,9 +58,9 @@ SET(SOURCE_FILES
 	${SRC}/dsp/cost.c
 	${SRC}/dsp/cost_mips32.c
 	${SRC}/dsp/cost_mips_dsp_r2.c
+	${SRC}/dsp/cost_neon.c
 	${SRC}/dsp/cost_sse2.c
 	${SRC}/dsp/enc.c
-	${SRC}/dsp/enc_avx2.c
 	${SRC}/dsp/enc_mips32.c
 	${SRC}/dsp/enc_mips_dsp_r2.c
 	${SRC}/dsp/enc_msa.c
@@ -121,6 +121,6 @@ SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
 
 INCLUDE_DIRECTORIES(${3RDPARTY_DIR}/libwebp)
 
-ADD_DEFINITIONS(-DWEBP_HAVE_AVX2 -DWEBP_USE_THREAD -DHAVE_WINCODEC_H)
+ADD_DEFINITIONS(-DWEBP_USE_THREAD)
 
 ADD_LIBRARY(libwebp STATIC ${SOURCE_FILES})
