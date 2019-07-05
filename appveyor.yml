@@ -1,4 +1,4 @@
-image: Visual Studio 2017
+image: Visual Studio 2019
 
 environment:
   matrix:
@@ -6,12 +6,11 @@ environment:
     - osname: win64
 
 install:
-  - C:\msys64\usr\bin\pacman -S --noconfirm yasm
-  - set PATH=%PATH%;C:\msys64\usr\bin
+  - curl http://www.tortall.net/projects/yasm/releases/yasm-1.3.0-win64.exe > C:\Windows\yasm.exe
 
 before_deploy:
-  - if %osname%==win32 cmake build -G "Visual Studio 15 2017" -DSUSIE_PLUGIN=on
-  - if %osname%==win64 cmake build -G "Visual Studio 15 2017 Win64" -DFISHELLEXT=on
+  - if %osname%==win32 cmake build -G "Visual Studio 16 2019" -A Win32 -DSUSIE_PLUGIN=on
+  - if %osname%==win64 cmake build -G "Visual Studio 16 2019" -A x64 -DFISHELLEXT=on
   - cmake --build . --config Release
   - move Release\*.dll .
   - if %osname%==win32 move plugin\Release\*.spi .
@@ -21,8 +20,8 @@ before_deploy:
   - move src\FreeImage.h include
   - move Release\*.lib lib
   - 7z a %osname%-dev.7z include lib
-  - if %osname%==win32 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars32.bat"
-  - if %osname%==win64 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+  - if %osname%==win32 call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars32.bat"
+  - if %osname%==win64 call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
   - curl -O http://luajit.org/download/LuaJIT-2.1.0-beta3.zip
   - curl -LO https://github.com/nyfair/fi-luajit/archive/master.zip
   - 7z x *.zip

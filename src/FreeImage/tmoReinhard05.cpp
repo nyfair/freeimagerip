@@ -30,7 +30,7 @@
 // [1] Erik Reinhard and Kate Devlin, 'Dynamic Range Reduction Inspired by Photoreceptor Physiology', 
 //     IEEE Transactions on Visualization and Computer Graphics, 11(1), Jan/Feb 2005. 
 // [2] Erik Reinhard, 'Parameter estimation for photographic tone reproduction',
-//     Journal of Graphics Tools, vol. 7, no. 1, pp. 4551, 2003.
+//     Journal of Graphics Tools, vol. 7, no. 1, pp. 45–51, 2003.
 // ----------------------------------------------------------
 
 /**
@@ -55,7 +55,7 @@ ToneMappingReinhard05(FIBITMAP *dib, FIBITMAP *Y, float f, float m, float a, flo
 	float L;		// pixel luminance
 	float I_g, I_l; // global and local light adaptation
 	float I_a;		// interpolated pixel light adaptation
-	float k;		// key (low-key means overall dark image, high-key means overall light image)
+	float k = 0;	// key (low-key means overall dark image, high-key means overall light image)
 
 	// check input parameters 
 

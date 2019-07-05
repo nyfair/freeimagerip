@@ -2,9 +2,9 @@
 // DDS Loader
 //
 // Design and implementation by
-// - Volker G�rtner (volkerg@gmx.at)
+// - Volker Gärtner (volkerg@gmx.at)
 // - Sherman Wilcox
-// - Herv� Drolon (drolon@infonie.fr)
+// - Hervé Drolon (drolon@infonie.fr)
 //
 // This file is part of FreeImage 3
 //
@@ -356,14 +356,6 @@ SwapHeader(DDSHEADER *header) {
 	for(int i=0; i<11; i++) {
 		SwapLong(&header->surfaceDesc.dwReserved1[i]);
 	}
-	SwapLong(&header->surfaceDesc.ddpfPixelFormat.dwSize);
-	SwapLong(&header->surfaceDesc.ddpfPixelFormat.dwFlags);
-	SwapLong(&header->surfaceDesc.ddpfPixelFormat.dwFourCC);
-	SwapLong(&header->surfaceDesc.ddpfPixelFormat.dwRGBBitCount);
-	SwapLong(&header->surfaceDesc.ddpfPixelFormat.dwRBitMask);
-	SwapLong(&header->surfaceDesc.ddpfPixelFormat.dwGBitMask);
-	SwapLong(&header->surfaceDesc.ddpfPixelFormat.dwBBitMask);
-	SwapLong(&header->surfaceDesc.ddpfPixelFormat.dwRGBAlphaBitMask);
 	SwapLong(&header->surfaceDesc.ddsCaps.dwCaps1);
 	SwapLong(&header->surfaceDesc.ddsCaps.dwCaps2);
 	SwapLong(&header->surfaceDesc.ddsCaps.dwReserved[0]);
