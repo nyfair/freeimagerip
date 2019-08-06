@@ -5,10 +5,11 @@ environment:
     - osname: win32
     - osname: win64
 
-install:
-  - curl http://www.tortall.net/projects/yasm/releases/yasm-1.3.0-win64.exe > C:\Windows\yasm.exe
-
 before_deploy:
+  - curl -O https://www.nasm.us/pub/nasm/releasebuilds/2.14.02/win64/nasm-2.14.02-win64.zip
+  - 7z x nasm-2.14.02-win64.zip
+  - move nasm-2.14.02\nasm.exe C:\Windows\
+  - del nasm-2.14.02-win64.zip
   - if %osname%==win32 cmake build -G "Visual Studio 16 2019" -A Win32 -DSUSIE_PLUGIN=on
   - if %osname%==win64 cmake build -G "Visual Studio 16 2019" -A x64 -DFISHELLEXT=on
   - cmake --build . --config Release
@@ -23,7 +24,7 @@ before_deploy:
   - if %osname%==win32 call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars32.bat"
   - if %osname%==win64 call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
   - curl -O http://luajit.org/download/LuaJIT-2.1.0-beta3.zip
-  - curl -LO https://github.com/nyfair/fi-luajit/archive/master.zip
+  - curl -OL https://github.com/nyfair/fi-luajit/archive/master.zip
   - 7z x *.zip
   - cd LuaJIT-2.1.0-beta3\src
   - msvcbuild amalg
