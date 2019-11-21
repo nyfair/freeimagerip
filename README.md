@@ -13,7 +13,7 @@
 |Library|Homepage|
 |:---|:---|
 |libpng 1.6.37|http://libpng.com/pub/png/libpng.html|
-|libtiff 4.0.10|http://www.simplesystems.org/libtiff|
+|libtiff 4.1.0|http://www.simplesystems.org/libtiff|
 |libwebp 1.0.3|https://github.com/webmproject/libwebp|
 |mozjpeg 3.4alpha|https://github.com/mozilla/mozjpeg|
 |zlib 1.2.11|http://zlib.net|

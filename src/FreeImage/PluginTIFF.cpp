@@ -95,10 +95,16 @@ static TIFFLoadMethod FindLoadMethod(TIFF *tif, uint16 photometric, uint16 bitsp
 static int s_format_id;
 
 typedef struct {
-    FreeImageIO *io;
+	//! FreeImage IO functions
+	FreeImageIO *io;
+	//! FreeImage handle
 	fi_handle handle;
+	//! LibTIFF handle
 	TIFF *tif;
+	//! Count the number of thumbnails already read (used to avoid recursion on loading)
+	unsigned thumbnailCount;
 } fi_TIFFIO;
+
 
 // ----------------------------------------------------------
 //   libtiff interface 
@@ -157,10 +163,8 @@ Open a TIFF file descriptor for reading or writing
 */
 TIFF *
 TIFFFdOpen(thandle_t handle, const char *name, const char *mode) {
-	TIFF *tif;
-	
 	// Open the file; the callback will set everything up
-	tif = TIFFClientOpen(name, mode, handle,
+	TIFF *tif = TIFFClientOpen(name, mode, handle,
 	    _tiffReadProc, _tiffWriteProc, _tiffSeekProc, _tiffCloseProc,
 	    _tiffSizeProc, _tiffMapProc, _tiffUnmapProc);
 
@@ -431,11 +435,9 @@ CreateImageType(BOOL header_only, FREE_IMAGE_TYPE fit, int width, int height, ui
 			}
 			
 		}
-		else {
-
-			dib = FreeImage_AllocateHeader(header_only, width, height, MIN(bpp, 32), FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK);
+		else if (bpp <= 32) {
+			dib = FreeImage_AllocateHeader(header_only, width, height, bpp, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK);
 		}
-
 
 	} else {
 		// other bitmap types
@@ -520,12 +522,6 @@ ReadImageType(TIFF *tiff, uint16 bitspersample, uint16 samplesperpixel) {
 					case 32:
 						fit = FIT_FLOAT;
 						break;
-					case 48:
-						// 3 x half float => convert to RGBF
-						if((samplesperpixel == 3) && (bitspersample == 16)) {
-							fit = FIT_RGBF;
-						}
-						break;
 					case 64:
 						if(samplesperpixel == 2) {
 							fit = FIT_FLOAT;
@@ -533,6 +529,7 @@ ReadImageType(TIFF *tiff, uint16 bitspersample, uint16 samplesperpixel) {
 							fit = FIT_DOUBLE;
 						}
 						break;
+					case 48:
 					case 96:
 						fit = FIT_RGBF;
 						break;
@@ -831,7 +828,9 @@ static void * DLL_CALLCONV
 Open(FreeImageIO *io, fi_handle handle, BOOL read) {
 	// wrapper for TIFF I/O
 	fi_TIFFIO *fio = (fi_TIFFIO*)malloc(sizeof(fi_TIFFIO));
-	if(!fio) return NULL;
+	if (!fio) {
+		return NULL;
+	}
 	fio->io = io;
 	fio->handle = handle;
 
@@ -870,6 +869,27 @@ check for uncommon bitspersample values (e.g. 10, 12, ...)
 */
 static BOOL 
 IsValidBitsPerSample(uint16 photometric, uint16 bitspersample, uint16 samplesperpixel) {
+	// get the pixel depth in bits
+	const uint16 pixel_depth = bitspersample * samplesperpixel;
+
+	// check for a supported pixel depth
+	switch (pixel_depth) {
+		case 1:
+		case 4:
+		case 8:
+		case 16:
+		case 24:
+		case 32:
+		case 48:
+		case 64:
+		case 96:
+		case 128:
+			// OK, go on
+			break;
+		default:
+			// unsupported pixel depth
+			return FALSE;
+	}
 
 	switch(bitspersample) {
 		case 1:
@@ -894,7 +914,7 @@ IsValidBitsPerSample(uint16 photometric, uint16 bitspersample, uint16 samplesper
 				return TRUE;
 			} else if((photometric == PHOTOMETRIC_RGB) && (samplesperpixel == 3) || (samplesperpixel == 4)) {
 				// RGB[A]F
-				return TRUE;
+				return TRUE;	
 			} else {
 				return FALSE;
 			}
@@ -910,6 +930,8 @@ IsValidBitsPerSample(uint16 photometric, uint16 bitspersample, uint16 samplesper
 		default:
 			return FALSE;
 	}
+	
+	return FALSE;
 }
 
 static TIFFLoadMethod  
@@ -1689,7 +1711,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 				}
 
 				// calculate src line and dst pitch
-				int dst_pitch = FreeImage_GetPitch(dib);
+				unsigned dst_pitch = FreeImage_GetPitch(dib);
 				uint32 tileRowSize = (uint32)TIFFTileRowSize(tif);
 				uint32 imageRowSize = (uint32)TIFFScanlineSize(tif);
 
@@ -1719,7 +1741,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 						BYTE *src_bits = tileBuffer;
 						BYTE *dst_bits = bits + rowSize;
 						for(int k = 0; k < nrows; k++) {
-							memcpy(dst_bits, src_bits, src_line);
+							memcpy(dst_bits, src_bits, MIN(dst_pitch, src_line));
 							src_bits += tileRowSize;
 							dst_bits -= dst_pitch;
 						}
