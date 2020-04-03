@@ -30,7 +30,8 @@ before_deploy:
   - msvcbuild amalg
   - md lua
   - move ..\..\fi-luajit-master\*.lua lua
-  - 7z a ..\..\%osname%-luajit-bind.7z *.exe *.dll lua
+  - move ..\..\fi-luajit-master\test\* .
+  - 7z a ..\..\%osname%-luajit-bind.7z *.exe *.dll *.lua lua
   - cd ..\..\
   - ps: Get-ChildItem *.7z | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
 
