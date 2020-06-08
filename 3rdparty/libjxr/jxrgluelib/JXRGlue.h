@@ -35,8 +35,8 @@ extern "C" {
 #include <guiddef.h>
 
 //================================================================
-#define WMP_SDK_VERSION 0x0101
-#define PK_SDK_VERSION 0x0101
+#define WMP_SDK_VERSION 0x0102
+#define PK_SDK_VERSION 0x0102
 
 #define sizeof2(array) (sizeof(array)/sizeof(*(array)))
 #ifndef max
@@ -45,9 +45,8 @@ extern "C" {
 #ifndef min
 #define min(b,a) ((a) < (b) ? (a) : (b))
 #endif
-#ifdef __ANSI__
-//#define STRCPY_SAFE(pszDest, cbDest, pszSrc)    (strcpy((pszDest), (pszSrc)) == (pszDest) ? 0 : 1)
-#define STRCPY_SAFE(pszDest, cbDest, pszSrc)    (strlcpy((pszDest), (pszSrc), (cbDest)) < (cbDest) ? 0 : 1) // Macintosh impl, not ANSI
+#if defined(__ANSI__) || defined(__MINGW32__)
+#define STRCPY_SAFE(pszDest, cbDest, pszSrc)    (strncpy((pszDest), (pszSrc), (cbDest)) == (pszDest) ? 0 : 1)
 #else
 #define STRCPY_SAFE(pszDest, cbDest, pszSrc)    (strcpy_s((pszDest), (cbDest), (pszSrc)))
 #endif // __ANSI__
@@ -576,6 +575,12 @@ ERR PKImageDecode_Copy(PKImageDecode* pID, const PKRect* pRect, U8* pb, U32 cbSt
 ERR PKImageDecode_GetFrameCount(PKImageDecode* pID, U32* puCount);
 ERR PKImageDecode_SelectFrame(PKImageDecode* pID, U32 uFrame);
 ERR PKImageDecode_Release(PKImageDecode** ppID);
+
+ERR PKImageDecode_GetXMPMetadata_WMP(PKImageDecode *pID, U8 *pbXMPMetadata, U32 *pcbXMPMetadata);
+ERR PKImageDecode_GetEXIFMetadata_WMP(PKImageDecode *pID, U8 *pbEXIFMetadata, U32 *pcbEXIFMetadata);
+ERR PKImageDecode_GetGPSInfoMetadata_WMP(PKImageDecode *pID, U8 *pbGPSInfoMetadata, U32 *pcbGPSInfoMetadata);
+ERR PKImageDecode_GetIPTCNAAMetadata_WMP(PKImageDecode *pID, U8 *pbIPTCNAAMetadata, U32 *pcbIPTCNAAMetadata);
+ERR PKImageDecode_GetPhotoshopMetadata_WMP(PKImageDecode *pID, U8 *pbPhotoshopMetadata, U32 *pcbPhotoshopMetadata);
 
 ERR PKImageDecode_Create(PKImageDecode** ppID);
 ERR PKCodecFactory_CreateDecoderFromFile(const char* szFilename, PKImageDecode** ppDecoder);

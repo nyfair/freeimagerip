@@ -3,7 +3,7 @@
 //
 // Design and implementation by
 // - Ryan Rubley <ryan@lostreality.org> 
-// - HervÃ© Drolon (drolon@infonie.fr)
+// - Hervé Drolon (drolon@infonie.fr)
 //
 // This file is part of FreeImage 3
 //
@@ -48,7 +48,8 @@ FreeImage_OpenMemory(BYTE *data, DWORD size_in_bytes) {
 				// wrap a user buffer
 				mem_header->delete_me = FALSE;
 				mem_header->data = (BYTE*)data;
-				mem_header->data_length = mem_header->file_length = size_in_bytes;
+				mem_header->file_length = size_in_bytes;
+				mem_header->data_length = size_in_bytes;
 			} else {
 				mem_header->delete_me = TRUE;
 			}

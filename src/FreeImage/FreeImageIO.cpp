@@ -61,49 +61,74 @@ SetDefaultIO(FreeImageIO *io) {
 // Memory IO functions
 // =====================================================================
 
+/**
+The _MemoryReadProc function reads up to count items of size bytes from the input stream and stores them in buffer.
+_MemoryReadProc returns the number of full items actually read, 
+which may be less than count if an error occurs or if the end of the file is encountered before reaching count.
+If size or count is 0, _MemoryReadProc returns 0 and the buffer contents are unchanged
+
+@param buffer
+@param size
+@param count
+@param handle
+@return
+*/
 unsigned DLL_CALLCONV
 _MemoryReadProc(void *buffer, unsigned size, unsigned count, fi_handle handle) {
+	if (!handle || !buffer || (size == 0) || (count == 0)) {
+		return 0;
+	}
+
 	FIMEMORYHEADER *mem_header = (FIMEMORYHEADER*)(((FIMEMORY*)handle)->data);
 
-	const long required_bytes = (long)(size * count);
-	const long remaining_bytes = mem_header->file_length - mem_header->current_position;
+	const int required_bytes = (int)(size) * count;
+	const int remaining_bytes = mem_header->file_length - mem_header->current_position;
 
-	if (required_bytes <= remaining_bytes) {
-		// copy size bytes count times
-		memcpy(buffer, (char*)mem_header->data + mem_header->current_position, required_bytes);
-		mem_header->current_position += required_bytes;
-		return (unsigned)(required_bytes / size);
+	if ((required_bytes > 0) && (remaining_bytes > 0)) {
+		if (required_bytes <= remaining_bytes) {
+			// copy size bytes count times
+			memcpy(buffer, (char*)mem_header->data + mem_header->current_position, (size_t)required_bytes);
+			mem_header->current_position += required_bytes;
+			return count;
+		}
+		else {
+			// if there isn't required_bytes bytes left to read, set pos to eof and return a short count
+			memcpy(buffer, (char*)mem_header->data + mem_header->current_position, (size_t)remaining_bytes);
+			mem_header->current_position = mem_header->file_length;
+			return (unsigned)(remaining_bytes / size);
+		}
 	}
-	else {
-		// if there isn't required_bytes bytes left to read, set pos to eof and return a short count
-		memcpy(buffer, (char*)mem_header->data + mem_header->current_position, remaining_bytes);
-		mem_header->current_position = mem_header->file_length;
-		return (unsigned)(remaining_bytes / size);
-	}
+	
+	// if size or count is 0, _MemoryReadProc returns 0 and the buffer contents are unchanged.
+	return 0;
 }
 
 unsigned DLL_CALLCONV 
 _MemoryWriteProc(void *buffer, unsigned size, unsigned count, fi_handle handle) {
-	long newdatalen;
+	if (!handle || !buffer) {
+		return 0;
+	}
 
 	FIMEMORYHEADER *mem_header = (FIMEMORYHEADER*)(((FIMEMORY*)handle)->data);
 
 	const long required_bytes = (long)(size * count);
 
-	//double the data block size if we need to
+	// double the data block size if we need to
 	while( (mem_header->current_position + required_bytes) >= mem_header->data_length ) {
-		//if we are at or above 1G, we cant double without going negative
+		long newdatalen = 0;
+
+		// if we are at or above 1G, we cant double without going negative
 		if( mem_header->data_length & 0x40000000 ) {
-			//max 2G
+			// max 2G
 			if( mem_header->data_length == 0x7FFFFFFF ) {
 				return 0;
 			}
 			newdatalen = 0x7FFFFFFF;
 		} else if( mem_header->data_length == 0 ) {
-			//default to 4K if nothing yet
+			// default to 4K if nothing yet
 			newdatalen = 4096;
 		} else {
-			//double size
+			// double size
 			newdatalen = mem_header->data_length << 1;
 		}
 		void *newdata = realloc(mem_header->data, newdatalen);
@@ -124,8 +149,27 @@ _MemoryWriteProc(void *buffer, unsigned size, unsigned count, fi_handle handle) 
 	return count;
 }
 
+/**
+The _MemorySeekProc function moves the file pointer (if any) associated with stream to a new location that is offset bytes from origin. 
+The next operation on the stream takes place at the new location. On a stream open for update, the next operation can be either a read or a write.
+The argument origin must be one of the following constants, defined in STDIO.H:
+	SEEK_CUR	Current position of file pointer.
+	SEEK_END	End of file.
+	SEEK_SET	Beginning of file.
+You can use _MemorySeekProc to reposition the pointer anywhere in a file. 
+The pointer can also be positioned beyond the end of the file. 
+
+@param handle
+@param offset
+@param origin
+@return If successful, returns 0. Otherwise, returns -1.
+*/
 int DLL_CALLCONV 
 _MemorySeekProc(fi_handle handle, long offset, int origin) {
+	if (!handle) {
+		return -1;
+	}
+
 	FIMEMORYHEADER *mem_header = (FIMEMORYHEADER*)(((FIMEMORY*)handle)->data);
 
 	// you can use _MemorySeekProc to reposition the pointer anywhere in a file
@@ -160,8 +204,10 @@ _MemorySeekProc(fi_handle handle, long offset, int origin) {
 
 long DLL_CALLCONV 
 _MemoryTellProc(fi_handle handle) {
+	if (!handle) {
+		return -1;
+	}
 	FIMEMORYHEADER *mem_header = (FIMEMORYHEADER*)(((FIMEMORY*)handle)->data);
-
 	return mem_header->current_position;
 }
 
