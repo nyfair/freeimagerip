@@ -236,18 +236,20 @@ static int getPixelFormat(int pixelSize, int flags)
   return -1;
 }
 
-static int setCompDefaults(struct jpeg_compress_struct *cinfo, int pixelFormat,
-                           int subsamp, int jpegQual, int flags)
+static void setCompDefaults(struct jpeg_compress_struct *cinfo,
+                            int pixelFormat, int subsamp, int jpegQual,
+                            int flags)
 {
-  int retval = 0;
 #ifndef NO_GETENV
   char *env = NULL;
 #endif
 
   cinfo->in_color_space = pf2cs[pixelFormat];
   cinfo->input_components = tjPixelSize[pixelFormat];
+#ifndef NO_GETENV
 	if((env=getenv("TJ_REVERT"))!=NULL && strlen(env)>0 && !strcmp(env, "1"))
 		cinfo->master->compress_profile=JCP_FASTEST;
+#endif
   jpeg_set_defaults(cinfo);
 
 #ifndef NO_GETENV
@@ -308,8 +310,6 @@ static int setCompDefaults(struct jpeg_compress_struct *cinfo, int pixelFormat,
   cinfo->comp_info[2].v_samp_factor = 1;
   if (cinfo->num_components > 3)
     cinfo->comp_info[3].v_samp_factor = tjMCUHeight[subsamp] / 8;
-
-  return retval;
 }
 
 
@@ -476,7 +476,14 @@ static tjhandle _tjInitCompress(tjinstance *this)
   }
 
   jpeg_create_compress(&this->cinfo);
-  jpeg_c_set_int_param(&this->cinfo, JINT_COMPRESS_PROFILE, JCP_FASTEST);
+
+#ifndef NO_GETENV
+  /* This is used in unit tests */
+  char *env = NULL;
+  if((env=getenv("TJ_REVERT"))!=NULL && strlen(env)>0 && !strcmp(env, "1"))
+    jpeg_c_set_int_param(&this->cinfo, JINT_COMPRESS_PROFILE, JCP_FASTEST);
+#endif
+
   /* Make an initial call so it will create the destination manager */
   jpeg_mem_dest_tj(&this->cinfo, &buf, &size, 0);
 
@@ -685,8 +692,7 @@ DLLEXPORT int tjCompress2(tjhandle handle, const unsigned char *srcBuf,
     alloc = 0;  *jpegSize = tjBufSize(width, height, jpegSubsamp);
   }
   jpeg_mem_dest_tj(cinfo, jpegBuf, jpegSize, alloc);
-  if (setCompDefaults(cinfo, pixelFormat, jpegSubsamp, jpegQual, flags) == -1)
-    return -1;
+  setCompDefaults(cinfo, pixelFormat, jpegSubsamp, jpegQual, flags);
 
   jpeg_start_compress(cinfo, TRUE);
   for (i = 0; i < height; i++) {
@@ -781,7 +787,7 @@ DLLEXPORT int tjEncodeYUVPlanes(tjhandle handle, const unsigned char *srcBuf,
   else if (flags & TJFLAG_FORCESSE2) putenv("JSIMD_FORCESSE2=1");
 #endif
 
-  if (setCompDefaults(cinfo, pixelFormat, subsamp, -1, flags) == -1) return -1;
+  setCompDefaults(cinfo, pixelFormat, subsamp, -1, flags);
 
   /* Execute only the parts of jpeg_start_compress() that we need.  If we
      were to call the whole jpeg_start_compress() function, then it would try
@@ -995,8 +1001,7 @@ DLLEXPORT int tjCompressFromYUVPlanes(tjhandle handle,
     alloc = 0;  *jpegSize = tjBufSize(width, height, subsamp);
   }
   jpeg_mem_dest_tj(cinfo, jpegBuf, jpegSize, alloc);
-  if (setCompDefaults(cinfo, TJPF_RGB, subsamp, jpegQual, flags) == -1)
-    return -1;
+  setCompDefaults(cinfo, TJPF_RGB, subsamp, jpegQual, flags);
   cinfo->raw_data_in = TRUE;
 
   jpeg_start_compress(cinfo, TRUE);

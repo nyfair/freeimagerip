@@ -13,9 +13,9 @@
 |Library|Homepage|
 |:---|:---|
 |libpng 1.6.37|http://libpng.com/pub/png/libpng.html|
-|libtiff 4.1.0|http://www.simplesystems.org/libtiff|
-|libwebp 1.1.0|https://github.com/webmproject/libwebp|
-|mozjpeg 4.0|https://github.com/mozilla/mozjpeg|
+|libtiff 4.2.0|http://www.simplesystems.org/libtiff|
+|libwebp 1.2.0|https://github.com/webmproject/libwebp|
+|mozjpeg 4.0.2|https://github.com/mozilla/mozjpeg|
 |zlib 1.2.11|http://zlib.net|
 |jxrlib 1.1|https://jxrlib.codeplex.com|
 
