@@ -1,14 +1,15 @@
 SET(SRC ${3RDPARTY_DIR}/libtiff/libtiff)
 
-IF(MSVC)
-	FILE(COPY ${SRC}/tif_config.vc.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-	FILE(RENAME ${CMAKE_CURRENT_BINARY_DIR}/tif_config.vc.h ${CMAKE_CURRENT_BINARY_DIR}/tif_config.h)
-	FILE(COPY ${SRC}/tiffconf.vc.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-	FILE(RENAME ${CMAKE_CURRENT_BINARY_DIR}/tiffconf.vc.h ${CMAKE_CURRENT_BINARY_DIR}/tiffconf.h)
-ELSE()
-	CONFIGURE_FILE(${SRC}/tif_config.h.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/tif_config.h)
-	CONFIGURE_FILE(${SRC}/tiffconf.h.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/tiffconf.h)
-ENDIF()
+LIST(APPEND CMAKE_MODULE_PATH ${3RDPARTY_DIR}/libtiff/cmake)
+INCLUDE(IncludeChecks)
+INCLUDE(InternalCodecs)
+INCLUDE(LargeFileSupport)
+INCLUDE(LibraryFeatures)
+INCLUDE(ProcessorChecks)
+INCLUDE(TypeSizeChecks)
+
+CONFIGURE_FILE(${SRC}/tif_config.h.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/tif_config.h)
+CONFIGURE_FILE(${SRC}/tiffconf.h.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/tiffconf.h)
 
 SET(SOURCE_FILES
 	${SRC}/tif_aux.c
@@ -27,7 +28,10 @@ SET(SOURCE_FILES
 	${SRC}/tif_fax3sm.c
 	${SRC}/tif_flush.c
 	${SRC}/tif_getimage.c
+	${SRC}/tif_jbig.c
 	${SRC}/tif_jpeg.c
+	${SRC}/tif_jpeg_12.c
+	${SRC}/tif_lerc.c
 	${SRC}/tif_luv.c
 	${SRC}/tif_lzma.c
 	${SRC}/tif_lzw.c
@@ -39,15 +43,16 @@ SET(SOURCE_FILES
 	${SRC}/tif_predict.c
 	${SRC}/tif_print.c
 	${SRC}/tif_read.c
-	${SRC}/tif_stream.cxx
 	${SRC}/tif_strip.c
 	${SRC}/tif_swab.c
 	${SRC}/tif_thunder.c
 	${SRC}/tif_tile.c
 	${SRC}/tif_version.c
 	${SRC}/tif_warning.c
+	${SRC}/tif_webp.c
 	${SRC}/tif_write.c
 	${SRC}/tif_zip.c
+	${SRC}/tif_zstd.c
 )
 
 INCLUDE_DIRECTORIES(

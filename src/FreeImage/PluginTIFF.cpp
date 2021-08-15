@@ -42,10 +42,9 @@
 #include "FreeImageIO.h"
 #include "PSDParser.h"
 
-// ----------------------------------------------------------
+// --------------------------------------------------------------------------
 //   LogLuv conversion functions interface (see TIFFLogLuv.cpp)
-// ----------------------------------------------------------
-
+// --------------------------------------------------------------------------
 void tiff_ConvertLineXYZToRGB(BYTE *target, BYTE *source, double stonits, int width_in_pixels);
 void tiff_ConvertLineRGBToXYZ(BYTE *target, BYTE *source, int width_in_pixels);
 
@@ -53,10 +52,10 @@ void tiff_ConvertLineRGBToXYZ(BYTE *target, BYTE *source, int width_in_pixels);
 
 /** Supported loading methods */
 typedef enum {
-	LoadAsRBGA			= 0,
-	LoadAsCMYK			= 1,
-	LoadAs8BitTrns		= 2,
-	LoadAsGenericStrip	= 3,
+	LoadAsRBGA			= 0, 
+	LoadAsCMYK			= 1, 
+	LoadAs8BitTrns		= 2, 
+	LoadAsGenericStrip	= 3, 
 	LoadAsTiled			= 4,
 	LoadAsLogLuv		= 5
 } TIFFLoadMethod;
@@ -72,21 +71,21 @@ static int _tiffCloseProc(thandle_t fd);
 static int _tiffMapProc(thandle_t fd, void** pbase, toff_t* psize);
 static void _tiffUnmapProc(thandle_t fd, void* base, toff_t size);
 
-static uint16 CheckColormap(int n, uint16* r, uint16* g, uint16* b);
-static uint16 GetPhotometric(FIBITMAP *dib);
+static uint16_t CheckColormap(int n, uint16_t* r, uint16_t* g, uint16_t* b);
+static uint16_t GetPhotometric(FIBITMAP *dib);
 
 static void ReadResolution(TIFF *tiff, FIBITMAP *dib);
 static void WriteResolution(TIFF *tiff, FIBITMAP *dib);
 
-static void ReadPalette(TIFF *tiff, uint16 photometric, uint16 bitspersample, FIBITMAP *dib);
+static void ReadPalette(TIFF *tiff, uint16_t photometric, uint16_t bitspersample, FIBITMAP *dib);
 
-static FIBITMAP* CreateImageType(BOOL header_only, FREE_IMAGE_TYPE fit, int width, int height, uint16 bitspersample, uint16 samplesperpixel);
-static FREE_IMAGE_TYPE ReadImageType(TIFF *tiff, uint16 bitspersample, uint16 samplesperpixel);
+static FIBITMAP* CreateImageType(BOOL header_only, FREE_IMAGE_TYPE fit, int width, int height, uint16_t bitspersample, uint16_t samplesperpixel);
+static FREE_IMAGE_TYPE ReadImageType(TIFF *tiff, uint16_t bitspersample, uint16_t samplesperpixel);
 static void WriteImageType(TIFF *tiff, FREE_IMAGE_TYPE fit);
 
-static void WriteCompression(TIFF *tiff, uint16 bitspersample, uint16 samplesperpixel, uint16 photometric, int flags);
+static void WriteCompression(TIFF *tiff, uint16_t bitspersample, uint16_t samplesperpixel, uint16_t photometric, int flags);
 
-static TIFFLoadMethod FindLoadMethod(TIFF *tif, uint16 photometric, uint16 bitspersample, uint16 samplesperpixel, FREE_IMAGE_TYPE image_type, int flags);
+static TIFFLoadMethod FindLoadMethod(TIFF *tif, uint16_t photometric, uint16_t bitspersample, uint16_t samplesperpixel, FREE_IMAGE_TYPE image_type, int flags);
 
 // ==========================================================
 // Plugin Interface
@@ -96,7 +95,7 @@ static int s_format_id;
 
 typedef struct {
 	//! FreeImage IO functions
-	FreeImageIO *io;
+    FreeImageIO *io;
 	//! FreeImage handle
 	fi_handle handle;
 	//! LibTIFF handle
@@ -104,7 +103,6 @@ typedef struct {
 	//! Count the number of thumbnails already read (used to avoid recursion on loading)
 	unsigned thumbnailCount;
 } fi_TIFFIO;
-
 
 // ----------------------------------------------------------
 //   libtiff interface 
@@ -257,8 +255,8 @@ TIFFErrorHandler _TIFFerrorHandler = msdosErrorHandler;
 // Internal functions
 // ==========================================================
 
-static uint16
-CheckColormap(int n, uint16* r, uint16* g, uint16* b) {
+static uint16_t
+CheckColormap(int n, uint16_t* r, uint16_t* g, uint16_t* b) {
     while (n-- > 0) {
         if (*r++ >= 256 || *g++ >= 256 || *b++ >= 256) {
 			return 16;
@@ -271,7 +269,7 @@ CheckColormap(int n, uint16* r, uint16* g, uint16* b) {
 /**
 Get the TIFFTAG_PHOTOMETRIC value from the dib
 */
-static uint16
+static uint16_t
 GetPhotometric(FIBITMAP *dib) {
 	FREE_IMAGE_COLOR_TYPE color_type = FreeImage_GetColorType(dib);
 	switch(color_type) {
@@ -296,7 +294,7 @@ static void
 ReadResolution(TIFF *tiff, FIBITMAP *dib) {
 	float fResX = 300.0;
 	float fResY = 300.0;
-	uint16 resUnit = RESUNIT_INCH;
+	uint16_t resUnit = RESUNIT_INCH;
 
 	TIFFGetField(tiff, TIFFTAG_RESOLUTIONUNIT, &resUnit);
 	TIFFGetField(tiff, TIFFTAG_XRESOLUTION, &fResX);
@@ -335,7 +333,7 @@ WriteResolution(TIFF *tiff, FIBITMAP *dib) {
 Fill the dib palette according to the TIFF photometric
 */
 static void 
-ReadPalette(TIFF *tiff, uint16 photometric, uint16 bitspersample, FIBITMAP *dib) {
+ReadPalette(TIFF *tiff, uint16_t photometric, uint16_t bitspersample, FIBITMAP *dib) {
 	RGBQUAD *pal = FreeImage_GetPalette(dib);
 
 	switch(photometric) {
@@ -374,9 +372,9 @@ ReadPalette(TIFF *tiff, uint16 photometric, uint16 bitspersample, FIBITMAP *dib)
 			break;
 
 		case PHOTOMETRIC_PALETTE:	// color map indexed
-			uint16 *red;
-			uint16 *green;
-			uint16 *blue;
+			uint16_t *red;
+			uint16_t *green;
+			uint16_t *blue;
 			
 			TIFFGetField(tiff, TIFFTAG_COLORMAP, &red, &green, &blue); 
 
@@ -411,7 +409,7 @@ Allocate a FIBITMAP
 @return Returns the allocated image if successful, returns NULL otherwise
 */
 static FIBITMAP* 
-CreateImageType(BOOL header_only, FREE_IMAGE_TYPE fit, int width, int height, uint16 bitspersample, uint16 samplesperpixel) {
+CreateImageType(BOOL header_only, FREE_IMAGE_TYPE fit, int width, int height, uint16_t bitspersample, uint16_t samplesperpixel) {
 	FIBITMAP *dib = NULL;
 
 	if((width < 0) || (height < 0)) {
@@ -456,11 +454,11 @@ Read the TIFFTAG_SAMPLEFORMAT tag and convert to FREE_IMAGE_TYPE
 @return Returns the image type as a FREE_IMAGE_TYPE value
 */
 static FREE_IMAGE_TYPE 
-ReadImageType(TIFF *tiff, uint16 bitspersample, uint16 samplesperpixel) {
-	uint16 sampleformat = 0;
+ReadImageType(TIFF *tiff, uint16_t bitspersample, uint16_t samplesperpixel) {
+	uint16_t sampleformat = 0;
 	FREE_IMAGE_TYPE fit = FIT_BITMAP ; 
 
-	uint16 bpp = bitspersample * samplesperpixel;
+	uint16_t bpp = bitspersample * samplesperpixel;
 
 	// try the sampleformat tag
     if(TIFFGetField(tiff, TIFFTAG_SAMPLEFORMAT, &sampleformat)) {
@@ -522,6 +520,12 @@ ReadImageType(TIFF *tiff, uint16 bitspersample, uint16 samplesperpixel) {
 					case 32:
 						fit = FIT_FLOAT;
 						break;
+					case 48:
+						// 3 x half float => convert to RGBF
+						if((samplesperpixel == 3) && (bitspersample == 16)) {
+							fit = FIT_RGBF;
+						}
+						break;
 					case 64:
 						if(samplesperpixel == 2) {
 							fit = FIT_FLOAT;
@@ -529,7 +533,6 @@ ReadImageType(TIFF *tiff, uint16 bitspersample, uint16 samplesperpixel) {
 							fit = FIT_DOUBLE;
 						}
 						break;
-					case 48:
 					case 96:
 						fit = FIT_RGBF;
 						break;
@@ -616,39 +619,52 @@ WriteImageType(TIFF *tiff, FREE_IMAGE_TYPE fit) {
 /**
 Select the compression algorithm
 @param tiff LibTIFF TIFF Handle
-@param 
+@param bitspersample
+@param samplesperpixel
+@param photometric
+@param flags
 */
 static void 
-WriteCompression(TIFF *tiff, uint16 bitspersample, uint16 samplesperpixel, uint16 photometric, int flags) {
-	uint16 compression;
-	uint16 bitsperpixel = bitspersample * samplesperpixel;
+WriteCompression(TIFF *tiff, uint16_t bitspersample, uint16_t samplesperpixel, uint16_t photometric, int flags) {
+	uint16_t compression = COMPRESSION_LZW;
+	uint16_t bitsperpixel = bitspersample * samplesperpixel;
 
-	if(photometric == PHOTOMETRIC_LOGLUV) {
+	if (photometric == PHOTOMETRIC_LOGLUV) {
 		compression = COMPRESSION_SGILOG;
-	} else if ((flags & TIFF_PACKBITS) == TIFF_PACKBITS) {
+	}
+	else if ((flags & TIFF_PACKBITS) == TIFF_PACKBITS) {
 		compression = COMPRESSION_PACKBITS;
-	} else if ((flags & TIFF_DEFLATE) == TIFF_DEFLATE) {
-		compression = COMPRESSION_DEFLATE;
-	} else if ((flags & TIFF_ADOBE_DEFLATE) == TIFF_ADOBE_DEFLATE) {
+	}
+	else if ((flags & TIFF_DEFLATE) == TIFF_DEFLATE) {
+		// compression = COMPRESSION_DEFLATE is obsolete, writers should always use COMPRESSION_ADOBE_DEFLATE value
 		compression = COMPRESSION_ADOBE_DEFLATE;
-	} else if ((flags & TIFF_NONE) == TIFF_NONE) {
+	}
+	else if ((flags & TIFF_ADOBE_DEFLATE) == TIFF_ADOBE_DEFLATE) {
+		compression = COMPRESSION_ADOBE_DEFLATE;
+	}
+	else if ((flags & TIFF_NONE) == TIFF_NONE) {
 		compression = COMPRESSION_NONE;
-	} else if ((bitsperpixel == 1) && ((flags & TIFF_CCITTFAX3) == TIFF_CCITTFAX3)) {
+	}
+	else if ((bitsperpixel == 1) && ((flags & TIFF_CCITTFAX3) == TIFF_CCITTFAX3)) {
 		compression = COMPRESSION_CCITTFAX3;
-	} else if ((bitsperpixel == 1) && ((flags & TIFF_CCITTFAX4) == TIFF_CCITTFAX4)) {
+	}
+	else if ((bitsperpixel == 1) && ((flags & TIFF_CCITTFAX4) == TIFF_CCITTFAX4)) {
 		compression = COMPRESSION_CCITTFAX4;
-	} else if ((flags & TIFF_LZW) == TIFF_LZW) {
+	}
+	else if ((flags & TIFF_LZW) == TIFF_LZW) {
 		compression = COMPRESSION_LZW;
-	} else if ((flags & TIFF_JPEG) == TIFF_JPEG) {
-		if(((bitsperpixel == 8) && (photometric != PHOTOMETRIC_PALETTE)) || (bitsperpixel == 24)) {
+	}
+	else if ((flags & TIFF_JPEG) == TIFF_JPEG) {
+		if (((bitsperpixel == 8) && (photometric != PHOTOMETRIC_PALETTE)) || (bitsperpixel == 24)) {
 			compression = COMPRESSION_JPEG;
 			// RowsPerStrip must be multiple of 8 for JPEG
-			uint32 rowsperstrip = (uint32) -1;
+			uint32_t rowsperstrip = (uint32_t)-1;
 			rowsperstrip = TIFFDefaultStripSize(tiff, rowsperstrip);
-            rowsperstrip = rowsperstrip + (8 - (rowsperstrip % 8));
+			rowsperstrip = rowsperstrip + (8 - (rowsperstrip % 8));
 			// overwrite previous RowsPerStrip
 			TIFFSetField(tiff, TIFFTAG_ROWSPERSTRIP, rowsperstrip);
-		} else {
+		}
+		else {
 			// default to LZW
 			compression = COMPRESSION_LZW;
 		}
@@ -656,35 +672,35 @@ WriteCompression(TIFF *tiff, uint16 bitspersample, uint16 samplesperpixel, uint1
 	else {
 		// default compression scheme
 
-		switch(bitsperpixel) {
-			case 1:
-				compression = COMPRESSION_CCITTFAX4;
-				break;
+		switch (bitsperpixel) {
+		case 1:
+			compression = COMPRESSION_CCITTFAX4;
+			break;
 
-			case 4:
-			case 8:
-			case 16:
-			case 24:
-			case 32:
-				compression = COMPRESSION_LZW;
-				break;
-			case 48:
-			case 64:
-			case 96:
-			case 128:
-				compression = COMPRESSION_LZW;
-				break;
+		case 4:
+		case 8:
+		case 16:
+		case 24:
+		case 32:
+			compression = COMPRESSION_LZW;
+			break;
+		case 48:
+		case 64:
+		case 96:
+		case 128:
+			compression = COMPRESSION_LZW;
+			break;
 
-			default :
-				compression = COMPRESSION_NONE;
-				break;
+		default:
+			compression = COMPRESSION_NONE;
+			break;
 		}
 	}
 
 	TIFFSetField(tiff, TIFFTAG_COMPRESSION, compression);
 
-	if(compression == COMPRESSION_LZW) {
-		// This option is only meaningful with LZW compression: a predictor value of 2 
+	if ((compression == COMPRESSION_LZW) || (compression == COMPRESSION_ADOBE_DEFLATE)) {
+		// This option is only meaningful with LZW or ADOBE DEFLATE compression: a predictor value of 2 
 		// causes each scanline of the output image to undergo horizontal differencing 
 		// before it is encoded; a value of 1 forces each scanline to be encoded without differencing.
 
@@ -693,27 +709,30 @@ WriteCompression(TIFF *tiff, uint16 bitspersample, uint16 samplesperpixel, uint1
 		// and many palette-color images. But natural 24-bit color images and some 8-bit 
 		// grayscale images do much better with differencing.
 
-		if((bitspersample == 8) || (bitspersample == 16)) {
+		// set the default predictor value
+		TIFFSetField(tiff, TIFFTAG_PREDICTOR, PREDICTOR_NONE);
+
+		if ((bitspersample == 8) || (bitspersample == 16)) {
 			if ((bitsperpixel >= 8) && (photometric != PHOTOMETRIC_PALETTE)) {
-				TIFFSetField(tiff, TIFFTAG_PREDICTOR, 2);
-			} else {
-				TIFFSetField(tiff, TIFFTAG_PREDICTOR, 1);
+				TIFFSetField(tiff, TIFFTAG_PREDICTOR, PREDICTOR_HORIZONTAL);
 			}
-		} else {
-			TIFFSetField(tiff, TIFFTAG_PREDICTOR, 1);
+		}
+		else if ((photometric == PHOTOMETRIC_RGB) && (bitspersample == 32) && ((samplesperpixel == 3) || (samplesperpixel == 4))) {
+			// this is a RGB or RGBA float image, set a floating point predictor
+			TIFFSetField(tiff, TIFFTAG_PREDICTOR, PREDICTOR_FLOATINGPOINT);
 		}
 	}
-	else if((compression == COMPRESSION_CCITTFAX3) || (compression == COMPRESSION_CCITTFAX4)) {
-		uint32 imageLength = 0;
+	else if ((compression == COMPRESSION_CCITTFAX3) || (compression == COMPRESSION_CCITTFAX4)) {
+		uint32_t imageLength = 0;
 		TIFFGetField(tiff, TIFFTAG_IMAGELENGTH, &imageLength);
 		// overwrite previous RowsPerStrip
 		TIFFSetField(tiff, TIFFTAG_ROWSPERSTRIP, imageLength);
 
-		if(compression == COMPRESSION_CCITTFAX3) {
+		if (compression == COMPRESSION_CCITTFAX3) {
 			// try to be compliant with the TIFF Class F specification
 			// that documents the TIFF tags specific to FAX applications
 			// see http://palimpsest.stanford.edu/bytopic/imaging/std/tiff-f.html
-			uint32 group3options = GROUP3OPT_2DENCODING | GROUP3OPT_FILLBITS;	
+			uint32_t group3options = GROUP3OPT_2DENCODING | GROUP3OPT_FILLBITS;
 			TIFFSetField(tiff, TIFFTAG_GROUP3OPTIONS, group3options);	// 2d-encoded, has aligned EOL
 			TIFFSetField(tiff, TIFFTAG_FILLORDER, FILLORDER_LSB2MSB);	// lsb-to-msb fillorder
 		}
@@ -868,9 +887,9 @@ check for uncommon bitspersample values (e.g. 10, 12, ...)
 @return Returns FALSE if a uncommon bit-depth is encountered, returns TRUE otherwise
 */
 static BOOL 
-IsValidBitsPerSample(uint16 photometric, uint16 bitspersample, uint16 samplesperpixel) {
+IsValidBitsPerSample(uint16_t photometric, uint16_t bitspersample, uint16_t samplesperpixel) {
 	// get the pixel depth in bits
-	const uint16 pixel_depth = bitspersample * samplesperpixel;
+	const uint16_t pixel_depth = bitspersample * samplesperpixel;
 
 	// check for a supported pixel depth
 	switch (pixel_depth) {
@@ -914,7 +933,7 @@ IsValidBitsPerSample(uint16 photometric, uint16 bitspersample, uint16 samplesper
 				return TRUE;
 			} else if((photometric == PHOTOMETRIC_RGB) && (samplesperpixel == 3) || (samplesperpixel == 4)) {
 				// RGB[A]F
-				return TRUE;	
+				return TRUE;
 			} else {
 				return FALSE;
 			}
@@ -936,10 +955,10 @@ IsValidBitsPerSample(uint16 photometric, uint16 bitspersample, uint16 samplesper
 
 static TIFFLoadMethod  
 FindLoadMethod(TIFF *tif, FREE_IMAGE_TYPE image_type, int flags) {
-	uint16 bitspersample	= (uint16)-1;
-	uint16 samplesperpixel	= (uint16)-1;
-	uint16 photometric		= (uint16)-1;
-	uint16 planar_config	= (uint16)-1;
+	uint16_t bitspersample	= (uint16_t)-1;
+	uint16_t samplesperpixel	= (uint16_t)-1;
+	uint16_t photometric		= (uint16_t)-1;
+	uint16_t planar_config	= (uint16_t)-1;
 
 	TIFFLoadMethod loadMethod = LoadAsGenericStrip;
 
@@ -1011,17 +1030,17 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 	}
 	
 	TIFF   *tif = NULL;
-	uint32 height = 0; 
-	uint32 width = 0; 
-	uint16 bitspersample = 1;
-	uint16 samplesperpixel = 1;
-	uint32 rowsperstrip = (uint32)-1;  
-	uint16 photometric = PHOTOMETRIC_MINISWHITE;
-	uint16 compression = (uint16)-1;
-	uint16 planar_config;
+	uint32_t height = 0; 
+	uint32_t width = 0; 
+	uint16_t bitspersample = 1;
+	uint16_t samplesperpixel = 1;
+	uint32_t rowsperstrip = (uint32_t)-1;  
+	uint16_t photometric = PHOTOMETRIC_MINISWHITE;
+	uint16_t compression = (uint16_t)-1;
+	uint16_t planar_config;
 
 	FIBITMAP *dib = NULL;
-	uint32 iccSize = 0;		// ICC profile length
+	uint32_t iccSize = 0;		// ICC profile length
 	void *iccBuf = NULL;	// ICC profile data		
 
 	const BOOL header_only = (flags & FIF_LOAD_NOPIXELS) == FIF_LOAD_NOPIXELS;
@@ -1091,11 +1110,11 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 			// convert it to a DIB. This is using the traditional
 			// TIFFReadRGBAImage() API that we trust.
 			
-			uint32 *raster = NULL;
+			uint32_t *raster = NULL;
 
 			if(!header_only) {
 
-				raster = (uint32*)_TIFFmalloc(width * height * sizeof(uint32));
+				raster = (uint32_t*)_TIFFmalloc(width * height * sizeof(uint32_t));
 				if (raster == NULL) {
 					throw FI_MSG_ERROR_MEMORY;
 				}
@@ -1144,13 +1163,13 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 				// We use macros for extracting components from the packed ABGR 
 				// form returned by TIFFReadRGBAImage.
 
-				uint32 *row = &raster[0];
+				uint32_t *row = &raster[0];
 
 				if (samplesperpixel == 4) {
 					// 32-bit RGBA
-					for (uint32 y = 0; y < height; y++) {
+					for (uint32_t y = 0; y < height; y++) {
 						BYTE *bits = FreeImage_GetScanLine(dib, y);
-						for (uint32 x = 0; x < width; x++) {
+						for (uint32_t x = 0; x < width; x++) {
 							bits[FI_RGBA_BLUE]	= (BYTE)TIFFGetB(row[x]);
 							bits[FI_RGBA_GREEN] = (BYTE)TIFFGetG(row[x]);
 							bits[FI_RGBA_RED]	= (BYTE)TIFFGetR(row[x]);
@@ -1166,9 +1185,9 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 					}
 				} else {
 					// 24-bit RGB
-					for (uint32 y = 0; y < height; y++) {
+					for (uint32_t y = 0; y < height; y++) {
 						BYTE *bits = FreeImage_GetScanLine(dib, y);
-						for (uint32 x = 0; x < width; x++) {
+						for (uint32_t x = 0; x < width; x++) {
 							bits[FI_RGBA_BLUE]	= (BYTE)TIFFGetB(row[x]);
 							bits[FI_RGBA_GREEN] = (BYTE)TIFFGetG(row[x]);
 							bits[FI_RGBA_RED]	= (BYTE)TIFFGetR(row[x]);
@@ -1189,9 +1208,10 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 			// ---------------------------------------------------------------------------------
 			// 8-bit + 8-bit alpha layer loading
 			// ---------------------------------------------------------------------------------
+			const uint16_t dst_spp = 2;
 
 			// create a new 8-bit DIB
-			dib = CreateImageType(header_only, image_type, width, height, bitspersample, MIN<uint16>(2, samplesperpixel));
+			dib = CreateImageType(header_only, image_type, width, height, bitspersample, MIN(dst_spp, samplesperpixel));
 			if (dib == NULL) {
 				throw FI_MSG_ERROR_MEMORY;
 			}
@@ -1225,13 +1245,20 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 			if(planar_config == PLANARCONFIG_CONTIG && !header_only) {
 
-				BYTE *buf = (BYTE*)malloc(TIFFStripSize(tif) * sizeof(BYTE));
+				const tmsize_t bufsz = TIFFStripSize(tif) * sizeof(BYTE);
+				BYTE *buf = (BYTE*)malloc(bufsz);
 				if(buf == NULL) {
 					throw FI_MSG_ERROR_MEMORY;
 				}
 
-				for (uint32 y = 0; y < height; y += rowsperstrip) {
-					int32 nrow = (y + rowsperstrip > height ? height - y : rowsperstrip);
+				const uint32_t src_width = static_cast<uint32_t>(src_line / samplesperpixel);
+				for (uint32_t y = 0; y < height; y += rowsperstrip) {
+					const int32_t nrow = (y + rowsperstrip > height ? height - y : rowsperstrip);
+
+					if (nrow * src_width * dst_spp * sizeof(BYTE) > static_cast<size_t>(bufsz)) {
+						free(buf);
+						throw FI_MSG_ERROR_CORRUPTED_IMAGE;
+					}
 
 					if (TIFFReadEncodedStrip(tif, TIFFComputeStrip(tif, y, 0), buf, nrow * src_line) == -1) {
 						free(buf);
@@ -1239,17 +1266,17 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 					}
 					for (int l = 0; l < nrow; l++) {
 						BYTE *p = bits;
-						BYTE *b = buf + l * src_line;
+						const BYTE *b = buf + l * src_line;
 
-						for(uint32 x = 0; x < (uint32)(src_line / samplesperpixel); x++) {
+						for(uint32_t x = 0; x < src_width; x++) {
 							// copy the 8-bit layer
 							*p = b[0];
 							// convert the 8-bit alpha layer to a trns table
 							trns[ b[0] ] = b[1];
 
 							p++;
-							b += samplesperpixel;
-						}
+							b += dst_spp;
+						} 
 						bits -= dst_pitch;
 					}
 				}
@@ -1265,8 +1292,8 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 				BYTE *grey = buf;
 				BYTE *alpha = buf + stripsize;
 
-				for (uint32 y = 0; y < height; y += rowsperstrip) {
-					int32 nrow = (y + rowsperstrip > height ? height - y : rowsperstrip);
+				for (uint32_t y = 0; y < height; y += rowsperstrip) {
+					int32_t nrow = (y + rowsperstrip > height ? height - y : rowsperstrip);
 
 					if (TIFFReadEncodedStrip(tif, TIFFComputeStrip(tif, y, 0), grey, nrow * src_line) == -1) {
 						free(buf);
@@ -1282,7 +1309,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 						BYTE *g = grey + l * src_line;
 						BYTE *a = alpha + l * src_line;
 
-						for(uint32 x = 0; x < (uint32)(src_line); x++) {
+						for(uint32_t x = 0; x < (uint32_t)(src_line); x++) {
 							// copy the 8-bit layer
 							*p = g[0];
 							// convert the 8-bit alpha layer to a trns table
@@ -1341,7 +1368,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 			}
 			
 			// create a new DIB
-			const uint16 chCount = MIN<uint16>(samplesperpixel, 4);
+			const uint16_t chCount = MIN<uint16_t>(samplesperpixel, 4);
 			dib = CreateImageType(header_only, image_type, width, height, bitspersample, chCount);
 			if (dib == NULL) {
 				FreeImage_Unload(alpha);
@@ -1382,8 +1409,8 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 					
 					// - loop for strip blocks -
 					
-					for (uint32 y = 0; y < height; y += rowsperstrip) {
-						const int32 strips = (y + rowsperstrip > height ? height - y : rowsperstrip);
+					for (uint32_t y = 0; y < height; y += rowsperstrip) {
+						const int32_t strips = (y + rowsperstrip > height ? height - y : rowsperstrip);
 
 						if (TIFFReadEncodedStrip(tif, TIFFComputeStrip(tif, y, 0), buf, strips * src_line) == -1) {
 							free(buf);
@@ -1445,12 +1472,12 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 					// - loop for strip blocks -
 					
-					for (uint32 y = 0; y < height; y += rowsperstrip) {
-						const int32 strips = (y + rowsperstrip > height ? height - y : rowsperstrip);
+					for (uint32_t y = 0; y < height; y += rowsperstrip) {
+						const int32_t strips = (y + rowsperstrip > height ? height - y : rowsperstrip);
 						
 						// - loop for channels (planes) -
 						
-						for(uint16 sample = 0; sample < samplesperpixel; sample++) {
+						for(uint16_t sample = 0; sample < samplesperpixel; sample++) {
 							
 							if (TIFFReadEncodedStrip(tif, TIFFComputeStrip(tif, y, sample), buf, strips * src_line) == -1) {
 								free(buf);
@@ -1460,7 +1487,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 									
 							BYTE *dst_strip = dib_strip;
 							unsigned dst_pitch = dib_pitch;
-							uint16 ch = sample;
+							uint16_t ch = sample;
 							unsigned Bpp = dibBpp;
 
 							if(sample >= chCount) {
@@ -1540,7 +1567,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 			// ---------------------------------------------------------------------------------
 
 			// create a new DIB
-			const uint16 chCount = MIN<uint16>(samplesperpixel, 4);
+			const uint16_t chCount = MIN<uint16_t>(samplesperpixel, 4);
 			dib = CreateImageType(header_only, image_type, width, height, bitspersample, chCount);
 			if (dib == NULL) {
 				throw FI_MSG_ERROR_MEMORY;
@@ -1580,8 +1607,8 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 				
 				if(planar_config == PLANARCONFIG_CONTIG) {
 
-					for (uint32 y = 0; y < height; y += rowsperstrip) {
-						int32 strips = (y + rowsperstrip > height ? height - y : rowsperstrip);
+					for (uint32_t y = 0; y < height; y += rowsperstrip) {
+						int32_t strips = (y + rowsperstrip > height ? height - y : rowsperstrip);
 
 						if (TIFFReadEncodedStrip(tif, TIFFComputeStrip(tif, y, 0), buf, strips * src_line) == -1) {
 							// ignore errors as they can be frequent and not really valid errors, especially with fax images
@@ -1614,12 +1641,12 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 					BYTE* dib_strip = bits;
 					// - loop for strip blocks -
 					
-					for (uint32 y = 0; y < height; y += rowsperstrip) {
-						const int32 strips = (y + rowsperstrip > height ? height - y : rowsperstrip);
+					for (uint32_t y = 0; y < height; y += rowsperstrip) {
+						const int32_t strips = (y + rowsperstrip > height ? height - y : rowsperstrip);
 						
 						// - loop for channels (planes) -
 						
-						for(uint16 sample = 0; sample < samplesperpixel; sample++) {
+						for(uint16_t sample = 0; sample < samplesperpixel; sample++) {
 							
 							if (TIFFReadEncodedStrip(tif, TIFFComputeStrip(tif, y, sample), buf, strips * src_line) == -1) {
 								// ignore errors as they can be frequent and not really valid errors, especially with fax images
@@ -1675,8 +1702,8 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 			// Tiled image loading
 			// ---------------------------------------------------------------------------------
 
-			uint32 tileWidth, tileHeight;
-			uint32 src_line = 0;
+			uint32_t tileWidth, tileHeight;
+			uint32_t src_line = 0;
 
 			// create a new DIB
 			dib = CreateImageType( header_only, image_type, width, height, bitspersample, samplesperpixel);
@@ -1712,8 +1739,8 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 				// calculate src line and dst pitch
 				unsigned dst_pitch = FreeImage_GetPitch(dib);
-				uint32 tileRowSize = (uint32)TIFFTileRowSize(tif);
-				uint32 imageRowSize = (uint32)TIFFScanlineSize(tif);
+				uint32_t tileRowSize = (uint32_t)TIFFTileRowSize(tif);
+				uint32_t imageRowSize = (uint32_t)TIFFScanlineSize(tif);
 
 
 				// In the tiff file the lines are saved from up to down 
@@ -1721,10 +1748,10 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 				BYTE *bits = FreeImage_GetScanLine(dib, height - 1);
 				
-				for (uint32 y = 0; y < height; y += tileHeight) {						
-					int32 nrows = (y + tileHeight > height ? height - y : tileHeight);					
+				for (uint32_t y = 0; y < height; y += tileHeight) {						
+					int32_t nrows = (y + tileHeight > height ? height - y : tileHeight);					
 
-					for (uint32 x = 0, rowSize = 0; x < width; x += tileWidth, rowSize += tileRowSize) {
+					for (uint32_t x = 0, rowSize = 0; x < width; x += tileWidth, rowSize += tileRowSize) {
 						memset(tileBuffer, 0, tileSize);
 
 						// read one tile
@@ -1798,8 +1825,8 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 					throw FI_MSG_ERROR_MEMORY;
 				}
 
-				for (uint32 y = 0; y < height; y += rowsperstrip) {
-					int32 nrow = (y + rowsperstrip > height ? height - y : rowsperstrip);
+				for (uint32_t y = 0; y < height; y += rowsperstrip) {
+					int32_t nrow = (y + rowsperstrip > height ? height - y : rowsperstrip);
 
 					if (TIFFReadEncodedStrip(tif, TIFFComputeStrip(tif, y, 0), buf, nrow * src_line) == -1) {
 						free(buf);
@@ -1825,8 +1852,8 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 			throw FI_MSG_ERROR_UNSUPPORTED_FORMAT;
 		}
-
-		return (FIBITMAP *)dib;
+		
+		return dib;
 
 	} catch (const char *message) {			
 		if(dib)	{
@@ -1842,6 +1869,19 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 // --------------------------------------------------------------------------
 
+/**
+Save a single image into a TIF
+
+@param io FreeImage IO
+@param dib The dib to be saved
+@param handle FreeImage handle
+@param page Page number
+@param flags FreeImage TIFF save flag
+@param data TIFF plugin context
+@param ifd TIFF Image File Directory (0 means save image, > 0 && (page == -1) means save thumbnail)
+@param ifdCount 1 if no thumbnail to save, 2 if image + thumbnail to save
+@return Returns TRUE if successful, returns FALSE otherwise
+*/
 static BOOL 
 SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *data) {
 	if (!dib || !handle || !data) {
@@ -1854,15 +1894,15 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 
 		const FREE_IMAGE_TYPE image_type = FreeImage_GetImageType(dib);
 
-		const uint32 width = FreeImage_GetWidth(dib);
-		const uint32 height = FreeImage_GetHeight(dib);
-		const uint16 bitsperpixel = (uint16)FreeImage_GetBPP(dib);
-		
+		const uint32_t width = FreeImage_GetWidth(dib);
+		const uint32_t height = FreeImage_GetHeight(dib);
+		const uint16_t bitsperpixel = (uint16_t)FreeImage_GetBPP(dib);
+
 		// setup out-variables based on dib and flag options
 		
-		uint16 bitspersample;
-		uint16 samplesperpixel;
-		uint16 photometric;
+		uint16_t bitspersample;
+		uint16_t samplesperpixel;
+		uint16_t photometric;
 
 		if(image_type == FIT_BITMAP) {
 			// standard image: 1-, 4-, 8-, 16-, 24-, 32-bit
@@ -1881,7 +1921,7 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 
 				if(photometric == PHOTOMETRIC_RGB) {
 					// transparency mask support
-					uint16 sampleinfo[1]; 
+					uint16_t sampleinfo[1]; 
 					// unassociated alpha data is transparency information
 					sampleinfo[0] = EXTRASAMPLE_UNASSALPHA;
 					TIFFSetField(out, TIFFTAG_EXTRASAMPLES, 1, sampleinfo);
@@ -1900,7 +1940,7 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 			bitspersample = bitsperpixel / samplesperpixel;
 			photometric	= PHOTOMETRIC_RGB;
 			// transparency mask support
-			uint16 sampleinfo[1]; 
+			uint16_t sampleinfo[1]; 
 			// unassociated alpha data is transparency information
 			sampleinfo[0] = EXTRASAMPLE_UNASSALPHA;
 			TIFFSetField(out, TIFFTAG_EXTRASAMPLES, 1, sampleinfo);
@@ -1937,7 +1977,7 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 		// set image data type
 
 		WriteImageType(out, image_type);
-
+		
 		// handle standard width/height/bpp stuff
 
 		TIFFSetField(out, TIFFTAG_IMAGEWIDTH, width);
@@ -1948,7 +1988,7 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 		TIFFSetField(out, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);	// single image plane 
 		TIFFSetField(out, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
 		TIFFSetField(out, TIFFTAG_FILLORDER, FILLORDER_MSB2LSB);
-		TIFFSetField(out, TIFFTAG_ROWSPERSTRIP, TIFFDefaultStripSize(out, (uint32) -1)); 
+		TIFFSetField(out, TIFFTAG_ROWSPERSTRIP, TIFFDefaultStripSize(out, (uint32_t) -1)); 
 
 		// handle metrics
 
@@ -1957,11 +1997,11 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 		// palettes (image colormaps are automatically scaled to 16-bits)
 
 		if (photometric == PHOTOMETRIC_PALETTE) {
-			uint16 *r, *g, *b;
-			uint16 nColors = (uint16)FreeImage_GetColorsUsed(dib);
+			uint16_t *r, *g, *b;
+			uint16_t nColors = (uint16_t)FreeImage_GetColorsUsed(dib);
 			RGBQUAD *pal = FreeImage_GetPalette(dib);
 
-			r = (uint16 *) _TIFFmalloc(sizeof(uint16) * 3 * nColors);
+			r = (uint16_t *) _TIFFmalloc(sizeof(uint16_t) * 3 * nColors);
 			if(r == NULL) {
 				throw FI_MSG_ERROR_MEMORY;
 			}
@@ -1969,9 +2009,9 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 			b = g + nColors;
 
 			for (int i = nColors - 1; i >= 0; i--) {
-				r[i] = SCALE((uint16)pal[i].rgbRed);
-				g[i] = SCALE((uint16)pal[i].rgbGreen);
-				b[i] = SCALE((uint16)pal[i].rgbBlue);
+				r[i] = SCALE((uint16_t)pal[i].rgbRed);
+				g[i] = SCALE((uint16_t)pal[i].rgbGreen);
+				b[i] = SCALE((uint16_t)pal[i].rgbBlue);
 			}
 
 			TIFFSetField(out, TIFFTAG_COLORMAP, r, g, b);
@@ -1987,7 +2027,7 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 		// and save them in the TIF
 		// -------------------------------------
 		
-		const uint32 pitch = FreeImage_GetPitch(dib);
+		const uint32_t pitch = FreeImage_GetPitch(dib);
 
 		if(image_type == FIT_BITMAP) {
 			// standard bitmap type
@@ -2013,7 +2053,7 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 
 							BYTE *p = bits, *b = buffer;
 
-							for(uint32 x = 0; x < width; x++) {
+							for(uint32_t x = 0; x < width; x++) {
 								// copy the 8-bit layer
 								b[0] = *p;
 								// convert the trns table to a 8-bit alpha layer
@@ -2037,7 +2077,7 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 							throw FI_MSG_ERROR_MEMORY;
 						}
 
-						for (uint32 y = 0; y < height; y++) {
+						for (uint32_t y = 0; y < height; y++) {
 							// get a copy of the scanline
 							memcpy(buffer, FreeImage_GetScanLine(dib, height - y - 1), pitch);
 							// write the scanline to disc
@@ -2057,7 +2097,7 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 						throw FI_MSG_ERROR_MEMORY;
 					}
 
-					for (uint32 y = 0; y < height; y++) {
+					for (uint32_t y = 0; y < height; y++) {
 						// get a copy of the scanline
 
 						memcpy(buffer, FreeImage_GetScanLine(dib, height - y - 1), pitch);
@@ -2068,7 +2108,7 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 		
 							BYTE *pBuf = buffer;
 		
-							for (uint32 x = 0; x < width; x++) {
+							for (uint32_t x = 0; x < width; x++) {
 								INPLACESWAP(pBuf[0], pBuf[2]);
 								pBuf += samplesperpixel;
 							}
@@ -2093,7 +2133,7 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 				throw FI_MSG_ERROR_MEMORY;
 			}
 
-			for (uint32 y = 0; y < height; y++) {
+			for (uint32_t y = 0; y < height; y++) {
 				// get a copy of the scanline and convert from RGB to XYZ
 				tiff_ConvertLineRGBToXYZ(buffer, FreeImage_GetScanLine(dib, height - y - 1), width);
 				// write the scanline to disc
@@ -2108,7 +2148,7 @@ SaveOneTIFF(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int flags, void *d
 				throw FI_MSG_ERROR_MEMORY;
 			}
 			
-			for (uint32 y = 0; y < height; y++) {
+			for (uint32_t y = 0; y < height; y++) {
 				// get a copy of the scanline
 				memcpy(buffer, FreeImage_GetScanLine(dib, height - y - 1), pitch);
 				// write the scanline to disc

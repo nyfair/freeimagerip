@@ -531,6 +531,7 @@ static const char *FI_MSG_ERROR_PARSING = "Parsing error";
 static const char *FI_MSG_ERROR_MAGIC_NUMBER = "Invalid magic number";
 static const char *FI_MSG_ERROR_UNSUPPORTED_FORMAT = "Unsupported image format";
 static const char *FI_MSG_ERROR_INVALID_FORMAT = "Invalid file format";
+static const char *FI_MSG_ERROR_CORRUPTED_IMAGE = "Image is corrupted";
 static const char *FI_MSG_ERROR_UNSUPPORTED_COMPRESSION = "Unsupported compression type";
 static const char *FI_MSG_WARNING_INVALID_THUMBNAIL = "Warning: attached thumbnail cannot be written to output file (invalid format) - Thumbnail saving aborted";
 

@@ -39,20 +39,20 @@
 #endif
 
 typedef struct tagTGAHEADER {
-	BYTE id_length;				// ID length
-	BYTE color_map_type;		// color map type
-	BYTE image_type;			// image type
+	BYTE id_length;				//! length of the image ID field
+	BYTE color_map_type;		//! whether a color map is included
+	BYTE image_type;			//! compression and color types
 
-	WORD cm_first_entry;		// first entry index
-	WORD cm_length;				// color map length
-	BYTE cm_size;				// color map entry size, in bits
+	WORD cm_first_entry;		//! first entry index (offset into the color map table)
+	WORD cm_length;				//! color map length (number of entries)
+	BYTE cm_size;				//! color map entry size, in bits (number of bits per pixel)
 
-	WORD is_xorigin;			// X-origin of image
-	WORD is_yorigin;			// Y-origin of image
-	WORD is_width;				// image width
-	WORD is_height;				// image height
-	BYTE is_pixel_depth;		// pixel depth
-	BYTE is_image_descriptor;	// image descriptor
+	WORD is_xorigin;			//! X-origin of image (absolute coordinate of lower-left corner for displays where origin is at the lower left)
+	WORD is_yorigin;			//! Y-origin of image (as for X-origin)
+	WORD is_width;				//! image width
+	WORD is_height;				//! image height
+	BYTE is_pixel_depth;		//! bits per pixel
+	BYTE is_image_descriptor;	//! image descriptor, bits 3-0 give the alpha channel depth, bits 5-4 give direction
 } TGAHEADER;
 
 typedef struct tagTGAEXTENSIONAREA {
@@ -114,6 +114,7 @@ class IOCache
 public:
 	IOCache(FreeImageIO *io, fi_handle handle, size_t size) :
 		_ptr(NULL), _begin(NULL), _end(NULL), _size(size), _io(io), _handle(handle)	{
+		  assert(size);
 			_begin = (BYTE*)malloc(size);
 			if (_begin) {
 			_end = _begin + _size;
@@ -473,7 +474,7 @@ Generic RLE loader
 */
 template<int bPP>
 static void 
-loadRLE(FIBITMAP* dib, int width, int height, FreeImageIO* io, fi_handle handle, long eof, BOOL as24bit) {
+loadRLE(FIBITMAP*& dib, int width, int height, FreeImageIO* io, fi_handle handle, long eof, BOOL as24bit) {
 	const int file_pixel_size = bPP/8;
 	const int pixel_size = as24bit ? 3 : file_pixel_size;
 
@@ -490,8 +491,12 @@ loadRLE(FIBITMAP* dib, int width, int height, FreeImageIO* io, fi_handle handle,
 	const BYTE* dib_end = FreeImage_GetScanLine(dib, height);//< one-past-end row
 
 	// Compute the rough size of a line...
-	long pixels_offset = io->tell_proc(handle);
-	long sz = ((eof - pixels_offset) / height);
+	const long pixels_offset = io->tell_proc(handle);
+	const long remaining_size = (eof - pixels_offset);
+	if (remaining_size < height) {
+		throw FI_MSG_ERROR_CORRUPTED;
+	}
+	const long sz = (remaining_size / height);
 
 	// ...and allocate cache of this size (yields good results)
 	IOCache cache(io, handle, sz);
@@ -714,7 +719,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 
 					free(cmap);
 				}
-
+				
 				if(header_only) {
 					return dib;
 				}
@@ -764,7 +769,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 				if (dib == NULL) {
 					throw FI_MSG_ERROR_DIB_MEMORY;
 				}
-
+				
 				if(header_only) {
 					return dib;
 				}
@@ -838,7 +843,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 				if (dib == NULL) {
 					throw FI_MSG_ERROR_DIB_MEMORY;
 				}
-
+				
 				if(header_only) {
 					return dib;
 				}
@@ -876,7 +881,7 @@ Load(FreeImageIO *io, fi_handle handle, int flags, void *data) {
 				if (dib == NULL) {
 					throw FI_MSG_ERROR_DIB_MEMORY;
 				}
-
+				
 				if(header_only) {
 					return dib;
 				}

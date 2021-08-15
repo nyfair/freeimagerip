@@ -37,6 +37,7 @@ SET(SOURCE_FILES
 	${SRC}/dsp/lossless_msa.c
 	${SRC}/dsp/lossless_neon.c
 	${SRC}/dsp/lossless_sse2.c
+	${SRC}/dsp/lossless_sse41.c
 	${SRC}/dsp/rescaler.c
 	${SRC}/dsp/rescaler_mips32.c
 	${SRC}/dsp/rescaler_mips_dsp_r2.c
