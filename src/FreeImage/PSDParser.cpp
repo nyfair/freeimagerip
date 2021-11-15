@@ -95,7 +95,7 @@ enum {
 template <int N>
 class PSDGetValue {
 public:
-	static inline int get(const BYTE * iprBuffer) {} // error
+	static inline int get(const BYTE * iprBuffer) { return -1; } // error
 };
 
 template <>

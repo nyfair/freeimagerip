@@ -175,24 +175,27 @@ _MemorySeekProc(fi_handle handle, long offset, int origin) {
 	// you can use _MemorySeekProc to reposition the pointer anywhere in a file
 	// the pointer can also be positioned beyond the end of the file
 
-	switch(origin) { //0 to filelen-1 are 'inside' the file
+	switch (origin) { //0 to filelen-1 are 'inside' the file
 		default:
 		case SEEK_SET: //can fseek() to 0-7FFFFFFF always
-			if(offset >= 0) {
+			if ((offset >= 0) && (offset <= std::numeric_limits<int>::max())) {
+				// the 64-bit long offset may overflow when casted to int
 				mem_header->current_position = offset;
 				return 0;
 			}
 			break;
 
 		case SEEK_CUR:
-			if((mem_header->current_position + offset) >= 0) {
+			if (((mem_header->current_position + offset) >= 0) && ((mem_header->current_position + offset) <= std::numeric_limits<int>::max())) {
+				// the 64-bit result may overflow when casted to int
 				mem_header->current_position += offset;
 				return 0;
 			}
 			break;
 
 		case SEEK_END:
-			if((mem_header->file_length + offset) >= 0) {
+			if (((mem_header->file_length + offset) >= 0) && ((mem_header->file_length + offset) <= std::numeric_limits<int>::max())) {
+				// the 64-bit result may overflow when casted to int
 				mem_header->current_position = mem_header->file_length + offset;
 				return 0;
 			}

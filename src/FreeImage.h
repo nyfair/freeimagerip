@@ -600,8 +600,7 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define TARGA_SAVE_RLE		2			// If set, the writer saves with RLE compression
 #define TIFF_DEFAULT		0
 #define TIFF_PACKBITS		0x0100		// save using PACKBITS compression
-#define TIFF_DEFLATE        0x0200		// save using DEFLATE compression (a.k.a. ZLIB compression)
-#define TIFF_ADOBE_DEFLATE  0x0400		// save using ADOBE DEFLATE compression
+#define TIFF_DEFLATE        0x0200		// save using DEFLATE compression (a.k.a. ZLIB compression) - obsolete, will save as TIFF_ADOBE_DEFLATE#define TIFF_ADOBE_DEFLATE  0x0400		// save using ADOBE DEFLATE compression
 #define TIFF_NONE			0x0800		// save without any compression
 #define TIFF_CCITTFAX3		0x1000		// save using CCITT Group 3 fax encoding
 #define TIFF_CCITTFAX4		0x2000		// save using CCITT Group 4 fax encoding
