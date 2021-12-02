@@ -3,7 +3,7 @@
 #include "FreeImage.h"
 #include "Thumb.h"
 
-#define MAXWH 256
+#define MAXWH 480
 extern HINSTANCE g_hInst;
 extern long g_cDllRef;
 

@@ -17,13 +17,13 @@ jobs:
           cos: "x64 -DFISHELLEXT=on"
           ext: dll
           bat: vcvars64.bat
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
     - uses: actions/checkout@v2
     - uses: ilammy/setup-nasm@v1
     - name: Compile
       run: |
-        cmake build -G "Visual Studio 16 2019" -A ${{ matrix.cos }}
+        cmake build -G "Visual Studio 17 2022" -A ${{ matrix.cos }}
         cmake --build . --config Release
         move Release\*.dll .
         move plugin\Release\*.${{ matrix.ext }} .
@@ -36,7 +36,7 @@ jobs:
     - name: Compile LuaJIT
       shell: cmd
       run: |
-        call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\${{ matrix.bat }}"
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\${{ matrix.bat }}"
         curl -O http://luajit.org/download/LuaJIT-2.1.0-beta3.zip
         curl -OL https://github.com/nyfair/fi-luajit/archive/master.zip
         7z x *.zip
