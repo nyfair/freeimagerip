@@ -381,7 +381,8 @@ FI_ENUM(FREE_IMAGE_FORMAT) {
 	FIF_PSD			= 8,
 	FIF_ICO			= 9,
 	FIF_DDS			= 10,
-	FIF_HDR			= 11
+	FIF_HDR			= 11,
+	FIF_PNM			= 12
 };
 
 /** Image type used in FreeImage.
@@ -591,6 +592,9 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define PNG_NO_COMPRESSION	10			// save without compression
 #define PNG_IGNOREGAMMA		1			// loading: avoid gamma correction
 #define PNG_INTERLACED		0x0200		// save using Adam7 interlacing (use | to combine with other save flags)
+#define PNM_DEFAULT         0
+#define PNM_SAVE_RAW        0       //! if set the writer saves in RAW format (i.e. P4, P5 or P6)
+#define PNM_SAVE_ASCII      1       //! if set the writer saves in ASCII format (i.e. P1, P2 or P3)
 #define PSD_DEFAULT		 	0
 #define PSD_NONE			0x0100		// save without any compression
 #define PSD_RLE				0x0200		// save using RLE compression

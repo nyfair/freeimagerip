@@ -12,15 +12,16 @@ jobs:
         - os: win32
           cos: "Win32 -DSUSIE_PLUGIN=on"
           ext: spi
-          bat: vcvars32.bat
         - os: win64
           cos: "x64 -DFISHELLEXT=on"
           ext: dll
-          bat: vcvars64.bat
     runs-on: windows-2022
     steps:
     - uses: actions/checkout@v2
     - uses: ilammy/setup-nasm@v1
+    - uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: ${{ matrix.os }}
     - name: Compile
       run: |
         cmake build -G "Visual Studio 17 2022" -A ${{ matrix.cos }}
@@ -36,7 +37,6 @@ jobs:
     - name: Compile LuaJIT
       shell: cmd
       run: |
-        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\${{ matrix.bat }}"
         curl -O http://luajit.org/download/LuaJIT-2.1.0-beta3.zip
         curl -OL https://github.com/nyfair/fi-luajit/archive/master.zip
         7z x *.zip
