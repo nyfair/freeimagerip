@@ -16,7 +16,7 @@
 |libtiff 4.3.0|http://www.simplesystems.org/libtiff|
 |libwebp 1.2.2|https://github.com/webmproject/libwebp|
 |mozjpeg 4.0.3|https://github.com/mozilla/mozjpeg|
-|zlib 1.2.11|http://zlib.net|
+|zlib 1.2.12|http://zlib.net|
 |jxrlib 1.1|https://jxrlib.codeplex.com|
 
 # Windows Context Menu Previewer
