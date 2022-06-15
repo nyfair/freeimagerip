@@ -11,6 +11,7 @@ ELSE()
 	CONFIGURE_FILE(${SRC}/jconfig.h.in ${CMAKE_CURRENT_BINARY_DIR}/jconfig.h)
 ENDIF()
 CONFIGURE_FILE(${SRC}/jconfigint.h.in ${CMAKE_CURRENT_BINARY_DIR}/jconfigint.h)
+CONFIGURE_FILE(${SRC}/jversion.h.in ${CMAKE_CURRENT_BINARY_DIR}/jversion.h)
 
 SET(SOURCE_FILES
 	${SRC}/jcapimin.c

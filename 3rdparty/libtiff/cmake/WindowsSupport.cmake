@@ -26,6 +26,10 @@
 # Debug postfix
 if(MSVC)
     set(CMAKE_DEBUG_POSTFIX "d")
+# disable deprecation warnings
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+# suppress deprecation warning for MSVC POSIX names
+    add_definitions(-D_CRT_NONSTDC_NO_WARNINGS)
 endif()
 
 # Win32 file I/O
