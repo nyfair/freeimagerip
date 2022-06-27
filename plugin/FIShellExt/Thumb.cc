@@ -101,21 +101,15 @@ IFACEMETHODIMP FileContextMenuExt::QueryContextMenu(HMENU hMenu, UINT indexMenu,
 			FreeImage_Unload(dib);
 
 			// Add a separator.
-			MENUITEMINFO sep = { sizeof(sep) };
-			sep.fMask = MIIM_FTYPE;
-			sep.fType = MFT_SEPARATOR;
-			if (!InsertMenuItem(hMenu, indexMenu, MF_BYPOSITION, &sep))
+			if (!InsertMenu(hMenu, indexMenu, MF_BYPOSITION | MF_SEPARATOR, NULL, NULL))
 				return HRESULT_FROM_WIN32(GetLastError());
 
 			// Add thumbnails
-			MENUITEMINFO img = { sizeof(img) };
-			img.fMask = MIIM_BITMAP;
-			img.hbmpItem = thumb;
-			if (!InsertMenuItem(hMenu, indexMenu + 1, MF_BYPOSITION, &img))
+			if (!InsertMenu(hMenu, indexMenu + 1, MF_BYPOSITION | MF_BITMAP, NULL, (LPCTSTR)thumb))
 				return HRESULT_FROM_WIN32(GetLastError());
 
 			// Add another separator.
-			if (!InsertMenuItem(hMenu, indexMenu + 2, MF_BYPOSITION, &sep))
+			if (!InsertMenu(hMenu, indexMenu + 2, MF_BYPOSITION | MF_SEPARATOR, NULL, NULL))
 				return HRESULT_FROM_WIN32(GetLastError());
 
 			// Return an HRESULT value with the severity set to SEVERITY_SUCCESS. 
