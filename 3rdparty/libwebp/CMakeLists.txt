@@ -15,6 +15,14 @@ endif()
 project(WebP C)
 
 # Options for coder / decoder executables.
+if(BUILD_SHARED_LIBS)
+  set(WEBP_LINK_STATIC_DEFAULT OFF)
+else()
+  set(WEBP_LINK_STATIC_DEFAULT ON)
+endif()
+option(WEBP_LINK_STATIC
+       "Link using static libraries. If OFF, use dynamic libraries."
+       ${WEBP_LINK_STATIC_DEFAULT})
 if(NOT EMSCRIPTEN)
   # Disable SIMD on Emscripten by default, as it's a new unstable Wasm feature.
   # Users can still explicitly opt-in to make a SIMD-enabled build.
@@ -39,6 +47,18 @@ option(WEBP_ENABLE_SWAP_16BIT_CSP "Enable byte swap for 16 bit colorspaces."
        OFF)
 set(WEBP_BITTRACE "0" CACHE STRING "Bit trace mode (0=none, 1=bit, 2=bytes)")
 set_property(CACHE WEBP_BITTRACE PROPERTY STRINGS 0 1 2)
+
+if(WEBP_LINK_STATIC)
+  if(WIN32)
+    SET(CMAKE_FIND_LIBRARY_SUFFIXES .lib .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+  else()
+    SET(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+  endif()
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+  # vwebp does not compile on Ubuntu with static libraries so disabling it for
+  # now.
+  set(WEBP_BUILD_VWEBP OFF)
+endif()
 
 # Option needed for handling Unicode file names on Windows.
 if(WIN32)
@@ -96,6 +116,8 @@ set(libdir "\$\{prefix\}/lib")
 set(includedir "\$\{prefix\}/include")
 set(PTHREAD_LIBS ${CMAKE_THREAD_LIBS_INIT})
 set(INSTALLED_LIBRARIES)
+
+set(CMAKE_C_VISIBILITY_PRESET hidden)
 
 # ##############################################################################
 # Android only.
@@ -211,6 +233,18 @@ function(libwebp_add_stub_file TARGET)
   target_sources(${TARGET} PRIVATE ${stub_source_file})
 endfunction()
 
+parse_makefile_am(${CMAKE_CURRENT_SOURCE_DIR}/sharpyuv "WEBP_SHARPYUV_SRCS"
+                  "")
+add_library(sharpyuv OBJECT ${WEBP_SHARPYUV_SRCS})
+target_include_directories(sharpyuv
+                            PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+                            ${CMAKE_CURRENT_SOURCE_DIR})
+set_target_properties(
+  sharpyuv
+  PROPERTIES PUBLIC_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/sharpyuv/sharpyuv.h;\
+${CMAKE_CURRENT_SOURCE_DIR}/sharpyuv/sharpyuv_csp.h;\
+${CMAKE_CURRENT_SOURCE_DIR}/src/webp/types.h")
+
 if(MSVC)
   # avoid security warnings for e.g., fopen() used in the examples.
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
@@ -275,6 +309,7 @@ target_include_directories(webputils
                            PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                                    ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(webp
+            $<TARGET_OBJECTS:sharpyuv>
             $<TARGET_OBJECTS:webpdecode>
             $<TARGET_OBJECTS:webpdsp>
             $<TARGET_OBJECTS:webpencode>
@@ -297,7 +332,8 @@ ${CMAKE_CURRENT_SOURCE_DIR}/src/webp/types.h")
 
 # Make sure the OBJECT libraries are built with position independent code (it is
 # not ON by default).
-set_target_properties(webpdecode
+set_target_properties(sharpyuv
+                      webpdecode
                       webpdspdecode
                       webputilsdecode
                       webpencode
@@ -411,13 +447,14 @@ if(WEBP_BUILD_ANIM_UTILS
    OR WEBP_BUILD_DWEBP
    OR WEBP_BUILD_GIF2WEBP
    OR WEBP_BUILD_IMG2WEBP
-   OR WEBP_BUILD_VWEBP)
+   OR WEBP_BUILD_VWEBP
+   OR WEBP_BUILD_WEBPMUX
+   OR WEBP_BUILD_WEBPINFO)
   # Example utility library.
   parse_makefile_am(${CMAKE_CURRENT_SOURCE_DIR}/examples "EXAMPLEUTIL_SRCS"
                     "example_util_[^ ]*")
   list(APPEND EXAMPLEUTIL_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/examples/stopwatch.h)
   add_library(exampleutil STATIC ${EXAMPLEUTIL_SRCS})
-  target_link_libraries(exampleutil imageioutil)
   target_include_directories(
     exampleutil
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
@@ -426,6 +463,7 @@ if(WEBP_BUILD_ANIM_UTILS
                     "imageio_util_[^ ]*")
   add_library(imageioutil STATIC ${IMAGEIOUTILS_SRCS})
   target_link_libraries(imageioutil webp)
+  target_link_libraries(exampleutil imageioutil)
 
   # Image-decoding utility library.
   parse_makefile_am(${CMAKE_CURRENT_SOURCE_DIR}/imageio "IMAGEDEC_SRCS"
@@ -471,19 +509,18 @@ endif()
 
 if(WEBP_BUILD_LIBWEBPMUX)
   parse_makefile_am(${CMAKE_CURRENT_SOURCE_DIR}/src/mux "WEBP_MUX_SRCS" "")
-  add_library(libwebpmux ${WEBP_MUX_SRCS})
-  target_link_libraries(libwebpmux webp)
-  target_include_directories(libwebpmux
+  add_library(webpmux ${WEBP_MUX_SRCS})
+  target_link_libraries(webpmux webp)
+  target_include_directories(webpmux
                              PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                                      ${CMAKE_CURRENT_SOURCE_DIR})
-  set_version(mux/Makefile.am libwebpmux webpmux)
-  set_target_properties(libwebpmux
+  set_version(mux/Makefile.am webpmux webpmux)
+  set_target_properties(webpmux
                         PROPERTIES PUBLIC_HEADER
                                    "${CMAKE_CURRENT_SOURCE_DIR}/src/webp/mux.h;\
 ${CMAKE_CURRENT_SOURCE_DIR}/src/webp/mux_types.h;\
 ${CMAKE_CURRENT_SOURCE_DIR}/src/webp/types.h;")
-  set_target_properties(libwebpmux PROPERTIES OUTPUT_NAME webpmux)
-  list(APPEND INSTALLED_LIBRARIES libwebpmux)
+  list(APPEND INSTALLED_LIBRARIES webpmux)
   configure_pkg_config("src/mux/libwebpmux.pc")
 endif()
 
@@ -497,7 +534,7 @@ if(WEBP_BUILD_GIF2WEBP)
                         exampleutil
                         imageioutil
                         webp
-                        libwebpmux
+                        webpmux
                         ${WEBP_DEP_GIF_LIBRARIES})
   target_include_directories(gif2webp PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/src)
   install(TARGETS gif2webp RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -514,7 +551,7 @@ if(WEBP_BUILD_IMG2WEBP)
                         imagedec
                         imageioutil
                         webp
-                        libwebpmux)
+                        webpmux)
   target_include_directories(img2webp PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/src)
   install(TARGETS img2webp RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
@@ -554,7 +591,9 @@ if(WEBP_BUILD_WEBPINFO)
                     "webpinfo")
   add_executable(webpinfo ${WEBPINFO_SRCS})
   target_link_libraries(webpinfo exampleutil imageioutil)
-  target_include_directories(webpinfo PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/src)
+  target_include_directories(webpinfo
+                             PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/src
+                                     ${CMAKE_CURRENT_SOURCE_DIR}/src)
   install(TARGETS webpinfo RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 
@@ -562,10 +601,12 @@ if(WEBP_BUILD_WEBPMUX)
   # webpmux
   parse_makefile_am(${CMAKE_CURRENT_SOURCE_DIR}/examples "WEBPMUX_SRCS"
                     "webpmux")
-  add_executable(webpmux ${WEBPMUX_SRCS})
-  target_link_libraries(webpmux exampleutil imageioutil libwebpmux webp)
-  target_include_directories(webpmux PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/src)
-  install(TARGETS webpmux RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+  add_executable(webpmux_app ${WEBPMUX_SRCS})
+  set_target_properties(webpmux_app PROPERTIES OUTPUT_NAME webpmux)
+  target_link_libraries(webpmux_app exampleutil imageioutil webpmux webp)
+  target_include_directories(webpmux_app
+                             PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/src)
+  install(TARGETS webpmux_app RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 
 if(WEBP_BUILD_EXTRAS)
@@ -575,6 +616,13 @@ if(WEBP_BUILD_EXTRAS)
   parse_makefile_am(${EXTRAS_MAKEFILE} "WEBP_QUALITY_SRCS" "webp_quality")
   parse_makefile_am(${EXTRAS_MAKEFILE} "VWEBP_SDL_SRCS" "vwebp_sdl")
 
+  # libextras
+  add_library(extras STATIC ${WEBP_EXTRAS_SRCS})
+  target_include_directories(extras
+                             PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+                             ${CMAKE_CURRENT_SOURCE_DIR}
+                             ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
   # get_disto
   add_executable(get_disto ${GET_DISTO_SRCS})
   target_link_libraries(get_disto imagedec)
@@ -583,15 +631,15 @@ if(WEBP_BUILD_EXTRAS)
                                      ${CMAKE_CURRENT_BINARY_DIR}/src)
 
   # webp_quality
-  add_executable(webp_quality ${WEBP_QUALITY_SRCS} ${WEBP_EXTRAS_SRCS})
-  target_link_libraries(webp_quality exampleutil imagedec)
+  add_executable(webp_quality ${WEBP_QUALITY_SRCS})
+  target_link_libraries(webp_quality exampleutil imagedec extras)
   target_include_directories(webp_quality
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
                                      ${CMAKE_CURRENT_BINARY_DIR})
 
   # vwebp_sdl
   find_package(SDL)
-  if(SDL_FOUND)
+  if(WEBP_BUILD_VWEBP AND SDL_FOUND)
     add_executable(vwebp_sdl ${VWEBP_SDL_SRCS})
     target_link_libraries(vwebp_sdl ${SDL_LIBRARY} imageioutil webp)
     target_include_directories(vwebp_sdl

@@ -33,6 +33,14 @@ else
   NEON := c
 endif
 
+sharpyuv_srcs := \
+    sharpyuv/sharpyuv.c \
+    sharpyuv/sharpyuv_csp.c \
+    sharpyuv/sharpyuv_dsp.c \
+    sharpyuv/sharpyuv_gamma.c \
+    sharpyuv/sharpyuv_neon.$(NEON) \
+    sharpyuv/sharpyuv_sse2.c \
+
 dec_srcs := \
     src/dec/alpha_dec.c \
     src/dec/buffer_dec.c \
@@ -204,6 +212,7 @@ endif  # ENABLE_SHARED=1
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
+    $(sharpyuv_srcs) \
     $(dsp_enc_srcs) \
     $(enc_srcs) \
     $(utils_enc_srcs) \

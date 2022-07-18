@@ -125,6 +125,14 @@ endif
 ANIM_UTIL_OBJS = \
     examples/anim_util.o \
 
+SHARPYUV_OBJS = \
+    sharpyuv/sharpyuv.o \
+    sharpyuv/sharpyuv_csp.o \
+    sharpyuv/sharpyuv_dsp.o \
+    sharpyuv/sharpyuv_gamma.o \
+    sharpyuv/sharpyuv_neon.o \
+    sharpyuv/sharpyuv_sse2.o \
+
 DEC_OBJS = \
     src/dec/alpha_dec.o \
     src/dec/buffer_dec.o \
@@ -282,8 +290,8 @@ EXTRA_OBJS = \
     extras/quality_estimate.o \
 
 LIBWEBPDECODER_OBJS = $(DEC_OBJS) $(DSP_DEC_OBJS) $(UTILS_DEC_OBJS)
-LIBWEBP_OBJS = $(LIBWEBPDECODER_OBJS) $(ENC_OBJS) $(DSP_ENC_OBJS) \
-               $(UTILS_ENC_OBJS)
+LIBWEBP_OBJS = $(SHARPYUV_OBJS) $(LIBWEBPDECODER_OBJS) $(ENC_OBJS) \
+               $(DSP_ENC_OBJS) $(UTILS_ENC_OBJS)
 LIBWEBPMUX_OBJS = $(MUX_OBJS)
 LIBWEBPDEMUX_OBJS = $(DEMUX_OBJS)
 LIBWEBPEXTRA_OBJS = $(EXTRA_OBJS)
@@ -304,6 +312,7 @@ HDRS = \
     src/dec/vp8li_dec.h \
     src/dec/webpi_dec.h \
     src/dsp/common_sse2.h \
+    src/dsp/cpu.h \
     src/dsp/dsp.h \
     src/dsp/lossless.h \
     src/dsp/lossless_common.h \
@@ -489,6 +498,7 @@ clean:
               examples/*.o examples/*~ \
               extras/*.o extras/*~ \
               imageio/*.o imageio/*~ \
+              sharpyuv/*.o sharpyuv/*~ \
               src/dec/*.o src/dec/*~ \
               src/demux/*.o src/demux/*~ \
               src/dsp/*.o src/dsp/*~ \

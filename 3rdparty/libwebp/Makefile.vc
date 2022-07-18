@@ -31,12 +31,11 @@ CCNODBG    = cl.exe $(NOLOGO) /O2 /DNDEBUG
 CCDEBUG    = cl.exe $(NOLOGO) /Od /Zi /D_DEBUG /RTC1
 CFLAGS     = /I. /Isrc $(NOLOGO) /W3 /EHsc /c
 CFLAGS     = $(CFLAGS) /DWIN32 /D_CRT_SECURE_NO_WARNINGS /DWIN32_LEAN_AND_MEAN
-LDFLAGS    = /LARGEADDRESSAWARE /MANIFEST /NXCOMPAT /DYNAMICBASE
+LDFLAGS    = /LARGEADDRESSAWARE /MANIFEST:EMBED /NXCOMPAT /DYNAMICBASE
 LDFLAGS    = $(LDFLAGS) $(PLATFORM_LDFLAGS)
 LNKDLL     = link.exe /DLL $(NOLOGO)
 LNKEXE     = link.exe $(NOLOGO)
 LNKLIB     = lib.exe $(NOLOGO)
-MT         = mt.exe $(NOLOGO)
 RCNODBG    = rc.exe $(NOLOGO) /l"0x0409"  # 0x409 = U.S. English
 RCDEBUG    = $(RCNODBG) /D_DEBUG
 
@@ -82,6 +81,7 @@ OUTPUT_DIRS = $(DIRBIN) $(DIRINC) $(DIRLIB) \
               $(DIROBJ)\extras \
               $(DIROBJ)\imageio \
               $(DIROBJ)\mux \
+              $(DIROBJ)\sharpyuv \
               $(DIROBJ)\utils \
 
 # Target configuration
@@ -173,6 +173,14 @@ CFLAGS = $(CFLAGS) /D_UNICODE /DUNICODE
 !IF "$(CFGSET)" == "TRUE"
 # A config was provided, so the library can be built.
 #
+
+SHARPYUV_OBJS = \
+    $(DIROBJ)\sharpyuv\sharpyuv.obj \
+    $(DIROBJ)\sharpyuv\sharpyuv_csp.obj \
+    $(DIROBJ)\sharpyuv\sharpyuv_dsp.obj \
+    $(DIROBJ)\sharpyuv\sharpyuv_gamma.obj \
+    $(DIROBJ)\sharpyuv\sharpyuv_neon.obj \
+    $(DIROBJ)\sharpyuv\sharpyuv_sse2.obj \
 
 DEC_OBJS = \
     $(DIROBJ)\dec\alpha_dec.obj \
@@ -335,8 +343,8 @@ UTILS_ENC_OBJS = \
     $(DIROBJ)\utils\quant_levels_utils.obj \
 
 LIBWEBPDECODER_OBJS = $(DEC_OBJS) $(DSP_DEC_OBJS) $(UTILS_DEC_OBJS)
-LIBWEBP_OBJS = $(LIBWEBPDECODER_OBJS) $(ENC_OBJS) $(DSP_ENC_OBJS) \
-               $(UTILS_ENC_OBJS) $(DLL_OBJS)
+LIBWEBP_OBJS = $(LIBWEBPDECODER_OBJS) $(SHARPYUV_OBJS) $(ENC_OBJS) \
+               $(DSP_ENC_OBJS) $(UTILS_ENC_OBJS) $(DLL_OBJS)
 LIBWEBPMUX_OBJS = $(MUX_OBJS) $(LIBWEBPMUX_OBJS)
 LIBWEBPDEMUX_OBJS = $(DEMUX_OBJS) $(LIBWEBPDEMUX_OBJS)
 
@@ -482,6 +490,8 @@ $(DIROBJ)\examples\gifdec.obj: examples\gifdec.c
 	$(CC) $(CFLAGS) /Fd$(DIROBJ)\extras\ /Fo$(DIROBJ)\extras\ $<
 {imageio}.c{$(DIROBJ)\imageio}.obj::
 	$(CC) $(CFLAGS) /Fd$(DIROBJ)\imageio\ /Fo$(DIROBJ)\imageio\ $<
+{sharpyuv}.c{$(DIROBJ)\sharpyuv}.obj::
+	$(CC) $(CFLAGS) /Fd$(DIROBJ)\sharpyuv\ /Fo$(DIROBJ)\sharpyuv\ $<
 {src\dec}.c{$(DIROBJ)\dec}.obj::
 	$(CC) $(CFLAGS) /Fd$(LIBWEBP_PDBNAME) /Fo$(DIROBJ)\dec\ $<
 {src\demux}.c{$(DIROBJ)\demux}.obj::
@@ -502,13 +512,9 @@ LNKLIBS     = $(LNKLIBS) Shell32.lib
 
 {$(DIROBJ)\examples}.obj{$(DIRBIN)}.exe:
 	$(LNKEXE) $(LDFLAGS) /OUT:$@ $** $(LNKLIBS)
-	$(MT) -manifest $@.manifest -outputresource:$@;1
-	del $@.manifest
 
 {$(DIROBJ)\extras}.obj{$(DIRBIN)}.exe:
 	$(LNKEXE) $(LDFLAGS) /OUT:$@ $** $(LNKLIBS)
-	$(MT) -manifest $@.manifest -outputresource:$@;1
-	del $@.manifest
 
 clean::
 	@-erase /s $(DIROBJ)\*.dll 2> NUL
