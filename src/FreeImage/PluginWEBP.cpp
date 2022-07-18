@@ -422,6 +422,10 @@ EncodeImage(FIMEMORY *hmem, FIBITMAP *dib, int flags) {
 		// quality/speed trade-off (0=fast, 6=slower-better)
 		config.method = 6;
 
+		if((flags & WEBP_SHARPYUV) == WEBP_SHARPYUV) {
+			// sharper RGB->YUV conversion
+			config.use_sharp_yuv = 1;
+		}
 		if((flags & WEBP_LOSSLESS) == WEBP_LOSSLESS) {
 			// lossless encoding
 			config.lossless = 1;

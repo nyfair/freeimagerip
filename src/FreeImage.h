@@ -617,6 +617,7 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define JXR_PROGRESSIVE		0x4000		// save as a progressive-JXR (use | to combine with other save flags)
 #define WEBP_DEFAULT		0			// save with quality 75 & 4:2:0
 #define WEBP_LOSSLESS		100			// save lossless vp8 photo
+#define WEBP_SHARPYUV		0x0100			// use sharper (and slower) RGB->YUV conversion for vp8 photo
 #define DDS_DEFAULT			0
 
 // Background filling options ---------------------------------------------------------

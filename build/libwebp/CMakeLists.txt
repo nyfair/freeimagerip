@@ -116,6 +116,12 @@ SET(SOURCE_FILES
 	${SRC}/utils/bit_writer_utils.c
 	${SRC}/utils/huffman_encode_utils.c
 	${SRC}/utils/quant_levels_utils.c
+  ${3RDPARTY_DIR}/libwebp/sharpyuv/sharpyuv.c
+  ${3RDPARTY_DIR}/libwebp/sharpyuv/sharpyuv_csp.c
+  ${3RDPARTY_DIR}/libwebp/sharpyuv/sharpyuv_dsp.c
+  ${3RDPARTY_DIR}/libwebp/sharpyuv/sharpyuv_gamma.c
+  ${3RDPARTY_DIR}/libwebp/sharpyuv/sharpyuv_neon.c
+  ${3RDPARTY_DIR}/libwebp/sharpyuv/sharpyuv_sse2.c
 )
 
 SOURCE_GROUP("Source Files" FILES ${SOURCE_FILES})
