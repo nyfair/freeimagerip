@@ -12,10 +12,10 @@
 ## 3rd Parties
 |Library|Homepage|
 |:---|:---|
-|libpng 1.6.37|http://libpng.com/pub/png/libpng.html|
+|libpng 1.6.38|http://libpng.com/pub/png/libpng.html|
 |libtiff 4.4.0|http://www.simplesystems.org/libtiff|
-|libwebp 1.2.3|https://github.com/webmproject/libwebp|
-|mozjpeg 4.0.3|https://github.com/mozilla/mozjpeg|
+|libwebp 1.2.4|https://github.com/webmproject/libwebp|
+|mozjpeg 4.1.1|https://github.com/mozilla/mozjpeg|
 |zlib 1.2.12|http://zlib.net|
 |jxrlib 1.1|https://jxrlib.codeplex.com|
 
