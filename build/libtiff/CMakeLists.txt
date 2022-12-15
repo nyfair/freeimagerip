@@ -28,6 +28,7 @@ SET(SOURCE_FILES
 	${SRC}/tif_fax3sm.c
 	${SRC}/tif_flush.c
 	${SRC}/tif_getimage.c
+	${SRC}/tif_hash_set.c
 	${SRC}/tif_jbig.c
 	${SRC}/tif_jpeg.c
 	${SRC}/tif_jpeg_12.c
