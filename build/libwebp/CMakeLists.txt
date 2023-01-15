@@ -117,6 +117,7 @@ SET(SOURCE_FILES
 	${SRC}/utils/huffman_encode_utils.c
 	${SRC}/utils/quant_levels_utils.c
   ${3RDPARTY_DIR}/libwebp/sharpyuv/sharpyuv.c
+	${3RDPARTY_DIR}/libwebp/sharpyuv/sharpyuv_cpu.c
   ${3RDPARTY_DIR}/libwebp/sharpyuv/sharpyuv_csp.c
   ${3RDPARTY_DIR}/libwebp/sharpyuv/sharpyuv_dsp.c
   ${3RDPARTY_DIR}/libwebp/sharpyuv/sharpyuv_gamma.c
