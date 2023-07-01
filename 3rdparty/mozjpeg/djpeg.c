@@ -38,16 +38,6 @@
 
 #include <ctype.h>              /* to declare isprint() */
 
-#ifdef USE_CCOMMAND             /* command-line reader for Macintosh */
-#ifdef __MWERKS__
-#include <SIOUX.h>              /* Metrowerks needs this */
-#include <console.h>            /* ... and this */
-#endif
-#ifdef THINK_C
-#include <console.h>            /* Think declares it here */
-#endif
-#endif
-
 
 /* Create the add-on message string table. */
 
@@ -326,7 +316,9 @@ parse_switches(j_decompress_ptr cinfo, int argc, char **argv,
       if (++argn >= argc)       /* advance to next argument */
         usage();
       icc_filename = argv[argn];
+#ifdef SAVE_MARKERS_SUPPORTED
       jpeg_save_markers(cinfo, JPEG_APP0 + 2, 0xFFFF);
+#endif
 
     } else if (keymatch(arg, "map", 3)) {
       /* Quantize to a color map taken from an input file. */
@@ -549,11 +541,6 @@ main(int argc, char **argv)
   unsigned long insize = 0;
 #endif
   JDIMENSION num_scanlines;
-
-  /* On Mac, fetch a command line. */
-#ifdef USE_CCOMMAND
-  argc = ccommand(&argv);
-#endif
 
   progname = argv[0];
   if (progname == NULL || progname[0] == 0)
