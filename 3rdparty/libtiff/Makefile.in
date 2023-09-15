@@ -301,12 +301,6 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
-GLUT_CFLAGS = @GLUT_CFLAGS@
-GLUT_LIBS = @GLUT_LIBS@
-GLU_CFLAGS = @GLU_CFLAGS@
-GLU_LIBS = @GLU_LIBS@
-GL_CFLAGS = @GL_CFLAGS@
-GL_LIBS = @GL_LIBS@
 GREP = @GREP@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -349,9 +343,6 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
-PTHREAD_CC = @PTHREAD_CC@
-PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
-PTHREAD_LIBS = @PTHREAD_LIBS@
 PYTHON_BIN = @PYTHON_BIN@
 RANLIB = @RANLIB@
 SED = @SED@
@@ -364,11 +355,6 @@ TIFF_MAN1_PREBUILT = @TIFF_MAN1_PREBUILT@
 TIFF_MAN3_GEN = @TIFF_MAN3_GEN@
 TIFF_MAN3_PREBUILT = @TIFF_MAN3_PREBUILT@
 VERSION = @VERSION@
-XMKMF = @XMKMF@
-X_CFLAGS = @X_CFLAGS@
-X_EXTRA_LIBS = @X_EXTRA_LIBS@
-X_LIBS = @X_LIBS@
-X_PRE_LIBS = @X_PRE_LIBS@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
@@ -382,7 +368,6 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
-ax_pthread_config = @ax_pthread_config@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -445,7 +430,8 @@ EXTRA_DIST = \
 	libtiff-4.pc.in
 
 @TIFF_DOCS_TRUE@dist_doc_DATA = $(docfiles)
-SUBDIRS = port libtiff tools build contrib test doc
+SUBDIRS = port libtiff tools build contrib test doc tools/unsupported
+NEW_LIBTIFF_RELEASE_DATE = $(shell date +"%Y%m%d")
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libtiff-4.pc
 
@@ -1000,9 +986,10 @@ distcheck-hook:
 	rm -rf $(distdir)/_inst/cmake
 
 release:
-	(rm -f $(top_srcdir)/RELEASE-DATE && echo $(LIBTIFF_RELEASE_DATE) > $(top_srcdir)/RELEASE-DATE)
+	@(echo --- Setting release date to $(NEW_LIBTIFF_RELEASE_DATE) and release version to $(LIBTIFF_VERSION) ---)
+	(rm -f $(top_srcdir)/RELEASE-DATE && echo $(NEW_LIBTIFF_RELEASE_DATE) > $(top_srcdir)/RELEASE-DATE)
 	(rm -f $(top_srcdir)/VERSION && echo $(LIBTIFF_VERSION) > $(top_srcdir)/VERSION)
-	(rm -f $(top_srcdir)/libtiff/tiffvers.h && sed 's,LIBTIFF_VERSION,$(LIBTIFF_VERSION),;s,LIBTIFF_RELEASE_DATE,$(LIBTIFF_RELEASE_DATE),;s,LIBTIFF_MAJOR_VERSION,$(LIBTIFF_MAJOR_VERSION),;s,LIBTIFF_MINOR_VERSION,$(LIBTIFF_MINOR_VERSION),;s,LIBTIFF_MICRO_VERSION,$(LIBTIFF_MICRO_VERSION),' $(top_srcdir)/libtiff/tiffvers.h.in > $(top_srcdir)/libtiff/tiffvers.h)
+	(rm -f $(top_builddir)/libtiff/tiffvers.h && sed 's,LIBTIFF_VERSION,$(LIBTIFF_VERSION),;s,LIBTIFF_RELEASE_DATE,$(NEW_LIBTIFF_RELEASE_DATE),;s,LIBTIFF_MAJOR_VERSION,$(LIBTIFF_MAJOR_VERSION),;s,LIBTIFF_MINOR_VERSION,$(LIBTIFF_MINOR_VERSION),;s,LIBTIFF_MICRO_VERSION,$(LIBTIFF_MICRO_VERSION),' $(top_srcdir)/libtiff/tiffvers.h.in > $(top_builddir)/libtiff/tiffvers.h && sed -i 's,@,,g' $(top_builddir)/libtiff/tiffvers.h)
 coverity:
 	$(MAKE) clean
 	cov-build --dir cov-int $(MAKE)

@@ -139,7 +139,7 @@ DIST_COMMON = $(srcdir)/Makefile.am $(am__libtiffinclude_HEADERS_DIST) \
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config/config.h tif_config.h \
 	tiffconf.h $(top_builddir)/port/libport_config.h
-CONFIG_CLEAN_FILES =
+CONFIG_CLEAN_FILES = tiffvers.h
 CONFIG_CLEAN_VPATH_FILES =
 PROGRAMS = $(noinst_PROGRAMS)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -325,7 +325,8 @@ am__define_uniq_tagged_files = \
 ETAGS = etags
 CTAGS = ctags
 am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/tif_config.h.in \
-	$(srcdir)/tiffconf.h.in $(top_srcdir)/config/depcomp
+	$(srcdir)/tiffconf.h.in $(srcdir)/tiffvers.h.in \
+	$(top_srcdir)/config/depcomp
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
@@ -358,12 +359,6 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
-GLUT_CFLAGS = @GLUT_CFLAGS@
-GLUT_LIBS = @GLUT_LIBS@
-GLU_CFLAGS = @GLU_CFLAGS@
-GLU_LIBS = @GLU_LIBS@
-GL_CFLAGS = @GL_CFLAGS@
-GL_LIBS = @GL_LIBS@
 GREP = @GREP@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -406,9 +401,6 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
-PTHREAD_CC = @PTHREAD_CC@
-PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
-PTHREAD_LIBS = @PTHREAD_LIBS@
 PYTHON_BIN = @PYTHON_BIN@
 RANLIB = @RANLIB@
 SED = @SED@
@@ -421,11 +413,6 @@ TIFF_MAN1_PREBUILT = @TIFF_MAN1_PREBUILT@
 TIFF_MAN3_GEN = @TIFF_MAN3_GEN@
 TIFF_MAN3_PREBUILT = @TIFF_MAN3_PREBUILT@
 VERSION = @VERSION@
-XMKMF = @XMKMF@
-X_CFLAGS = @X_CFLAGS@
-X_EXTRA_LIBS = @X_EXTRA_LIBS@
-X_LIBS = @X_LIBS@
-X_PRE_LIBS = @X_PRE_LIBS@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
@@ -439,7 +426,6 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
-ax_pthread_config = @ax_pthread_config@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -487,7 +473,7 @@ LIBPORT = $(top_builddir)/port/libport.la
 LIBTIFF = $(top_builddir)/libtiff/libtiff.la
 libtiffincludedir = $(includedir)
 EXTRA_DIST = CMakeLists.txt libtiff.def libtiff.map libtiffxx.map \
-	tif_config.h.cmake.in tiffconf.h.cmake.in \
+	tiffvers.h.cmake.in tif_config.h.cmake.in tiffconf.h.cmake.in \
 	tif_win32_versioninfo.rc $(am__append_2) $(am__append_4)
 libtiffinclude_HEADERS = tiff.h tiffio.h tiffvers.h $(am__append_1)
 noinst_HEADERS = \
@@ -581,6 +567,8 @@ stamp-h3: $(srcdir)/tiffconf.h.in $(top_builddir)/config.status
 
 distclean-hdr:
 	-rm -f tif_config.h stamp-h2 tiffconf.h stamp-h3
+tiffvers.h: $(top_builddir)/config.status $(srcdir)/tiffvers.h.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 
 clean-noinstPROGRAMS:
 	@list='$(noinst_PROGRAMS)'; test -n "$$list" || exit 0; \
