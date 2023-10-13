@@ -1,3 +1,49 @@
+2.1.6
+=====
+
+### Significant changes relative to 2.1.5.1:
+
+1. Fixed an oversight in 1.4 beta1[8] that caused various segfaults and buffer
+overruns when attempting to decompress various specially-crafted malformed
+12-bit-per-component JPEG images using a 12-bit-per-component build of djpeg
+(`-DWITH_12BIT=1`) with both color quantization and RGB565 color conversion
+enabled.
+
+2. Fixed an issue whereby `jpeg_crop_scanline()` sometimes miscalculated the
+downsampled width for components with 4x2 or 2x4 subsampling factors if
+decompression scaling was enabled.  This caused the components to be upsampled
+incompletely, which caused the color converter to read from uninitialized
+memory.  With 12-bit data precision, this caused a buffer overrun or underrun
+and subsequent segfault if the sample value read from uninitialized memory was
+outside of the valid sample range.
+
+3. Fixed a long-standing issue whereby the `tjTransform()` function, when used
+with the `TJXOP_TRANSPOSE`, `TJXOP_TRANSVERSE`, `TJXOP_ROT90`, or
+`TJXOP_ROT270` transform operation and without automatic JPEG destination
+buffer (re)allocation or lossless cropping, computed the worst-case transformed
+JPEG image size based on the source image dimensions rather than the
+transformed image dimensions.  If a calling program allocated the JPEG
+destination buffer based on the transformed image dimensions, as the API
+documentation instructs, and attempted to transform a specially-crafted 4:2:2,
+4:4:0, or 4:1:1 JPEG source image containing a large amount of metadata, the
+issue caused `tjTransform()` to overflow the JPEG destination buffer rather
+than fail gracefully.  The issue could be worked around by setting
+`TJXOPT_COPYNONE`.  Note that, irrespective of this issue, `tjTransform()`
+cannot reliably transform JPEG source images that contain a large amount of
+metadata unless automatic JPEG destination buffer (re)allocation is used or
+`TJXOPT_COPYNONE` is set.
+
+4. Fixed an issue that caused the C Huffman encoder (which is not used by
+default on x86 and Arm CPUs) to read from uninitialized memory when attempting
+to transform a specially-crafted malformed arithmetic-coded JPEG source image
+into a baseline Huffman-coded JPEG destination image.
+
+5. Fixed two minor issues in the interblock smoothing algorithm that caused
+mathematical (but not necessarily perceptible) edge block errors when
+decompressing progressive JPEG images exactly two MCU blocks in width or that
+use vertical chrominance subsampling.
+
+
 2.1.5.1
 =======
 
@@ -199,9 +245,9 @@ transform a specially-crafted malformed JPEG image.
 
 ### Significant changes relative to 2.1 beta1:
 
-1. Fixed a regression introduced by 2.1 beta1[6(b)] whereby attempting to
-decompress certain progressive JPEG images with one or more component planes of
-width 8 or less caused a buffer overrun.
+1. Fixed a regression (CVE-2021-29390) introduced by 2.1 beta1[6(b)] whereby
+attempting to decompress certain progressive JPEG images with one or more
+component planes of width 8 or less caused a buffer overrun.
 
 2. Fixed a regression introduced by 2.1 beta1[6(b)] whereby attempting to
 decompress a specially-crafted malformed progressive JPEG image caused the
