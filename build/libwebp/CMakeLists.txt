@@ -108,6 +108,7 @@ SET(SOURCE_FILES
 	${SRC}/utils/color_cache_utils.c
 	${SRC}/utils/filters_utils.c
 	${SRC}/utils/huffman_utils.c
+	${SRC}/utils/palette.c
 	${SRC}/utils/quant_levels_dec_utils.c
 	${SRC}/utils/rescaler_utils.c
 	${SRC}/utils/random_utils.c
