@@ -1,7 +1,5 @@
 PROJECT(FreeImage)
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
-
 # Determine Platform
 IF(MSVC AND CMAKE_CL_64)
 	SET(X64 1)
