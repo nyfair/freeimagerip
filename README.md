@@ -12,7 +12,7 @@
 ## 3rd Parties
 |Library|Homepage|
 |:---|:---|
-|libpng 1.6.44|http://libpng.com/pub/png/libpng.html|
+|libpng 1.6.48|http://libpng.com/pub/png/libpng.html|
 |libtiff 4.7|http://www.simplesystems.org/libtiff|
 |libwebp 1.5.0|https://chromium.googlesource.com/webm/libwebp|
 |mozjpeg 4.1.5|https://github.com/mozilla/mozjpeg|
