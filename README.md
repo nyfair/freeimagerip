@@ -15,9 +15,14 @@
 |libpng 1.6.50|http://libpng.com/pub/png/libpng.html|
 |libtiff 4.7|http://www.simplesystems.org/libtiff|
 |libwebp 1.6.0|https://chromium.googlesource.com/webm/libwebp|
-|mozjpeg 4.1.5|https://github.com/mozilla/mozjpeg|
+|mozjpeg 4.1.5 with jpegli from libjxl|https://github.com/mozilla/mozjpeg|
 |zlib-ng 2.2.5|https://github.com/zlib-ng/zlib-ng|
 |jxrlib 1.1|https://jxrlib.codeplex.com|
+|libjxl 0.11.1|https://github.com/libjxl/libjxl|
+
+## 3rd Parties CMakeLists.txt Modification
+libpng - include zlib-ng directory
+libjxl - remove add_subdirectory(tools) | third-party find lcms2 | jpegli.cmake allow win32 JPEGXL_ENABLE_JPEGLI_LIBJPEG and configure_file
 
 # Windows Context Menu Previewer
 ## install

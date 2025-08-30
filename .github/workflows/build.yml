@@ -17,23 +17,24 @@ jobs:
           ext: dll
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: ilammy/setup-nasm@v1
+    - uses: actions/checkout@v5
     - uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: ${{ matrix.os }}
     - name: Compile
       run: |
-        cmake build -G "Visual Studio 17 2022" -A ${{ matrix.cos }}
+        md build
+        cd build
+        cmake .. -G "Visual Studio 17 2022" -A ${{ matrix.cos }} -DAWK=off
         cmake --build . --config Release
         move Release\*.dll .
         move plugin\Release\*.${{ matrix.ext }} .
-        7z a ${{ matrix.os }}.7z *.dll *.spi
+        7z a ..\${{ matrix.os }}.7z *.dll *.spi
         md include
         md lib
-        move src\FreeImage.h include
+        move ..\src\FreeImage.h include
         move Release\*.lib lib
-        7z a ${{ matrix.os }}-dev.7z include lib
+        7z a ..\${{ matrix.os }}-dev.7z include lib
     - name: Compile LuaJIT
       shell: cmd
       run: |

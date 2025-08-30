@@ -421,6 +421,7 @@ EncodeImage(FIMEMORY *hmem, FIBITMAP *dib, int flags) {
 
 		// quality/speed trade-off (0=fast, 6=slower-better)
 		config.method = 6;
+		config.use_sharp_yuv = 0;
 
 		if((flags & WEBP_SHARPYUV) == WEBP_SHARPYUV) {
 			// sharper RGB->YUV conversion
