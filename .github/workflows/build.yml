@@ -16,6 +16,9 @@ jobs:
         - os: win64
           cos: "x64 -DFISHELLEXT=on"
           ext: dll
+        - os: arm64
+          cos: "ARM64 -DFISHELLEXT=on"
+          ext: dll
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v5
@@ -36,21 +39,21 @@ jobs:
         move ..\src\FreeImage.h include
         move Release\*.lib lib
         7z a ..\${{ matrix.os }}-dev.7z include lib
-    - name: Compile LuaJIT
-      shell: cmd
-      run: |
-        curl -OL https://github.com/LuaJIT/LuaJIT/archive/refs/tags/v2.1.0-beta3.zip
-        curl -OL https://github.com/nyfair/fi-luajit/archive/master.zip
-        7z x *.zip
-        cd LuaJIT-2.1.0-beta3\src
-        msvcbuild amalg
-    - name: Make Lua Binding
-      run: |
-        cd LuaJIT-2.1.0-beta3\src
-        md lua
-        move ..\..\fi-luajit-master\*.lua lua
-        move ..\..\fi-luajit-master\test\* .
-        7z a ..\..\${{ matrix.os }}-luajit-bind.7z *.exe *.dll *.lua lua
+    # - name: Compile LuaJIT
+    #   shell: cmd
+    #   run: |
+    #     curl -OL https://github.com/LuaJIT/LuaJIT/archive/refs/tags/v2.1.0-beta3.zip
+    #     curl -OL https://github.com/nyfair/fi-luajit/archive/master.zip
+    #     7z x *.zip
+    #     cd LuaJIT-2.1.0-beta3\src
+    #     msvcbuild amalg
+    # - name: Make Lua Binding
+    #   run: |
+    #     cd LuaJIT-2.1.0-beta3\src
+    #     md lua
+    #     move ..\..\fi-luajit-master\*.lua lua
+    #     move ..\..\fi-luajit-master\test\* .
+    #     7z a ..\..\${{ matrix.os }}-luajit-bind.7z *.exe *.dll *.lua lua
     - name: Upload
       uses: svenstaro/upload-release-action@v2
       with:
