@@ -38,6 +38,7 @@ ENDIF()
 OPTION(QT_PLUGIN "Build QT plugin" OFF)
 OPTION(CONV_TEST "Build a simple convert test program" OFF)
 
+SET(AWK OFF)
 SET(BUILD_SHARED_LIBS OFF)
 SET(WITH_GTEST OFF)
 SET(ZLIB_ENABLE_TESTS OFF)
@@ -93,7 +94,7 @@ ADD_SUBDIRECTORY(${3RDPARTY_DIR}/libtiff)
 ADD_SUBDIRECTORY(${3RDPARTY_DIR}/libwebp)
 ADD_SUBDIRECTORY(${3RDPARTY_DIR}/libjxl)
 
-TARGET_LINK_LIBRARIES(freeimage libjxr zlibstatic png_static jpegli-static jpegli-libjpeg-obj libtiff webpdecoder webp libwebpmux webpdemux)
+TARGET_LINK_LIBRARIES(freeimage libjxr zlibstatic png_static jpegli-static jpegli-libjpeg-obj libtiff webpdecoder webp libwebpmux webpdemux jxl jxl_threads)
 
 INCLUDE_DIRECTORIES(
 	${PROJECT_DIR}
@@ -109,6 +110,7 @@ INCLUDE_DIRECTORIES(
 	${3RDPARTY_DIR}/libwebp/src
 	${CMAKE_BINARY_DIR}/3rdparty/zlib-ng
 	${CMAKE_BINARY_DIR}/3rdparty/libpng
+	${CMAKE_BINARY_DIR}/3rdparty/libjxl/lib/include
 	${CMAKE_BINARY_DIR}/3rdparty/libjxl/lib/include/jpegli
 	${CMAKE_BINARY_DIR}/3rdparty/libtiff
 )

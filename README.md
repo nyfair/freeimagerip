@@ -21,7 +21,7 @@
 |libjxl 0.11.1|https://github.com/libjxl/libjxl|
 
 ## 3rd Parties CMakeLists.txt Modification
-libpng - include zlib-ng directory
+libpng - include zlib-ng directory  
 libjxl - remove add_subdirectory(tools) | third-party find lcms2 | jpegli.cmake allow win32 JPEGXL_ENABLE_JPEGLI_LIBJPEG and configure_file
 
 # Windows Context Menu Previewer

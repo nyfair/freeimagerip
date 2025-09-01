@@ -7,6 +7,7 @@ on:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
         - os: win32
@@ -25,7 +26,7 @@ jobs:
       run: |
         md build
         cd build
-        cmake .. -G "Visual Studio 17 2022" -A ${{ matrix.cos }} -DAWK=off
+        cmake .. -G "Visual Studio 17 2022" -A ${{ matrix.cos }} -DCMAKE_MSVC_RUNTIME_LIBRARY="$<$<NOT:$<CONFIG:Debug>>:MultiThreaded>"
         cmake --build . --config Release
         move Release\*.dll .
         move plugin\Release\*.${{ matrix.ext }} .

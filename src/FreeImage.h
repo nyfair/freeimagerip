@@ -376,13 +376,14 @@ FI_ENUM(FREE_IMAGE_FORMAT) {
 	FIF_GIF			= 3,
 	FIF_TARGA		= 4,
 	FIF_WEBP		= 5,
-	FIF_JXR			= 6,
-	FIF_TIFF		= 7,
-	FIF_PSD			= 8,
-	FIF_ICO			= 9,
-	FIF_DDS			= 10,
-	FIF_HDR			= 11,
-	FIF_PNM			= 12
+	FIF_JXL			= 6,
+	FIF_JXR			= 7,
+	FIF_TIFF		= 8,
+	FIF_PSD			= 9,
+	FIF_ICO			= 10,
+	FIF_DDS			= 11,
+	FIF_HDR			= 12,
+	FIF_PNM			= 13
 };
 
 /** Image type used in FreeImage.
@@ -593,8 +594,8 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define PNG_IGNOREGAMMA		1			// loading: avoid gamma correction
 #define PNG_INTERLACED		0x0200		// save using Adam7 interlacing (use | to combine with other save flags)
 #define PNM_DEFAULT         0
-#define PNM_SAVE_RAW        0       //! if set the writer saves in RAW format (i.e. P4, P5 or P6)
-#define PNM_SAVE_ASCII      1       //! if set the writer saves in ASCII format (i.e. P1, P2 or P3)
+#define PNM_SAVE_RAW        0       	//! if set the writer saves in RAW format (i.e. P4, P5 or P6)
+#define PNM_SAVE_ASCII      1       	//! if set the writer saves in ASCII format (i.e. P1, P2 or P3)
 #define PSD_DEFAULT		 	0
 #define PSD_NONE			0x0100		// save without any compression
 #define PSD_RLE				0x0200		// save using RLE compression
@@ -617,8 +618,14 @@ typedef void (DLL_CALLCONV *FI_InitProc)(Plugin *plugin, int format_id);
 #define JXR_PROGRESSIVE		0x4000		// save as a progressive-JXR (use | to combine with other save flags)
 #define WEBP_DEFAULT		0			// save with quality 75 & 4:2:0
 #define WEBP_LOSSLESS		100			// save lossless vp8 photo
-#define WEBP_SHARPYUV		0x0100			// use sharper (and slower) RGB->YUV conversion for vp8 photo
+#define WEBP_SHARPYUV		0x0100		// use sharper (and slower) RGB->YUV conversion for vp8 photo
 #define DDS_DEFAULT			0
+#define JXL_DEFAULT			0			// save with quality 90, use 12bit depth for hdr image
+#define JXL_LOSSLESS		100			// save lossless jpeg-xl
+#define JXL_BITDEPTH_10		0x0100		// save jpeg-xl with 10bit depth for hdr image
+#define JXL_BITDEPTH_12		0x0200		// save jpeg-xl with 12bit depth for hdr image
+#define JXL_BITDEPTH_16		0x0400		// save jpeg-xl with 16bit depth for hdr image
+#define JXL_BITDEPTH_32		0x0800		// save jpeg-xl with 32bit depth for hdr image
 
 // Background filling options ---------------------------------------------------------
 // Constants used in FreeImage_FillBackground and FreeImage_EnlargeCanvas
