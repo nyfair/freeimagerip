@@ -12,11 +12,11 @@
 ## 3rd Parties
 |Library|Homepage|
 |:---|:---|
-|libpng 1.6.50|http://libpng.com/pub/png/libpng.html|
-|libtiff 4.7|http://www.simplesystems.org/libtiff|
+|libpng 1.6.52|http://libpng.com/pub/png/libpng.html|
+|libtiff 4.7.1|http://www.simplesystems.org/libtiff|
 |libwebp 1.6.0|https://chromium.googlesource.com/webm/libwebp|
 |mozjpeg 4.1.5 with jpegli from libjxl|https://github.com/mozilla/mozjpeg|
-|zlib-ng 2.2.5|https://github.com/zlib-ng/zlib-ng|
+|zlib-ng 2.3.2|https://github.com/zlib-ng/zlib-ng|
 |jxrlib 1.1|https://jxrlib.codeplex.com|
 |libjxl 0.11.1|https://github.com/libjxl/libjxl|
 
@@ -73,4 +73,4 @@ conv 民逗Σ.dds 二マビ.webp
 # convert image format and bpp
 conv abc.jpg 32 abc.tiff
 # convert image format with quality setting
-conv 汉字.bmp 漢字.jpg 75 
+conv 汉字.bmp 漢字.jpg 75
