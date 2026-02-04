@@ -115,7 +115,7 @@ Default is no prefix (empty prefix).")
 
 # Add multi-choice option
 set(WITH_SANITIZER AUTO CACHE STRING "Enable sanitizer support")
-set_property(CACHE WITH_SANITIZER PROPERTY STRINGS "Memory" "Address" "Undefined" "Thread")
+set_property(CACHE WITH_SANITIZER PROPERTY STRINGS "None" "Memory" "Address" "Undefined" "Thread")
 
 if(BASEARCH_ARM_FOUND)
     cmake_dependent_option(WITH_ARMV6 "Build with ARMv6 SIMD" ON "NOT ARCH MATCHES \"aarch64\"" OFF)
@@ -1361,7 +1361,7 @@ set(ZLIB_GZFILE_PRIVATE_HDRS
 )
 set(ZLIB_GZFILE_SRCS
     gzlib.c
-    ${CMAKE_CURRENT_BINARY_DIR}/gzread.c
+    gzread.c
     gzwrite.c
 )
 
@@ -1480,8 +1480,10 @@ if(NOT DEFINED BUILD_SHARED_LIBS OR BUILD_SHARED_LIBS)
             if(NOT ZLIB_COMPAT)
                 add_definitions(-DHAVE_SYMVER)
             endif()
+            configure_file(${CMAKE_CURRENT_SOURCE_DIR}/zlib${SUFFIX}.map.in
+                ${CMAKE_CURRENT_BINARY_DIR}/zlib${SUFFIX}.map @ONLY)
             set_target_properties(zlib-ng PROPERTIES LINK_FLAGS
-                "-Wl,--version-script,\"${CMAKE_CURRENT_SOURCE_DIR}/zlib${SUFFIX}.map\"")
+                "-Wl,--version-script,\"${CMAKE_CURRENT_BINARY_DIR}/zlib${SUFFIX}.map\"")
         endif()
     endif()
     if(MSYS)
@@ -1518,8 +1520,8 @@ configure_file(${CMAKE_CURRENT_BINARY_DIR}/zconf${SUFFIX}.h.cmakein
     ${CMAKE_CURRENT_BINARY_DIR}/zconf${SUFFIX}.h @ONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/zlib${SUFFIX}.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/zlib${SUFFIX}.h @ONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/gzread.c.in
-    ${CMAKE_CURRENT_BINARY_DIR}/gzread.c @ONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/gzread_mangle.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/gzread_mangle.h @ONLY)
 
 if (NOT ZLIB_SYMBOL_PREFIX STREQUAL "")
     add_feature_info(ZLIB_SYMBOL_PREFIX ON "Publicly exported symbols have a custom prefix")

@@ -12,13 +12,16 @@
 ## 3rd Parties
 |Library|Homepage|
 |:---|:---|
-|libpng 1.6.52|http://libpng.com/pub/png/libpng.html|
+|libpng 1.6.54|http://libpng.com/pub/png/libpng.html|
 |libtiff 4.7.1|http://www.simplesystems.org/libtiff|
 |libwebp 1.6.0|https://chromium.googlesource.com/webm/libwebp|
 |mozjpeg 4.1.5 with jpegli from libjxl|https://github.com/mozilla/mozjpeg|
-|zlib-ng 2.3.2|https://github.com/zlib-ng/zlib-ng|
+|zlib-ng 2.3.3|https://github.com/zlib-ng/zlib-ng|
 |jxrlib 1.1|https://jxrlib.codeplex.com|
 |libjxl 0.11.1|https://github.com/libjxl/libjxl|
+|brotli 1.2.0|https://github.com/google/brotli|
+|highway 1.3.0|https://github.com/google/highway|
+|lcms 2.18|https://github.com/mm2/Little-CMS|
 
 ## 3rd Parties CMakeLists.txt Modification
 libpng - include zlib-ng directory  
