@@ -57,8 +57,7 @@ SET(SOURCE_FILES
 )
 
 INCLUDE_DIRECTORIES(
-	${3RDPARTY_DIR}/libjxl/third_party/libjpeg-turbo
-	${CMAKE_BINARY_DIR}/3rdparty/libjxl/lib/include/jpegli
+	${CMAKE_BINARY_DIR}/3rdparty/jpegli/lib/include/jpegli
 	${CMAKE_BINARY_DIR}/3rdparty/zlib-ng
 	${CMAKE_CURRENT_BINARY_DIR}
 )

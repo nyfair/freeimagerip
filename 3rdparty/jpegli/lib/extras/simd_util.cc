@@ -1,0 +1,47 @@
+// Copyright (c) the JPEG XL Project Authors.
+//
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file or at
+// https://developers.google.com/open-source/licenses/bsd
+
+#include "lib/extras/simd_util.h"
+
+#include <algorithm>
+#include <cstddef>
+
+#undef HWY_TARGET_INCLUDE
+#define HWY_TARGET_INCLUDE "lib/extras/simd_util.cc"
+#include <hwy/foreach_target.h>
+#include <hwy/highway.h>
+
+#include "lib/base/common.h"
+#include "lib/base/status.h"
+
+HWY_BEFORE_NAMESPACE();
+namespace jpegli {
+namespace HWY_NAMESPACE {
+
+size_t MaxVectorSize() {
+  HWY_FULL(float) df;
+  return Lanes(df) * sizeof(float);
+}
+
+// NOLINTNEXTLINE(google-readability-namespace-comments)
+}  // namespace HWY_NAMESPACE
+}  // namespace jpegli
+HWY_AFTER_NAMESPACE();
+
+#if HWY_ONCE
+namespace jpegli {
+
+HWY_EXPORT(MaxVectorSize);
+
+size_t MaxVectorSize() {
+  // Ideally HWY framework should provide us this value.
+  // Less than ideal is to check all available targets and choose maximal.
+  // As for now, we just ask current active target, assuming it won't change.
+  return HWY_DYNAMIC_DISPATCH(MaxVectorSize)();
+}
+
+}  // namespace jpegli
+#endif

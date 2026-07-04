@@ -1,0 +1,65 @@
+// Copyright (c) the JPEG XL Project Authors.
+//
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file or at
+// https://developers.google.com/open-source/licenses/bsd
+
+#ifndef JPEGLI_LIB_EXTRAS_DEC_DECODE_H_
+#define JPEGLI_LIB_EXTRAS_DEC_DECODE_H_
+
+// Facade for image decoders (PNG, PNM, ...).
+
+#include <cstddef>
+#include <cstdint>
+#include <string>
+
+#include "lib/base/compiler_specific.h"
+#include "lib/base/memory_manager.h"
+#include "lib/base/span.h"
+#include "lib/base/status.h"
+#include "lib/extras/dec/color_hints.h"
+#include "lib/extras/packed_image.h"
+
+namespace jpegli {
+
+struct SizeConstraints;
+
+namespace extras {
+
+// Codecs supported by DecodeBytes.
+enum class Codec : uint32_t {
+  kUnknown,  // for CodecFromPath
+  kPNG,
+  kPNM,
+  kPGX,
+  kJPG,
+  kGIF,
+  kEXR,
+  kJXL
+};
+
+Codec DetectCodec(const Span<const uint8_t>& bytes);
+
+bool CanDecode(Codec codec);
+
+std::string ListOfDecodeCodecs();
+
+// If and only if extension is ".pfm", *bits_per_sample is updated to 32 so
+// that Encode() would encode to PFM instead of PPM.
+Codec CodecFromPath(const std::string& path,
+                    size_t* JPEGLI_RESTRICT bits_per_sample = nullptr,
+                    std::string* extension = nullptr);
+
+// Decodes "bytes" info *ppf.
+// color_space_hint may specify the color space, otherwise, defaults to sRGB.
+Status DecodeBytes(Span<const uint8_t> bytes, const ColorHints& color_hints,
+                   extras::PackedPixelFile* ppf,
+                   const SizeConstraints* constraints = nullptr,
+                   Codec* orig_codec = nullptr,
+                   JpegliMemoryManager* memory_manager = nullptr,
+                   bool coalescing = true);
+
+}  // namespace extras
+}  // namespace jpegli
+
+#endif  // JPEGLI_LIB_EXTRAS_DEC_DECODE_H_

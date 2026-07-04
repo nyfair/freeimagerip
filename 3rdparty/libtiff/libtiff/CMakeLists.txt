@@ -115,6 +115,9 @@ else()
   set_property(SOURCE tif_unix.c APPEND PROPERTY COMPILE_DEFINITIONS ALLOW_TIFF_NON_EXT_ALLOC_FUNCTIONS)
 endif()
 
+# Apply C++ compatibility mode if enabled
+tiff_target_compile_as_cxx(tiff)
+
 target_include_directories(tiff
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -180,19 +183,26 @@ if(WEBP_SUPPORT)
   string(APPEND tiff_requires_private " libwebp")
 endif()
 if(CMath_LIBRARY)
-  target_link_libraries(tiff PRIVATE CMath::CMath)
-  list(APPEND tiff_libs_private_list "${CMath_LIBRARY}")
+  target_link_libraries(tiff PRIVATE ${CMath_LIBRARIES})
+  list(APPEND tiff_libs_private_list "${CMath_LIBRARIES}")
 endif()
 
 set(tiff_libs_private_list "${tiff_libs_private_list}" PARENT_SCOPE)
 set(tiff_requires_private "${tiff_requires_private}" PARENT_SCOPE)
 
 set_target_properties(tiff PROPERTIES SOVERSION ${SO_COMPATVERSION})
+if(MINGW)
+  # This causes "-${SOVERSION}" to be added to shared libraries, so it matches
+  # Autotools output as well.  This setting is already enabled on Cygwin/MSYS
+  # by default.  We don't enable it for other Windows builds, as there is no
+  # Autotools output to match there.
+  set(CMAKE_SHARED_LIBRARY_NAME_WITH_VERSION 1)
+endif()
 if(NOT CYGWIN)
     # This property causes shared libraries on Linux to have the full version
     # encoded into their final filename.  We disable this on Cygwin because
-    # it causes cygz-${TIFF_FULL_VERSION}.dll to be created when cygz.dll
-    # seems to be the default.
+    # it causes cygtiff-${TIFF_FULL_VERSION}.dll to be created when
+    # cygtiff-${SOVERSION}.dll seems to be the default.
     set_target_properties(tiff PROPERTIES VERSION ${SO_VERSION})
 endif()
 if(HAVE_LD_VERSION_SCRIPT)
@@ -205,33 +215,54 @@ if(HAVE_LD_VERSION_SCRIPT)
   endif()
 endif()
 
+macro(set_framework_properties target_name headers_var)
+  if(tiff-framework)
+    set_target_properties(${target_name} PROPERTIES
+      FRAMEWORK TRUE
+      FRAMEWORK_VERSION "A"
+      PRODUCT_BUNDLE_IDENTIFIER "com.gitlab.libtiff.libtiff_${target_name}"
+      PUBLIC_HEADER "${${headers_var}}"
+      XCODE_ATTRIBUTE_INSTALL_PATH "@rpath"
+      XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ""
+      XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
+      XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "NO"
+      MACOSX_FRAMEWORK_IDENTIFIER "com.gitlab.libtiff.libtiff_${target_name}"
+      MACOSX_FRAMEWORK_BUNDLE_VERSION "${LIBTIFF_VERSION_FULL}"
+      MACOSX_FRAMEWORK_SHORT_VERSION_STRING "${LIBTIFF_RELEASE_VERSION}"
+      MACOSX_RPATH TRUE)
+  endif()
+endmacro()
+
+set_framework_properties(tiff tiff_public_HEADERS)
+
 if(tiff-install)
   export(TARGETS tiff NAMESPACE TIFF:: FILE "${CMAKE_CURRENT_BINARY_DIR}/libtiffTargets.cmake")
   install(TARGETS tiff EXPORT TiffTargets
           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
           LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
   install(FILES ${tiff_public_HEADERS}
           DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
   set(TIFF_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/tiff)
   install(EXPORT TiffTargets
-          FILE TiffTargets.cmake
+          FILE tiff-targets.cmake
           NAMESPACE TIFF::
           DESTINATION ${TIFF_CONFIGDIR}
   )
 
   include(CMakePackageConfigHelpers)
   write_basic_package_version_file(
-    TiffConfigVersion.cmake
+    tiff-config-version.cmake
     VERSION ${LIBTIFF_VERSION}
     COMPATIBILITY SameMajorVersion)
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/TiffConfigVersion.cmake DESTINATION ${TIFF_CONFIGDIR})
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiff-config-version.cmake DESTINATION ${TIFF_CONFIGDIR})
 
-  configure_file(${PROJECT_SOURCE_DIR}/cmake/TiffConfig.cmake.in
-                 ${CMAKE_CURRENT_BINARY_DIR}/TiffConfig.cmake @ONLY)
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/TiffConfig.cmake DESTINATION ${TIFF_CONFIGDIR})
+  configure_file(${PROJECT_SOURCE_DIR}/cmake/tiff-config.cmake.in
+                 ${CMAKE_CURRENT_BINARY_DIR}/tiff-config.cmake @ONLY)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiff-config.cmake DESTINATION ${TIFF_CONFIGDIR})
 endif()
 
 if(CXX_SUPPORT)
@@ -255,8 +286,8 @@ if(CXX_SUPPORT)
   if(NOT CYGWIN)
     # This property causes shared libraries on Linux to have the full version
     # encoded into their final filename.  We disable this on Cygwin because
-    # it causes cygz-${TIFF_FULL_VERSION}.dll to be created when cygz.dll
-    # seems to be the default.
+    # it causes cygtiffxx-${TIFF_FULL_VERSION}.dll to be created when
+    # cygtiffxx-${SOVERSION}.dll seems to be the default.
     set_target_properties(tiffxx PROPERTIES VERSION ${SO_VERSION})
   endif()
   if(HAVE_LD_VERSION_SCRIPT)
@@ -264,11 +295,14 @@ if(CXX_SUPPORT)
                           "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libtiffxx.map")
   endif()
 
+  set_framework_properties(tiffxx tiffxx_HEADERS)
+
   if(tiff-install)
     install(TARGETS tiffxx EXPORT TiffTargets
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
     install(FILES ${tiffxx_HEADERS}
             DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")

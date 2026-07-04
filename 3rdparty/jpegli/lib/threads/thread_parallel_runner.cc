@@ -1,0 +1,111 @@
+// Copyright (c) the JPEG XL Project Authors.
+//
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file or at
+// https://developers.google.com/open-source/licenses/bsd
+
+#include "lib/threads/thread_parallel_runner.h"
+
+#include <string.h>
+
+#include <cstdint>
+#include <cstdlib>
+#include <thread>
+
+#include "lib/base/memory_manager.h"
+#include "lib/base/parallel_runner.h"
+#include "lib/threads/thread_parallel_runner_internal.h"
+
+namespace {
+
+// Default JpegliMemoryManager using malloc and free for the jpegli_threads
+// library. Same as the default JpegliMemoryManager for the jpegli library
+// itself.
+
+// Default alloc and free functions.
+void* ThreadMemoryManagerDefaultAlloc(void* opaque, size_t size) {
+  return malloc(size);
+}
+
+void ThreadMemoryManagerDefaultFree(void* opaque, void* address) {
+  free(address);
+}
+
+// Initializes the memory manager instance with the passed one. The
+// MemoryManager passed in |memory_manager| may be NULL or contain NULL
+// functions which will be initialized with the default ones. If either alloc
+// or free are NULL, then both must be NULL, otherwise this function returns an
+// error.
+bool ThreadMemoryManagerInit(JpegliMemoryManager* self,
+                             const JpegliMemoryManager* memory_manager) {
+  if (memory_manager) {
+    *self = *memory_manager;
+  } else {
+    memset(self, 0, sizeof(*self));
+  }
+  bool is_default_alloc = (self->alloc == nullptr);
+  bool is_default_free = (self->free == nullptr);
+  if (is_default_alloc != is_default_free) {
+    return false;
+  }
+  if (is_default_alloc) self->alloc = ThreadMemoryManagerDefaultAlloc;
+  if (is_default_free) self->free = ThreadMemoryManagerDefaultFree;
+
+  return true;
+}
+
+void* ThreadMemoryManagerAlloc(const JpegliMemoryManager* memory_manager,
+                               size_t size) {
+  return memory_manager->alloc(memory_manager->opaque, size);
+}
+
+void ThreadMemoryManagerFree(const JpegliMemoryManager* memory_manager,
+                             void* address) {
+  memory_manager->free(memory_manager->opaque, address);
+}
+
+}  // namespace
+
+JpegliParallelRetCode JpegliThreadParallelRunner(
+    void* runner_opaque, void* jpegli_opaque, JpegliParallelRunInit init,
+    JpegliParallelRunFunction func, uint32_t start_range, uint32_t end_range) {
+  return jpegli::ThreadParallelRunner::Runner(
+      runner_opaque, jpegli_opaque, init, func, start_range, end_range);
+}
+
+/// Starts the given number of worker threads and blocks until they are ready.
+/// "num_worker_threads" defaults to one per hyperthread. If zero, all tasks
+/// run on the main thread.
+void* JpegliThreadParallelRunnerCreate(
+    const JpegliMemoryManager* memory_manager, size_t num_worker_threads) {
+  JpegliMemoryManager local_memory_manager;
+  if (!ThreadMemoryManagerInit(&local_memory_manager, memory_manager))
+    return nullptr;
+
+  void* alloc = ThreadMemoryManagerAlloc(&local_memory_manager,
+                                         sizeof(jpegli::ThreadParallelRunner));
+  if (!alloc) return nullptr;
+  // Placement new constructor on allocated memory
+  jpegli::ThreadParallelRunner* runner =
+      new (alloc) jpegli::ThreadParallelRunner(num_worker_threads);
+  runner->memory_manager = local_memory_manager;
+
+  return runner;
+}
+
+void JpegliThreadParallelRunnerDestroy(void* runner_opaque) {
+  jpegli::ThreadParallelRunner* runner =
+      reinterpret_cast<jpegli::ThreadParallelRunner*>(runner_opaque);
+  if (runner) {
+    JpegliMemoryManager local_memory_manager = runner->memory_manager;
+    // Call destructor directly since custom free function is used.
+    runner->~ThreadParallelRunner();
+    ThreadMemoryManagerFree(&local_memory_manager, runner);
+  }
+}
+
+// Get default value for num_worker_threads parameter of
+// InitJpegliThreadParallelRunner.
+size_t JpegliThreadParallelRunnerDefaultNumWorkerThreads() {
+  return std::thread::hardware_concurrency();
+}
