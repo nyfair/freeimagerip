@@ -12,6 +12,51 @@ const CLSID FI_GUID =
 HINSTANCE g_hInst = NULL;
 long g_cDllRef = 0;
 
+namespace {
+	// On success the caller owns the returned process-heap buffer.
+	HRESULT GetCurrentModulePath(wchar_t **path) {
+		if (path == NULL)
+			return E_POINTER;
+		*path = NULL;
+		DWORD capacity = MAX_PATH;
+		wchar_t *buffer = static_cast<wchar_t *>(HeapAlloc(GetProcessHeap(), 0,
+			static_cast<size_t>(capacity) * sizeof(wchar_t)));
+		if (buffer == NULL)
+			return E_OUTOFMEMORY;
+
+		HRESULT hr;
+		for (;;) {
+			const DWORD length = GetModuleFileNameW(g_hInst, buffer, capacity);
+			if (length == 0) {
+				hr = HRESULT_FROM_WIN32(GetLastError());
+				break;
+			}
+			if (length < capacity) {
+				*path = buffer;
+				return S_OK;
+			}
+			if (capacity >= 32768) {
+				hr = HRESULT_FROM_WIN32(ERROR_FILENAME_EXCED_RANGE);
+				break;
+			}
+
+			DWORD newCapacity = capacity * 2;
+			if (newCapacity > 32768)
+				newCapacity = 32768;
+			wchar_t *resized = static_cast<wchar_t *>(HeapReAlloc(GetProcessHeap(), 0,
+				buffer, static_cast<size_t>(newCapacity) * sizeof(wchar_t)));
+			if (resized == NULL) {
+				hr = E_OUTOFMEMORY;
+				break;
+			}
+			buffer = resized;
+			capacity = newCapacity;
+		}
+		HeapFree(GetProcessHeap(), 0, buffer);
+		return hr;
+	}
+}
+
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD dwReason, LPVOID lpReserved) {
 	switch (dwReason) {
 	case DLL_PROCESS_ATTACH:
@@ -27,6 +72,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD dwReason, LPVOID lpReserved) {
 }
 
 STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void **ppv) {
+	if (ppv == NULL)
+		return E_POINTER;
+	*ppv = NULL;
+
 	HRESULT hr = CLASS_E_CLASSNOTAVAILABLE;
 	if (IsEqualCLSID(FI_GUID, rclsid)) {
 		hr = E_OUTOFMEMORY;
@@ -44,32 +93,24 @@ STDAPI DllCanUnloadNow(void) {
 }
 
 STDAPI DllRegisterServer(void) {
-	HRESULT hr;
-	wchar_t szModule[MAX_PATH];
-	if (GetModuleFileName(g_hInst, szModule, ARRAYSIZE(szModule)) == 0) {
-		hr = HRESULT_FROM_WIN32(GetLastError());
+	wchar_t *modulePath = NULL;
+	HRESULT hr = GetCurrentModulePath(&modulePath);
+	if (FAILED(hr))
 		return hr;
-	}
 
 	// Register the component.
-	hr = RegisterInprocServer(szModule, FI_GUID,
+	hr = RegisterInprocServer(modulePath, FI_GUID,
 		L"Sentire.Thumbnailer Class",
 		L"Apartment");
-	SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
-	SystemParametersInfo(SPI_SETICONS, 0, NULL, SPIF_SENDCHANGE);
+	HeapFree(GetProcessHeap(), 0, modulePath);
+	if (SUCCEEDED(hr))
+		SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
 	return hr;
 }
 
 STDAPI DllUnregisterServer(void) {
-	HRESULT hr = S_OK;
-	wchar_t szModule[MAX_PATH];
-	if (GetModuleFileName(g_hInst, szModule, ARRAYSIZE(szModule)) == 0) {
-		hr = HRESULT_FROM_WIN32(GetLastError());
-		return hr;
-	}
-
-	// Unregister the component.
-	hr = UnregisterInprocServer(FI_GUID);
-	CoFreeUnusedLibraries();
+	HRESULT hr = UnregisterInprocServer(FI_GUID);
+	if (SUCCEEDED(hr))
+		SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
 	return hr;
 }

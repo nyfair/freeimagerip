@@ -10,15 +10,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - os: win32
-          cos: "Win32 -DSUSIE_PLUGIN=on"
-          ext: spi
         - os: win64
-          cos: "x64 -DFISHELLEXT=on"
-          ext: dll
+          cos: "x64"
         - os: arm64
-          cos: "ARM64 -DFISHELLEXT=on"
-          ext: dll
+          cos: "ARM64"
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v6
@@ -29,36 +24,17 @@ jobs:
       run: |
         md build
         cd build
-        cmake .. -G "Visual Studio 18 2026" -A ${{ matrix.cos }} -DCMAKE_MSVC_RUNTIME_LIBRARY="$<$<NOT:$<CONFIG:Debug>>:MultiThreaded>"
+        cmake .. -G "Visual Studio 18 2026" -A ${{ matrix.cos }}
         cmake --build . --config Release
         move Release\*.dll .
-        move plugin\Release\*.${{ matrix.ext }} .
-        7z a ..\${{ matrix.os }}.7z *.dll *.spi
-        md include
-        md lib
-        move ..\src\FreeImage.h include
-        move Release\*.lib lib
-        7z a ..\${{ matrix.os }}-dev.7z include lib
-    # - name: Compile LuaJIT
-    #   shell: cmd
-    #   run: |
-    #     curl -OL https://github.com/LuaJIT/LuaJIT/archive/refs/tags/v2.1.0-beta3.zip
-    #     curl -OL https://github.com/nyfair/fi-luajit/archive/master.zip
-    #     7z x *.zip
-    #     cd LuaJIT-2.1.0-beta3\src
-    #     msvcbuild amalg
-    # - name: Make Lua Binding
-    #   run: |
-    #     cd LuaJIT-2.1.0-beta3\src
-    #     md lua
-    #     move ..\..\fi-luajit-master\*.lua lua
-    #     move ..\..\fi-luajit-master\test\* .
-    #     7z a ..\..\${{ matrix.os }}-luajit-bind.7z *.exe *.dll *.lua lua
+        move bin\*.dll .
+        7z a ..\${{ matrix.os }}.7z *.dll
+        7z a ..\${{ matrix.os }}-dev.7z include\FreeImage.h lib\FreeImage.lib
     - name: Upload
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: ${{ matrix.os }}*.7z
-        tag: latest
+        tag: 3.19.28
         overwrite: true
         file_glob: true

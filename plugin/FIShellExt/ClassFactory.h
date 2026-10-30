@@ -1,3 +1,8 @@
+#pragma once
+
+#include <windows.h>
+#include <unknwn.h>
+
 class ClassFactory : public IClassFactory {
 public:
 	// IUnknown
@@ -9,11 +14,19 @@ public:
 	IFACEMETHODIMP CreateInstance(IUnknown *pUnkOuter, REFIID riid, void **ppv);
 	IFACEMETHODIMP LockServer(BOOL fLock);
 
-	ClassFactory();
+	ClassFactory() noexcept;
+
+	void *operator new(size_t size) noexcept {
+		return HeapAlloc(GetProcessHeap(), 0, size);
+	}
+	void operator delete(void *memory) noexcept {
+		if (memory != NULL)
+			HeapFree(GetProcessHeap(), 0, memory);
+	}
 
 protected:
 	~ClassFactory();
 
 private:
-	long m_cRef;
+	volatile long m_cRef;
 };
