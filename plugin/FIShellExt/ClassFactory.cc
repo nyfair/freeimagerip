@@ -7,7 +7,7 @@
 
 extern long g_cDllRef;
 
-ClassFactory::ClassFactory() : m_cRef(1) {
+ClassFactory::ClassFactory() noexcept : m_cRef(1) {
 	InterlockedIncrement(&g_cDllRef);
 }
 
@@ -35,6 +35,10 @@ IFACEMETHODIMP_(ULONG) ClassFactory::Release() {
 }
 
 IFACEMETHODIMP ClassFactory::CreateInstance(IUnknown *pUnkOuter, REFIID riid, void **ppv) {
+	if (ppv == NULL)
+		return E_POINTER;
+	*ppv = NULL;
+
 	HRESULT hr = CLASS_E_NOAGGREGATION;
 	if (pUnkOuter == NULL) {
 		hr = E_OUTOFMEMORY;

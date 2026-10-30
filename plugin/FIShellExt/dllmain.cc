@@ -1,6 +1,9 @@
 #include <windows.h>
 #include <Guiddef.h>
 #include <shlobj.h>
+#include <new>
+#include <string>
+#include <vector>
 
 #include "FreeImage.h"
 #include "ClassFactory.h"
@@ -11,6 +14,38 @@ const CLSID FI_GUID =
 
 HINSTANCE g_hInst = NULL;
 long g_cDllRef = 0;
+
+namespace {
+	HRESULT GetCurrentModulePath(std::wstring *path) {
+		if (path == NULL)
+			return E_POINTER;
+		path->clear();
+		try {
+			std::vector<wchar_t> buffer(MAX_PATH);
+			for (;;) {
+				const DWORD length = GetModuleFileNameW(g_hInst, buffer.data(),
+					static_cast<DWORD>(buffer.size()));
+				if (length == 0)
+					return HRESULT_FROM_WIN32(GetLastError());
+				if (length < buffer.size()) {
+					path->assign(buffer.data(), length);
+					return S_OK;
+				}
+				if (buffer.size() >= 32768)
+					return HRESULT_FROM_WIN32(ERROR_FILENAME_EXCED_RANGE);
+
+				size_t newCapacity = buffer.size() * 2;
+				if (newCapacity > 32768)
+					newCapacity = 32768;
+				buffer.resize(newCapacity);
+			}
+		} catch (const std::bad_alloc &) {
+			return E_OUTOFMEMORY;
+		} catch (...) {
+			return E_FAIL;
+		}
+	}
+}
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD dwReason, LPVOID lpReserved) {
 	switch (dwReason) {
@@ -27,10 +62,14 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD dwReason, LPVOID lpReserved) {
 }
 
 STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void **ppv) {
+	if (ppv == NULL)
+		return E_POINTER;
+	*ppv = NULL;
+
 	HRESULT hr = CLASS_E_CLASSNOTAVAILABLE;
 	if (IsEqualCLSID(FI_GUID, rclsid)) {
 		hr = E_OUTOFMEMORY;
-		ClassFactory *pClassFactory = new ClassFactory();
+		ClassFactory *pClassFactory = new (std::nothrow) ClassFactory();
 		if (pClassFactory) {
 			hr = pClassFactory->QueryInterface(riid, ppv);
 			pClassFactory->Release();
@@ -44,32 +83,23 @@ STDAPI DllCanUnloadNow(void) {
 }
 
 STDAPI DllRegisterServer(void) {
-	HRESULT hr;
-	wchar_t szModule[MAX_PATH];
-	if (GetModuleFileName(g_hInst, szModule, ARRAYSIZE(szModule)) == 0) {
-		hr = HRESULT_FROM_WIN32(GetLastError());
+	std::wstring modulePath;
+	HRESULT hr = GetCurrentModulePath(&modulePath);
+	if (FAILED(hr))
 		return hr;
-	}
 
 	// Register the component.
-	hr = RegisterInprocServer(szModule, FI_GUID,
+	hr = RegisterInprocServer(modulePath.c_str(), FI_GUID,
 		L"Sentire.Thumbnailer Class",
 		L"Apartment");
-	SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
-	SystemParametersInfo(SPI_SETICONS, 0, NULL, SPIF_SENDCHANGE);
+	if (SUCCEEDED(hr))
+		SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
 	return hr;
 }
 
 STDAPI DllUnregisterServer(void) {
-	HRESULT hr = S_OK;
-	wchar_t szModule[MAX_PATH];
-	if (GetModuleFileName(g_hInst, szModule, ARRAYSIZE(szModule)) == 0) {
-		hr = HRESULT_FROM_WIN32(GetLastError());
-		return hr;
-	}
-
-	// Unregister the component.
-	hr = UnregisterInprocServer(FI_GUID);
-	CoFreeUnusedLibraries();
+	HRESULT hr = UnregisterInprocServer(FI_GUID);
+	if (SUCCEEDED(hr))
+		SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
 	return hr;
 }
