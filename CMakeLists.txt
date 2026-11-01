@@ -7,7 +7,7 @@ IF(NOT CMAKE_BUILD_TYPE)
 ENDIF()
 
 EXTERNALPROJECT_ADD(zlib-ng
-    URL https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz
+    URL https://github.com/zlib-ng/zlib-ng/archive/refs/tags/"$ENV{ZLIBNG_VER}".tar.gz
     CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DBUILD_SHARED_LIBS=OFF
@@ -19,7 +19,7 @@ EXTERNALPROJECT_ADD(zlib-ng
 )
 
 EXTERNALPROJECT_ADD(libjpeg-turbo
-    URL https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/3.2.1.tar.gz
+    URL https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/"$ENV{JPEGTURBO_VER}".tar.gz
     CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DENABLE_SHARED=OFF
@@ -33,7 +33,7 @@ EXTERNALPROJECT_ADD(libjpeg-turbo
 
 EXTERNALPROJECT_ADD(freeimage
     DEPENDS zlib-ng libjpeg-turbo
-    URL https://github.com/danoli3/FreeImage/archive/refs/tags/3.19.28.tar.gz
+    URL https://github.com/danoli3/FreeImage/archive/refs/tags/"$ENV{FREEIMAGE_VER}".tar.gz
     CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DBUILD_SHARED_LIBS=ON
