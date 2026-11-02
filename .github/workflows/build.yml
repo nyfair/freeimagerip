@@ -29,7 +29,6 @@ jobs:
           }
           return $resp.tag_name.TrimStart('v')
         }
-
         $ver1 = Get-LatestTag "zlib-ng/zlib-ng"
         $ver2 = Get-LatestTag "libjpeg-turbo/libjpeg-turbo"
         $ver3 = Get-LatestTag "danoli3/FreeImage"
@@ -41,12 +40,19 @@ jobs:
       with:
         arch: ${{ matrix.os }}
     - name: Compile
-      shell: powershell
+      env:
+        CL: /nologo /MP /GL
+        LINK: /LTCG
       run: |
+        $ErrorActionPreference = "Stop"
+        $env:CMAKE_BUILD_PARALLEL_LEVEL = [Environment]::ProcessorCount
+        Write-Host "CL=$env:CL"
+        Write-Host "LINK=$env:LINK"
+        Write-Host "CMAKE_BUILD_PARALLEL_LEVEL=$env:CMAKE_BUILD_PARALLEL_LEVEL"
         md build
         cd build
         cmake .. -G "Visual Studio 18 2026" -A ${{ matrix.cos }}
-        cmake --build . --config Release
+        cmake --build . --config Release --parallel $env:CMAKE_BUILD_PARALLEL_LEVEL --verbose
         move Release\*.dll .
         move bin\*.dll .
         7z a ..\${{ matrix.os }}.7z *.dll
